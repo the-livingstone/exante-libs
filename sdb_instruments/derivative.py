@@ -111,7 +111,13 @@ class Balancer:
         return logging.getLogger(f"{self.__class__.__name__}")
 
     def match_feeds_to_modules(self):
-        feeds = self.sdbadds.get_list_from_sdb(SdbLists.GATEWAYS.value, id_only=False, additional_fields=['feedSource'])
+        feeds = asyncio.run(
+            self.sdbadds.get_list_from_sdb(
+                SdbLists.GATEWAYS.value,
+                id_only=False,
+                additional_fields=['feedSource']
+            )
+        )
         self.feeds = sorted(
             [
                 {
@@ -329,7 +335,9 @@ class Derivative(Instrument):
             # but... here's slow and dirty hack for real world
             possible_exchanges = [
                 x[1] for x
-                in self.sdbadds.get_list_from_sdb(SdbLists.EXCHANGES.value)
+                in asyncio.run(
+                    self.sdbadds.get_list_from_sdb(SdbLists.EXCHANGES.value)
+                )
                 if x[0] == self.exchange
             ]
             if self.instrument_type is InstrumentTypes.OPTION:

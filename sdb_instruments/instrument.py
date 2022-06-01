@@ -542,8 +542,17 @@ class Instrument:
           (e.g. LAMBDA or HTTP) you could pass additional kwarg broker=True or feed=True
 
         '''
-        feed_provider_id = next((x[1] for x in self.sdbadds.get_list_from_sdb(SdbLists.FEED_PROVIDERS.value) if x[0] == provider), None)
-        broker_provider_id = next((x[1] for x in self.sdbadds.get_list_from_sdb(SdbLists.BROKER_PROVIDERS.value) if x[0] == provider), None)
+        feed_provider_id = next((
+            x[1] for x in asyncio.run(
+                self.sdbadds.get_list_from_sdb(SdbLists.FEED_PROVIDERS.value)
+            ) if x[0] == provider
+        ), None)
+        broker_provider_id = next((
+            x[1] for x
+            in asyncio.run(
+                self.sdbadds.get_list_from_sdb(SdbLists.BROKER_PROVIDERS.value)
+            ) if x[0] == provider
+        ), None)
         if feed_provider_id and kwargs.get('broker') != True:
             additional = ['feeds', 'providerOverrides', feed_provider_id]
         elif broker_provider_id and kwargs.get('feed') != True:
@@ -585,8 +594,18 @@ class Instrument:
         :param args: fields of interest, could be provided with some last items of path divided by '/', e.g. 'ric/suffix'
         :return: list of field values same length and order as args
         '''
-        feed_provider_id = next((x[1] for x in self.sdbadds.get_list_from_sdb(SdbLists.FEED_PROVIDERS.value) if x[0] == provider), None)
-        broker_provider_id = next((x[1] for x in self.sdbadds.get_list_from_sdb(SdbLists.BROKER_PROVIDERS.value) if x[0] == provider), None)
+        feed_provider_id = next((
+            x[1] for x
+            in asyncio.run(
+                self.sdbadds.get_list_from_sdb(SdbLists.FEED_PROVIDERS.value)
+            ) if x[0] == provider
+        ), None)
+        broker_provider_id = next((
+            x[1] for x
+            in asyncio.run(
+                self.sdbadds.get_list_from_sdb(SdbLists.BROKER_PROVIDERS.value)
+            ) if x[0] == provider
+        ), None)
         if feed_provider_id and 'broker' not in args:
             additional = ['feeds', 'providerOverrides', feed_provider_id]
         elif broker_provider_id and 'feed' not in args:
@@ -730,7 +749,11 @@ class Instrument:
         result = []
         for r in routes:
             route_name = next((
-                x[0] for x in self.sdbadds.get_list_from_sdb(SdbLists.ACCOUNTS.value) if x[1] == r['accountId']
+                x[0] for x
+                in asyncio.run(
+                    self.sdbadds.get_list_from_sdb(SdbLists.ACCOUNTS.value)
+                )
+                if x[1] == r['accountId']
             ), None)
             route_payload = {
                 key: val for key, val in r['account'].items()
