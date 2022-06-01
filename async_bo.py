@@ -5,7 +5,7 @@ from tenacity import retry, stop_after_attempt, wait_fixed
 from .authdb import get_session, keyload
 import traceback
 from loguru import logger
-import ujson as json
+import json as json
 from requests.utils import quote
 
 class BackOffice():
