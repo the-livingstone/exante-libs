@@ -539,15 +539,31 @@ class ValidationLists:
         '\u00c5land Islands': 'AX'
     }
     sdbadds = SDBAdditional()
-    accounts = sdbadds.get_list_from_sdb(SdbLists.ACCOUNTS.value, id_only=False)
-    gateways = sdbadds.get_list_from_sdb(SdbLists.GATEWAYS.value, id_only=False)
-    broker_providers = sdbadds.get_list_from_sdb(SdbLists.BROKER_PROVIDERS.value)
-    feed_providers = sdbadds.get_list_from_sdb(SdbLists.FEED_PROVIDERS.value)
-    currencies = sdbadds.get_list_from_sdb(SdbLists.CURRENCIES.value)
-    exchanges = sdbadds.get_list_from_sdb(SdbLists.EXCHANGES.value, id_only=False)
-    exec_schemes = sdbadds.get_list_from_sdb(SdbLists.EXECSCHEMES.value)
+    accounts = asyncio.run(
+        sdbadds.get_list_from_sdb(SdbLists.ACCOUNTS.value, id_only=False)
+    )
+    gateways = asyncio.run(
+        sdbadds.get_list_from_sdb(SdbLists.GATEWAYS.value, id_only=False)
+    )
+    broker_providers = asyncio.run(
+        sdbadds.get_list_from_sdb(SdbLists.BROKER_PROVIDERS.value)
+    )
+    feed_providers = asyncio.run(
+        sdbadds.get_list_from_sdb(SdbLists.FEED_PROVIDERS.value)
+    )
+    currencies = asyncio.run(
+        sdbadds.get_list_from_sdb(SdbLists.CURRENCIES.value)
+    )
+    exchanges = asyncio.run(
+        sdbadds.get_list_from_sdb(SdbLists.EXCHANGES.value, id_only=False)
+    )
+    exec_schemes = asyncio.run(
+        sdbadds.get_list_from_sdb(SdbLists.EXECSCHEMES.value)
+    )
     market_data_groups = [x['marketDataGroup'] for x in asyncio.run(sdbadds.load_feed_permissions())]
-    schedules = sdbadds.get_list_from_sdb(SdbLists.SCHEDULES.value)
+    schedules = asyncio.run(
+        sdbadds.get_list_from_sdb(SdbLists.SCHEDULES.value)
+    )
     asset_classes = [
         'EQ',
         'CO',

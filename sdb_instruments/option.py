@@ -2,25 +2,23 @@ import asyncio
 import datetime as dt
 import logging
 import json
+import re
 from copy import deepcopy
 from dataclasses import dataclass, field
 from deepdiff import DeepDiff
 from libs.async_symboldb import SymbolDB
-from libs.backoffice import BackOffice
 from libs.async_sdb_additional import Months, SDBAdditional, SdbLists
+from libs.backoffice import BackOffice
 from pprint import pformat, pp
 from typing import Dict, Optional, Union
-from .derivative import (
+from libs.sdb_instruments import (
+    Instrument,
     Derivative,
-    EXPIRY_BEFORE_MATURITY,
     NoInstrumentError,
     ExpirationError,
+    EXPIRY_BEFORE_MATURITY,
     format_maturity
 )
-
-from .instrument import Instrument
-import re
-
 
 @dataclass
 class Option(Derivative):
@@ -1395,8 +1393,18 @@ class WeeklyCommon(Option):
             new_weekly.instrument['name'] = weekly_name
             if not new_weekly.instrument.get('_id') or recreate:
                 if [x for x in self.templates if x != 'ticker']:
-                    feed_providers = [x[0] for x in self.sdbadds.get_list_from_sdb(SdbLists.FEED_PROVIDERS.value)]
-                    broker_providers = [x[0] for x in self.sdbadds.get_list_from_sdb(SdbLists.BROKER_PROVIDERS.value)]
+                    feed_providers = [
+                        x[0] for x
+                        in asyncio.run(
+                            self.sdbadds.get_list_from_sdb(SdbLists.FEED_PROVIDERS.value)
+                        )
+                    ]
+                    broker_providers = [
+                        x[0] for x
+                        in asyncio.run(
+                            self.sdbadds.get_list_from_sdb(SdbLists.BROKER_PROVIDERS.value)
+                        )
+                    ]
                     for provider in self.templates:
                         if provider not in feed_providers + broker_providers:
                             continue

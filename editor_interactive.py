@@ -126,21 +126,27 @@ class EditInstrument:
             #     humanized = next(x[0] for x in self.sdbadds.get_list_from_sdb(SdbLists.'{.value}s')
             #                 if x[1] == self.__get_part(path[:i])[f'{p}Id'])
             if i and path[i - 1] == 'providerOverrides':
-                ovr_list = self.sdbadds.get_list_from_sdb(SdbLists.FEED_PROVIDERS.value)
-                ovr_list.extend(self.sdbadds.get_list_from_sdb(SdbLists.BROKER_PROVIDERS.value))
+                ovr_list = asyncio.run(
+                    self.sdbadds.get_list_from_sdb(SdbLists.FEED_PROVIDERS.value)
+                )
+                ovr_list.extend(
+                    asyncio.run(
+                        self.sdbadds.get_list_from_sdb(SdbLists.BROKER_PROVIDERS.value)
+                    )
+                )
                 humanized = next(x[0] for x in ovr_list if x[1] == p)
                 nav_list.append(humanized)
             elif isinstance(p, int) and path[i-1] == 'accounts':
                 humanized = next(
                     x[0] for x
-                    in self.sdbadds.get_list_from_sdb(SdbLists.ACCOUNTS.value)
+                    in asyncio.run(self.sdbadds.get_list_from_sdb(SdbLists.ACCOUNTS.value))
                     if x[1] == self.__get_part(path[:i+1])['accountId']
                 )
                 nav_list.append(humanized)
             elif isinstance(p, int) and path[i-1] == 'gateways':
                 humanized = next(
                     x[0] for x
-                    in self.sdbadds.get_list_from_sdb(SdbLists.GATEWAYS.value)
+                    in asyncio.run(self.sdbadds.get_list_from_sdb(SdbLists.GATEWAYS.value))
                     if x[1] == self.__get_part(path[:i+1])['gatewayId']
                 )
                 nav_list.append(humanized)
@@ -219,8 +225,12 @@ class EditInstrument:
             and x not in [
                 y[1] for y
                 in (
-                    self.sdbadds.get_list_from_sdb(SdbLists.BROKER_PROVIDERS.value)
-                    + self.sdbadds.get_list_from_sdb(SdbLists.FEED_PROVIDERS.value)
+                    asyncio.run(
+                        self.sdbadds.get_list_from_sdb(SdbLists.BROKER_PROVIDERS.value)
+                    )
+                    + asyncio.run(
+                        self.sdbadds.get_list_from_sdb(SdbLists.FEED_PROVIDERS.value)
+                    )
                 )
             ]
         ), None)
@@ -712,8 +722,12 @@ class EditInstrument:
             and x not in [
                 y[1] for y
                 in (
-                    self.sdbadds.get_list_from_sdb(SdbLists.BROKER_PROVIDERS.value)
-                    + self.sdbadds.get_list_from_sdb(SdbLists.FEED_PROVIDERS.value)
+                    asyncio.run(
+                        self.sdbadds.get_list_from_sdb(SdbLists.BROKER_PROVIDERS.value)
+                    )
+                    + asyncio.run(
+                        self.sdbadds.get_list_from_sdb(SdbLists.FEED_PROVIDERS.value)
+                    )
                 )
             ]
         ), None)
@@ -956,8 +970,12 @@ class EditInstrument:
             and x not in [
                 y[1] for y
                 in (
-                    self.sdbadds.get_list_from_sdb(SdbLists.BROKER_PROVIDERS.value)
-                    + self.sdbadds.get_list_from_sdb(SdbLists.FEED_PROVIDERS.value)
+                    asyncio.run(
+                        self.sdbadds.get_list_from_sdb(SdbLists.BROKER_PROVIDERS.value)
+                    )
+                    + asyncio.run(
+                        self.sdbadds.get_list_from_sdb(SdbLists.FEED_PROVIDERS.value)
+                    )
                 )
             ]
         ), None)
@@ -1003,7 +1021,9 @@ class EditInstrument:
         present = [x['gatewayId'] for x in target]
         choices = [
             x for x
-            in self.sdbadds.get_list_from_sdb(SdbLists.GATEWAYS.value, id_only=False)
+            in asyncio.run(
+                self.sdbadds.get_list_from_sdb(SdbLists.GATEWAYS.value, id_only=False)
+            )
             if x[1]['gatewayId'] not in present
         ]
         choices.append('.')
@@ -1047,7 +1067,9 @@ class EditInstrument:
         present = [x['accountId'] for x in target]
         accs_choices = [
             x for x
-            in self.sdbadds.get_list_from_sdb(SdbLists.ACCOUNTS.value, id_only=False)
+            in asyncio.run(
+                self.sdbadds.get_list_from_sdb(SdbLists.ACCOUNTS.value, id_only=False)
+            )
             if x[1]['accountId'] not in present
         ]
         accs_choices.append('.')
@@ -1118,8 +1140,12 @@ class EditInstrument:
             and x not in [
                 y[1] for y
                 in (
-                    self.sdbadds.get_list_from_sdb(SdbLists.BROKER_PROVIDERS.value)
-                    + self.sdbadds.get_list_from_sdb(SdbLists.FEED_PROVIDERS.value)
+                    asyncio.run(
+                        self.sdbadds.get_list_from_sdb(SdbLists.BROKER_PROVIDERS.value)
+                    )
+                    + asyncio.run(
+                        self.sdbadds.get_list_from_sdb(SdbLists.FEED_PROVIDERS.value)
+                    )
                 )
             ]
         ), None)

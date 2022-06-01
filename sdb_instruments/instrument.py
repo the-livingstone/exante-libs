@@ -4,11 +4,8 @@ from enum import Enum
 import operator
 import re
 import logging
-from typing import Union
 from deepdiff import DeepDiff
 from functools import reduce
-from libs.backoffice import BackOffice
-from libs.monitor import Monitor
 from libs import sdb_schemas_cprod as cdb_schemas
 from libs import sdb_schemas as sdb_schemas
 from libs.sdb_schemas import type_mapping

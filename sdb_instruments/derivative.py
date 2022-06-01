@@ -12,7 +12,13 @@ from libs.monitor import Monitor
 from libs.async_symboldb import SymbolDB
 from libs.async_sdb_additional import SDBAdditional, Months, SdbLists
 from pprint import pformat, pp
-from .instrument import Instrument, InstrumentTypes
+from libs.sdb_instruments import (
+    Instrument,
+    InstrumentTypes,
+    ExpirationError,
+    NoInstrumentError,
+    NoExchangeError
+)
 
 EXPIRY_BEFORE_MATURITY = ['VIX']
 
@@ -73,18 +79,6 @@ def format_maturity(input_data):
             return f"{match.group('year')}-{match.group('month')}-{match.group('day')}"
         else:
             return None
-
-
-class ExpirationError(Exception):
-    pass
-
-class NoInstrumentError(Exception):
-    """Common exception for problems with Series"""
-    pass
-
-class NoExchangeError(Exception):
-    """Common exception for problems with Series"""
-    pass
 
 class Balancer:
     def __init__(self, feed_type: str, blacklist = None, env: str = 'prod'):

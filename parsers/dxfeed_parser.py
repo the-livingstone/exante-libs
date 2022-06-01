@@ -14,8 +14,8 @@ import pandas as pd
 import re
 from libs.async_symboldb import SymbolDB
 from libs.async_sdb_additional import SDBAdditional
-from libs.parsers.dxfeed import DxFeed
-from libs.parsers.exchange_parser_base import (
+from libs.parsers import (
+    DxFeed,
     Months,
     convert_maturity,
     ExchangeParser

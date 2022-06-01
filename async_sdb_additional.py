@@ -96,6 +96,9 @@ class SDBAdditional:
         'used_symbols': {
             'expiry': dt.timedelta(minutes=120)
         },
+        'used_symbols_demo': {
+            'expiry': dt.timedelta(minutes=120)
+        },
         'stock_rics': {
             'expiry': dt.timedelta(days=30)
         },
@@ -513,7 +516,12 @@ class SDBAdditional:
             compiled_instrument = instrument
         schedule_tz = next((
             x[2] for x
-            in self.get_list_from_sdb(SdbLists.SCHEDULES.value, additional_fields=['timezone'])
+            in asyncio.run(
+                self.get_list_from_sdb(
+                    SdbLists.SCHEDULES.value,
+                    additional_fields=['timezone']
+                )
+            )
             if x[1] == compiled_instrument.get('scheduleId')
         ), None)
         expiration_date = self.sdb.sdb_to_date(compiled_instrument.get('expiry', {}))
@@ -537,7 +545,7 @@ class SDBAdditional:
             compiled_instrument = instrument
         exchange_name = next((
             x[0] for x
-            in self.get_list_from_sdb(SdbLists.EXCHANGES.value)
+            in asyncio.run(self.get_list_from_sdb(SdbLists.EXCHANGES.value))
             if x[1] == compiled_instrument.get('exchangeId')
         ), None)
         instrument_type = compiled_instrument.get('type')
@@ -774,7 +782,7 @@ class SDBAdditional:
         lambda_provider_id = next(
             (
                 x[1] for x
-                in self.get_list_from_sdb(SdbLists.FEED_PROVIDERS.value)
+                in asyncio.run(self.get_list_from_sdb(SdbLists.FEED_PROVIDERS.value))
                 if x[0] == 'LAMBDA'
             ), None)
         if not lambda_provider_id:
@@ -852,7 +860,7 @@ class SDBAdditional:
                 return sym_type
         return None
 
-    def get_list_from_sdb(self, list_name, id_only=True, additional_fields=[]) -> list:
+    async def get_list_from_sdb(self, list_name, id_only=True, additional_fields=[]) -> list:
         """
         Method to get list from sdb entities as pairs of their names and ids
         :param list_name: what list to get, possible values:
@@ -930,7 +938,7 @@ class SDBAdditional:
             for uc in update_cache:
                 await self.__write_cache_iter(uc, sdb_lists[uc])
         
-        asyncio.run(check_cache())
+        await check_cache()
         if list_name == SdbLists.CURRENCIES.value:
             # check_cache('currencies')
             fields = ['_id', '_id'] + additional_fields
@@ -1063,7 +1071,7 @@ class SDBAdditional:
                         '_id': acc['account']['executionSchemeId'],
                         'name': next(
                             x[0] for x
-                            in self.get_list_from_sdb(SdbLists.EXECSCHEMES.value)
+                            in await self.get_list_from_sdb(SdbLists.EXECSCHEMES.value)
                             if x[1] == acc['account']['executionSchemeId']
                         ),
                         'routes': [
@@ -1071,7 +1079,7 @@ class SDBAdditional:
                                 '_id': acc['accountId'],
                                 'name': next(
                                     x[0] for x
-                                    in self.get_list_from_sdb(SdbLists.ACCOUNTS.value)
+                                    in await self.get_list_from_sdb(SdbLists.ACCOUNTS.value)
                                     if x[1] == acc['accountId']
                                 )
                             }
@@ -1089,7 +1097,7 @@ class SDBAdditional:
                             '_id': acc['accountId'],
                             'name': next(
                                 x[0] for x
-                                in self.get_list_from_sdb(SdbLists.ACCOUNTS.value)
+                                in await self.get_list_from_sdb(SdbLists.ACCOUNTS.value)
                                 if x[1] == acc['accountId']
                             )
                         })
@@ -1142,7 +1150,7 @@ class SDBAdditional:
                     'exchange': next(
                         (
                             y[0] for y
-                            in self.get_list_from_sdb(SdbLists.EXCHANGES.value)
+                            in await self.get_list_from_sdb(SdbLists.EXCHANGES.value)
                             if x.get('exchangeId') == y[1]
                         ), ''
                     ),
@@ -1572,11 +1580,12 @@ class SDBAdditional:
         ] # the fields should be passed on child level
 
         always_transform = {
-            'gatewayId': self.get_list_from_sdb(SdbLists.GATEWAYS.value),
-            'providerId': self.get_list_from_sdb(SdbLists.FEED_PROVIDERS.value) + self.get_list_from_sdb(SdbLists.BROKER_PROVIDERS.value),
-            'executionSchemeId': self.get_list_from_sdb(SdbLists.EXECSCHEMES.value),
-            'accountId': self.get_list_from_sdb(SdbLists.ACCOUNTS.value),
-            'scheduleId': self.get_list_from_sdb(SdbLists.SCHEDULES.value)
+            'gatewayId': asyncio.run(self.get_list_from_sdb(SdbLists.GATEWAYS.value)),
+            'providerId': asyncio.run(self.get_list_from_sdb(SdbLists.FEED_PROVIDERS.value)) \
+                + asyncio.run(self.get_list_from_sdb(SdbLists.BROKER_PROVIDERS.value)),
+            'executionSchemeId': asyncio.run(self.get_list_from_sdb(SdbLists.EXECSCHEMES.value)),
+            'accountId': asyncio.run(self.get_list_from_sdb(SdbLists.ACCOUNTS.value)),
+            'scheduleId': asyncio.run(self.get_list_from_sdb(SdbLists.SCHEDULES.value))
         }
                 
         always_exclude = ['gatewayId', 'accountId']

@@ -5,14 +5,14 @@ import pandas as pd
 import re
 from typing import Dict, List, Optional, Union
 
-from libs.parsers.datascope import Datascope
-from libs.parsers.exchange_parser_base import (
+from libs.parsers import (
     FractionCurrencies,
     ExchangeParser,
-    convert_maturity
+    convert_maturity,
+    Datascope
 )
 from libs.sdb_additional import SDBAdditional
-from libs.sdb_handy_classes import Future, Instrument, Option, Stock
+from libs.sdb_instruments import Future, Instrument, Option, Stock
 from pydantic import BaseModel, Field, root_validator, validator, ValidationError
 
 

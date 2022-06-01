@@ -5,7 +5,8 @@ from dataclasses import dataclass, field
 from deepdiff import DeepDiff
 from libs import sdb_schemas_cprod as cdb_schemas
 from libs import sdb_schemas as sdb_schemas
-from libs.sdb_handy_classes import Instrument, NoInstrumentError, NoExchangeError, stock_exchange_mapping
+from libs.sdb_instruments import Instrument, NoInstrumentError, NoExchangeError
+from libs.sdb_instruments.instrument import stock_exchange_mapping
 from pprint import pformat, pp
 from typing import Dict, Optional, Union
 

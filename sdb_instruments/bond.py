@@ -6,7 +6,8 @@ from dataclasses import dataclass
 from deepdiff import DeepDiff
 from libs import sdb_schemas_cprod as cdb_schemas
 from libs import sdb_schemas as sdb_schemas
-from libs.sdb_handy_classes import Instrument, NoInstrumentError, get_part, BOND_REGIONS
+from libs.sdb_instruments import Instrument, NoInstrumentError
+from libs.sdb_instruments.instrument import get_part, BOND_REGIONS
 from pprint import pformat, pp
 import re
 
@@ -76,7 +77,7 @@ class Bond(Instrument):
     def __find_bond(self):
         possible_exchanges = [
                 x[1] for x
-                in self.sdbadds.get_list_from_sdb('exchanges')
+                in asyncio.run(self.sdbadds.get_list_from_sdb('exchanges'))
                 if x[0] == self.exchange
             ]
         bonds = [

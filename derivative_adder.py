@@ -7,8 +7,8 @@ from typing import Union
 from enum import Enum
 from libs.editor_interactive import EditInstrument
 from libs.async_symboldb import SymbolDB
-from libs.parsers.dxfeed_parser import Parser as DF
-from libs.parsers.dscope_parser import Parser as DS
+from libs.parsers import DxfeedParser as DF
+from libs.parsers import DscopeParser as DS
 from libs.async_sdb_additional import SDBAdditional, Months, SdbLists
 from libs.sdb_instruments import (
     NoInstrumentError,
@@ -227,12 +227,21 @@ class DerivativeAdder:
                     })
  
     def get_overrides(self, instrument: Instrument, parent: bool = False):
-        http_feeds = [x[1] for x in self.sdbadds.get_list_from_sdb(SdbLists.GATEWAYS.value) if 'HTTP' in x[0]]
+        http_feeds = [
+            x[1] for x
+            in asyncio.run(self.sdbadds.get_list_from_sdb(SdbLists.GATEWAYS.value))
+            if 'HTTP' in x[0]
+        ]
         # as CBOE options are constantly balanced between gateways, CBOE folder doesn't have default routes,
         # so a little bit of help here by hardcoding DXFEED as main feed provider
         if self.exchange == 'CBOE':
             prov_name, main_feed_source = next(
-                x for x in self.sdbadds.get_list_from_sdb(SdbLists.FEED_PROVIDERS.value) if x[0] == 'DXFEED'
+                x for x
+                in asyncio.run(
+                    self.sdbadds.get_list_from_sdb(
+                        SdbLists.FEED_PROVIDERS.value
+                    )
+                ) if x[0] == 'DXFEED'
             )
         else:
             if parent:
@@ -247,9 +256,11 @@ class DerivativeAdder:
                 if x.get('gateway', {}).get('enabled')
                 and x.get('gatewayId') not in http_feeds
             ), None)
-            prov_name = next((x[0] for x
-                        in self.sdbadds.get_list_from_sdb(SdbLists.FEED_PROVIDERS.value)
-                        if x[1] == main_feed_source), None)
+            prov_name = next((
+                x[0] for x
+                in asyncio.run(self.sdbadds.get_list_from_sdb(SdbLists.FEED_PROVIDERS.value))
+                if x[1] == main_feed_source
+            ), None)
         payload = {
             'provider': prov_name,
             'prov_id': main_feed_source,
@@ -611,7 +622,12 @@ class DerivativeAdder:
             message = '''
             Feed provider is unknown. Please select one:
             '''
-            feed_providers = self.sdbadds.get_list_from_sdb(SdbLists.GATEWAYS.value, id_only=False)
+            feed_providers = asyncio.run(
+                self.sdbadds.get_list_from_sdb(
+                    SdbLists.GATEWAYS.value,
+                    id_only=False
+                )
+            )
             selected = pick_from_list_tm(
                 sorted([x[0] for x in feed_providers]), 'providers', message
             )
@@ -718,7 +734,7 @@ class DerivativeAdder:
             series_feed_providers = [
                 next(
                     y[0] for y
-                    in self.sdbadds.get_list_from_sdb(SdbLists.FEED_PROVIDERS.value)
+                    in asyncio.run(self.sdbadds.get_list_from_sdb(SdbLists.FEED_PROVIDERS.value))
                     if y[1] == x
                 ) for x
                 in self.series.compiled_parent.get('feeds', {}).get('providerOverrides')
@@ -726,7 +742,7 @@ class DerivativeAdder:
             series_broker_providers = [
                 next(
                     y[0] for y
-                    in self.sdbadds.get_list_from_sdb(SdbLists.BROKER_PROVIDERS.value)
+                    in asyncio.run(self.sdbadds.get_list_from_sdb(SdbLists.BROKER_PROVIDERS.value))
                     if y[1] == x
                 ) for x
                 in self.series.compiled_parent.get('brokers', {}).get('providerOverrides')

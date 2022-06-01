@@ -10,13 +10,12 @@ from libs.backoffice import BackOffice
 from libs.async_sdb_additional import Months, SDBAdditional, SdbLists
 from pprint import pformat, pp
 from typing import Dict, Optional, Union
-from .derivative import (
+from libs.sdb_instruments import (
+    Instrument,
     Derivative,
     ExpirationError,
     format_maturity
 )
-
-from .instrument import Instrument
 
 @dataclass
 class Future(Derivative):
