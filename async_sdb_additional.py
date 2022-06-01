@@ -70,7 +70,6 @@ ROOT_FOLDERS = {
 
 class SDBAdditional:
     # paths to cache files and lua stdlib
-    lua_lib = 'libs/stdlib.lua'
     cache_conf = {
         'exchanges': {
             'expiry': dt.timedelta(days=3)
@@ -126,6 +125,7 @@ class SDBAdditional:
         if self.current_dir == '/':
             self.current_dir = '/home/instsupport/airflow/dags'
         self.current_dir = self.current_dir if self.current_dir[-1] != '/' else self.current_dir[:-1]
+        self.lua_lib = f'{self.current_dir}/libs/stdlib.lua'
         self.lua = lupa.LuaRuntime(unpack_returned_tuples=True)
         # load lua
         try:
