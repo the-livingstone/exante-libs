@@ -122,6 +122,10 @@ class SDBAdditional:
         self.sdb = SymbolDB(env)
         self.bo = BackOffice(env)
         self.nocache = nocache
+        self.current_dir = os.getcwd()
+        if self.current_dir == '/':
+            self.current_dir = '/home/instsupport/airflow/dags'
+        self.current_dir = self.current_dir if self.current_dir[-1] != '/' else self.current_dir[:-1]
         self.lua = lupa.LuaRuntime(unpack_returned_tuples=True)
         # load lua
         try:
@@ -202,25 +206,25 @@ class SDBAdditional:
             env = 'prod'
         while True:
             try:
-                with open(f"{os.getcwd()}/cache/{env}/{list_name.value}.jsonl", 'r') as f:
+                with open(f"{self.current_dir}/cache/{env}/{list_name.value}.jsonl", 'r') as f:
                     for line in f:
                         cached.append(json.loads(line))
                     break
             except FileNotFoundError:
                 if not silent:
                     self.logger.warning(
-                        f"{os.getcwd()}/cache/{env}/{list_name.value}.jsonl cache file is not found, "
+                        f"{self.current_dir}/cache/{env}/{list_name.value}.jsonl cache file is not found, "
                         "cache will be refreshed in runtime"
                     )
-                if not os.path.exists(f"{os.getcwd()}/cache"):
-                    os.mkdir(f"{os.getcwd()}/cache")
-                if not os.path.exists(f"{os.getcwd()}/cache/{env}"):
-                    os.mkdir(f"{os.getcwd()}/cache/{env}")
-                if not os.path.exists(f"{os.getcwd()}/cache/{env}/{list_name.value}.jsonl"):
+                if not os.path.exists(f"{self.current_dir}/cache"):
+                    os.mkdir(f"{self.current_dir}/cache")
+                if not os.path.exists(f"{self.current_dir}/cache/{env}"):
+                    os.mkdir(f"{self.current_dir}/cache/{env}")
+                if not os.path.exists(f"{self.current_dir}/cache/{env}/{list_name.value}.jsonl"):
                     return []
         last_update = dt.datetime.fromtimestamp(
             os.path.getctime(
-                f"{os.getcwd()}/cache/{env}/{list_name.value}.jsonl"
+                f"{self.current_dir}/cache/{env}/{list_name.value}.jsonl"
             )
         )
         if (dt.datetime.now() - last_update) < self.cache_conf[list_name.value]['expiry']:
@@ -256,7 +260,7 @@ class SDBAdditional:
             env = 'prod'
         await self.__load_cache_iter(list_name, env, silent=True)
         try:
-            with open(f"{os.getcwd()}/cache/{env}/{list_name.value}.jsonl", 'w') as f:
+            with open(f"{self.current_dir}/cache/{env}/{list_name.value}.jsonl", 'w') as f:
                 for p in payload:
                     f.write(json.dumps(p))
                     f.write('\n')
