@@ -1,26 +1,25 @@
 import asyncio
 import datetime as dt
-import json
 import logging
+import json
 from copy import copy, deepcopy
 from dataclasses import dataclass, field
 from deepdiff import DeepDiff
-from libs import sdb_schemas_cprod as cdb_schemas
-from libs import sdb_schemas as sdb_schemas
-from libs.async_sdb_additional import SDBAdditional
 from libs.async_symboldb import SymbolDB
 from libs.backoffice import BackOffice
-from libs.sdb_handy_classes import (
-    ExpirationError,
-    Instrument,
-    format_maturity,
-    NoInstrumentError
-)
+from libs.async_sdb_additional import Months, SDBAdditional, SdbLists
 from pprint import pformat, pp
-from typing import Tuple, Optional, Union
+from typing import Dict, Optional, Union
+from .derivative import (
+    Derivative,
+    ExpirationError,
+    format_maturity
+)
+
+from .instrument import Instrument
 
 @dataclass
-class Future(Instrument):
+class Future(Derivative):
     # series parameters
     ticker: str
     exchange: str
@@ -39,9 +38,11 @@ class Future(Instrument):
     sdbadds: SDBAdditional = None
 
     # non-init vars
+    instrument_type = 'FUTURE'
     instrument: dict = field(init=False, default_factory=dict)
     reference: dict = field(init=False, default_factory=dict)
     series_tree: list[dict] = field(init=False, default_factory=list)
+
     skipped: set = field(init=False, default_factory=set)
     allowed_expirations: list = field(init=False, default_factory=list)
 
@@ -55,23 +56,8 @@ class Future(Instrument):
             # self.instrument,
             # self.reference,
             # self.contracts
-        super().__init__(
-            ticker=self.ticker,
-            exchange=self.exchange,
-            instrument={},
-            instrument_type='FUTURE',
-            shortname=self.shortname,
-            parent_folder=self.parent_folder,
-            env=self.env,
-
-            bo=self.bo,
-            sdb=self.sdb,
-            sdbadds=self.sdbadds,
-
-            reload_cache=self.reload_cache,
-            recreate=self.recreate,
-            silent=self.silent
-        )
+        super().__init__(self)
+        self.__set_contracts()
         self._align_expiry_la_lt(self.contracts, self.update_expirations)
 
     @property
@@ -80,6 +66,19 @@ class Future(Instrument):
 
     def __repr__(self):
         return f"Future({self.ticker}.{self.exchange})"
+
+    def __set_contracts(self):
+        if self.instrument:
+            self.contracts = [
+                FutureExpiration(self, payload=x) for x
+                in self.series_tree
+                if x['path'][:-1] == self.instrument['path']
+                and not x['isAbstract']
+            ]
+            # common weekly folders where single week folders are stored
+            # in most cases only one is needed but there are cases like EW.CME
+        else:
+            self.contracts = []
 
     def find_expiration(
             self,
@@ -362,15 +361,11 @@ class FutureExpiration(Instrument):
         self.env = future.env
         self.future = future
         super().__init__(
-            instrument_type='FUTURE',
-            instrument={},
+            instrument_type=future.instrument_type,
             env=self.env,
-
-            bo=future.bo,
             sdb=future.sdb,
             sdbadds=future.sdbadds,
-            
-            tree=future.tree
+            silent=future.silent
         )
         self.ticker = future.ticker
         self.exchange = future.exchange

@@ -1237,7 +1237,7 @@ class SDBAdditional:
         self.tree_df = env_tree_df
         env_tree = env_tree_df.to_dict('records')
         self.tree = env_tree
-        self.__write_cache_iter(SdbLists, self.tree)
+        self.__write_cache_iter(SdbLists.TREE, self.tree)
         return self.tree
 
     def load_used_symbols(self, reload_cache: bool = False, consider_demo = True) -> list:

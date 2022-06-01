@@ -2,26 +2,28 @@ import asyncio
 import datetime as dt
 import logging
 import json
-from copy import copy, deepcopy
+from copy import deepcopy
 from dataclasses import dataclass, field
 from deepdiff import DeepDiff
 from libs.async_symboldb import SymbolDB
 from libs.backoffice import BackOffice
-from libs.sdb_handy_classes import(
-    Instrument,
-    format_maturity,
-    EXPIRY_BEFORE_MATURITY,
-    NoInstrumentError,
-    ExpirationError
-)
-from libs.async_sdb_additional import SDBAdditional, Months, SdbLists
+from libs.async_sdb_additional import Months, SDBAdditional, SdbLists
 from pprint import pformat, pp
 from typing import Dict, Optional, Union
+from .derivative import (
+    Derivative,
+    EXPIRY_BEFORE_MATURITY,
+    NoInstrumentError,
+    ExpirationError,
+    format_maturity
+)
+
+from .instrument import Instrument
 import re
 
 
 @dataclass
-class Option(Instrument):
+class Option(Derivative):
     # series parameters
     ticker: str
     exchange: str
@@ -46,6 +48,7 @@ class Option(Instrument):
     parent_tree: list[dict] = None
 
     # non-init vars
+    instrument_type = 'OPTION'
     instrument: dict = field(init=False, default_factory=dict)
     reference: dict = field(init=False, default_factory=dict)
     series_tree: list[dict] = field(init=False, default_factory=list)
@@ -75,28 +78,8 @@ class Option(Instrument):
             # self.reference,
             # self.contracts,
             # self.weekly_commons
-        super().__init__(
-            ticker=self.ticker,
-            exchange=self.exchange,
-            instrument={},
-            instrument_type='OPTION',
-            shortname=self.shortname,
-            parent_folder=self.parent_folder,
-            env=self.env,
-
-            reload_cache=self.reload_cache,
-            recreate=self.recreate,
-            silent=self.silent,
-
-            week_number=self.week_number,
-            option_type=self.option_type,
-            parent_tree=self.parent_tree,
-
-            bo=self.bo,
-            sdb=self.sdb,
-            sdbadds=self.sdbadds
-
-        )
+        super().__init__(self)
+        self.__set_contracts()
         self.contracts: list[OptionExpiration] = self.contracts
         if self.option_type not in ['OPTION', 'OPTION ON FUTURE']:
             raise RuntimeError(f'unknown option type: {self.option_type}')
@@ -111,6 +94,30 @@ class Option(Instrument):
     def __repr__(self):
         week_indication = "Monthly" if not self.week_number else f"Week {self.week_number}"
         return f"Option({self.ticker}.{self.exchange}, {self.option_type=}, {week_indication} series)"
+
+    def __set_contracts(self):
+        if self.instrument:
+            self.contracts = [
+                OptionExpiration(self, payload=x) for x
+                in self.series_tree
+                if x['path'][:-1] == self.instrument['path']
+                and not x['isAbstract']
+            ]
+            # common weekly folders where single week folders are stored
+            # in most cases only one is needed but there are cases like EW.CME
+            if not self.week_number:
+                weekly_folders = [
+                    x for x in self.series_tree
+                    if x['path'][:-1] == self.instrument['path']
+                    and 'weekly' in x['name'].lower()
+                    and x['isAbstract']
+                ]
+                self.weekly_commons = [
+                    WeeklyCommon(self, uuid=x['_id']) for x in weekly_folders
+                ]
+        else:
+            self.contracts = []
+            self.weekly_commons = []
 
     def find_expiration(
             self,
@@ -495,15 +502,11 @@ class Option(Instrument):
             self.logger.error(f"Expiration {expiration} is not found in existing expirations")
             return result
         if disable:
-            added = {}
-            removed = {}
+            added, removed = target_expiration.refresh_tradable_strikes(
+                strikes=strikes,
+                safe=safe
+            )
             preserved = {}
-            pass
-            # added, removed = target_expiration.refresh_tradable_strikes(
-            #     strikes=strikes,
-            #     safe=safereturn
-            # )
-            # preserved = {}
         else:
             added, removed, preserved = target_expiration.refresh_strikes(
                 strikes=strikes,
@@ -514,7 +517,7 @@ class Option(Instrument):
         # TEMPORARY FOR UPDATE ALL ISINS
         if next((
             x for x in [added, removed, preserved]
-            if x.get('PUT') or x.get('CALL')
+            if x and (x.get('PUT') or x.get('CALL'))
         ), None) and not removed.get('not_updated'):
             target_folder.update_expirations.append(target_expiration)
             result.update(
@@ -749,14 +752,11 @@ class OptionExpiration(Instrument):
         self.env = option.env
         self.option = option
         super().__init__(
-            instrument_type='OPTION',
-            instrument={},
+            instrument_type=option.instrument_type,
             env=option.env,
-            tree=option.tree,
-
-            bo=option.bo,
             sdb=option.sdb,
-            sdbadds=option.sdbadds
+            sdbadds=option.sdbadds,
+            silent=option.silent
         )
         self.ticker = option.ticker
         self.exchange = option.exchange
@@ -982,43 +982,72 @@ class OptionExpiration(Instrument):
             )
         return added, removed, preserved
     
-    # need to be fixed in fashion as above
+    def refresh_tradable_strikes(
+            self,
+            strikes: dict,
+            safe: bool = True,
+        ):
+        """
+        strikes is a dict of parsed strikes. Let's say we mark non-parsed already existed strikes as
+        isAvailable == False, so we don't have to look in used symbols 
+        """
+        MIN_STRIKES_ACCEPTABLE = 7
+        MIN_INTERSECTION = (
+            len(self.instrument['strikePrices']['CALL']) + 
+            len(self.instrument['strikePrices']['PUT']) - 16
+        )
+        strike_prices = {
+            'PUT': set(),
+            'CALL': set()
+        }
+        added = {
+            'PUT': set(),
+            'CALL': set()
+        }
+        disabled = {
+            'PUT': set(),
+            'CALL': set()
+        }
+        if 'PUT' not in strikes or 'CALL' not in strikes:
+            self.logger.error("refresh strikes: Bad data")
+            return None, None
 
-    # def refresh_tradable_strikes(
-    #         self,
-    #         strikes: dict,
-    #         safe: bool = True,
-    #     ):
-    #     """
-    #     strikes is a dict of parsed strikes. Let's say we mark non-parsed already existed strikes as
-    #     isAvailable == False, so we don't have to look in used symbols 
-    #     """
-    #     MIN_STRIKES_ACCEPTABLE = 7
-    #     MIN_INTERSECTION_TRESHOLD = len(self.instrument['strikePrices']['CALL']) + len(self.instrument['strikePrices']['PUT']) - 16
-    #     added = {
-    #         'PUT': set(),
-    #         'CALL': set()
-    #     }
-    #     disabled = {
-    #         'PUT': set(),
-    #         'CALL': set()
-    #     }
-    #     if safe and (not strikes.get('PUT')
-    #             or not strikes.get('CALL')
-    #             or len(strikes['PUT']) + len(strikes['CALL']) < MIN_STRIKES_ACCEPTABLE
-    #             or len(strikes['PUT'].intersection(set(self.strikes['PUT']))) +
-    #             len(strikes['CALL'].intersection(set(self.strikes['CALL']))) < MIN_INTERSECTION_TRESHOLD):
-    #         self.logger.warning(
-    #             "Provided list and existing strikes do not correspond to each other, no strikes updated"
-    #         )
-    #         self.logger.warning("Try safe=False if you are confident you are doing right")
-    #         return strikes, {'not_updated': -1}, strikes
-    #     for side in ['PUT', 'CALL']:
-    #         disabled[side] = set(self.strikes[side]) - strikes[side]
-    #         added[side] = strikes[side] - set(self.strikes[side])
-    #     self.enable_strikes(disabled, enable=False)
-    #     self.enable_strikes(added, enable=True)
-    #     return added, disabled
+        if strikes['PUT'] and (
+            isinstance(strikes['PUT'], set) or isinstance(strikes['PUT'][0], (float, str))
+        ) \
+        and strikes['CALL'] and (
+            isinstance(strikes['CALL'], set) or isinstance(strikes['CALL'][0], (float, str))
+        ):
+            strikes = self.build_strikes(strikes)
+
+        if strikes['PUT'] \
+            and isinstance(strikes['PUT'][0], dict) \
+            and strikes['CALL'] \
+            and isinstance(strikes['CALL'][0], dict):
+
+            strike_prices['PUT'] = {x['strikePrice'] for x in strikes['PUT']}
+            strike_prices['CALL'] = {x['strikePrice'] for x in strikes['CALL']}
+        else:
+            self.logger.error("refresh strikes: Bad data")
+            return None, None
+
+        
+        if safe and (not strike_prices.get('PUT')
+                or not strike_prices.get('CALL')
+                or len(strike_prices['PUT']) + len(strike_prices['CALL']) < MIN_STRIKES_ACCEPTABLE
+                or len(strike_prices['PUT'].intersection({x['strikePrice'] for x in self.instrument['strikePrices']['PUT']})) +
+                len(strike_prices['CALL'].intersection({x['strikePrice'] for x in self.instrument['strikePrices']['CALL']})) < MIN_INTERSECTION):
+            self.logger.warning(
+                f"{self.ticker}.{self.exchange} {self.maturity}: "
+                "Provided list and existing strikes do not look similar enough, no strikes removed"
+            )
+            return None, None
+        for side in ['PUT', 'CALL']:
+            added[side] = strike_prices[side] - {x['strikePrice'] for x in self.instrument['strikePrices'][side]}
+            disabled[side] = {x['strikePrice'] for x in self.instrument['strikePrices'][side]} - strike_prices[side]
+        self.enable_strikes(disabled, enable=False)
+        self.enable_strikes(added, enable=True)
+        return added, disabled
 
 
     def build_strikes(self, strikes) -> Dict[str, list]:
@@ -1223,7 +1252,7 @@ class WeeklyCommon(Option):
         if not payload:
             payload = {
                 'isAbstract': True,
-                'path': self.option.instrument['path'],
+                'path': deepcopy(self.option.instrument['path']),
                 'name': common_name
             }
         self.payload = payload
@@ -1268,7 +1297,7 @@ class WeeklyCommon(Option):
                         bo=self.bo,
                         sdb=self.sdb,
                         sdbadds=self.sdbadds
-                        )
+                    )
                     weekly_folders.append(weekly_folder)
                 except NoInstrumentError:
                     self.logger.warning(
@@ -1280,7 +1309,7 @@ class WeeklyCommon(Option):
         
     def create(self, dry_run: bool = False):
         if not self.payload.get('path'):
-            self.payload['path'] = copy(self.option.instrument['path'])
+            self.payload['path'] = deepcopy(self.option.instrument['path'])
         if dry_run:
             print(f"Dry run. New folder {self.payload['name']} to create:")
             pp(self.payload)
@@ -1356,7 +1385,12 @@ class WeeklyCommon(Option):
                 option_type=self.option.option_type,
                 parent_folder=self.payload,
                 week_number=num,
-                recreate=recreate
+                recreate=recreate,
+                reload_cache=False,
+                bo=self.bo,
+                sdb=self.sdb,
+                sdbadds=self.sdbadds
+
             )
             new_weekly.instrument['name'] = weekly_name
             if not new_weekly.instrument.get('_id') or recreate:

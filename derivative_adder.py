@@ -10,8 +10,8 @@ from libs.async_symboldb import SymbolDB
 from libs.parsers.dxfeed_parser import Parser as DF
 from libs.parsers.dscope_parser import Parser as DS
 from libs.async_sdb_additional import SDBAdditional, Months, SdbLists
-from libs.sdb_handy_classes import (
-    Instrument,
+from libs.sdb_instruments import (
+    NoInstrumentError,
     Option,
     OptionExpiration,
     WeeklyCommon,
@@ -19,8 +19,8 @@ from libs.sdb_handy_classes import (
     FutureExpiration,
     Spread,
     SpreadExpiration,
-    set_schema,
-    NoInstrumentError
+    Instrument,
+    set_schema
 )
 from libs.terminal_tools import pick_from_list_tm
 from pprint import pformat, pprint
@@ -78,7 +78,8 @@ class DerivativeAdder:
             self,
             shortname: str = None,
             destination: str = None,
-            recreate: bool = False
+            recreate: bool = False,
+            reload_cache: bool = True
         ):
         if 'SPREAD' not in self.derivative_type:
             self.schema = set_schema[self.env][self.derivative_type]
@@ -94,6 +95,7 @@ class DerivativeAdder:
                     parent_folder=destination,
 
                     recreate=recreate,
+                    reload_cache=reload_cache,
 
                     env=self.env,
                     sdb=self.sdb,
@@ -114,6 +116,7 @@ class DerivativeAdder:
                     parent_folder=destination,
 
                     recreate=recreate,
+                    reload_cache=reload_cache,
 
                     env=self.env,
                     sdb=self.sdb,
@@ -133,6 +136,7 @@ class DerivativeAdder:
                     parent_folder=destination,
 
                     recreate=recreate,
+                    reload_cache=reload_cache,
 
                     env=self.env,
                     sdb=self.sdb,
@@ -516,6 +520,7 @@ class DerivativeAdder:
         return overrides
 
     def set_weekly_templates(self, overrides: dict):
+        ticker = ''
         feed_provider = overrides.get('provider')
         message = '''
         We are about to create new folders for weekly options.
@@ -529,7 +534,8 @@ class DerivativeAdder:
         if feed_provider == 'REUTERS':
             overrides = self.set_reuters_overrides(deepcopy(overrides), weeklies=True)
         else:
-            ticker = input('Type weekly ticker template: ')
+            while '$' not in ticker and '@' not in ticker:
+                ticker = input('Type weekly ticker template: ')
             overrides.update({'ticker': ticker})
         return overrides
 
@@ -688,7 +694,8 @@ class DerivativeAdder:
         self.series = self.set_series(
                 shortname=shortname,
                 destination=destination_path[-1],
-                recreate=recreate
+                recreate=recreate,
+                reload_cache=False
         )
         for key, val in new_ticker_properties.items():
             self.series.set_field_value(val, key.split('/'))

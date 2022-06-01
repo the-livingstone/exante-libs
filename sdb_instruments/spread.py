@@ -1,30 +1,28 @@
 import asyncio
 import datetime as dt
-import json
 import logging
-import re
-from copy import copy, deepcopy
+import json
+from copy import deepcopy
 from dataclasses import dataclass, field
 from deepdiff import DeepDiff
-from libs import sdb_schemas_cprod as cdb_schemas
-from libs import sdb_schemas as sdb_schemas
-from libs.async_sdb_additional import SDBAdditional
 from libs.async_symboldb import SymbolDB
 from libs.backoffice import BackOffice
-from libs.sdb_handy_classes import (
-    ExpirationError,
-    Instrument,
-    Future,
-    FutureExpiration,
-    format_maturity,
-    NoInstrumentError
-)
+from libs.async_sdb_additional import SDBAdditional
 from pprint import pformat, pp
-from typing import Dict, Optional, Union
+from typing import Optional, Union
+from .derivative import (
+    Derivative,
+    ExpirationError,
+    format_maturity
+)
+from .future import Future, FutureExpiration
+from .instrument import Instrument
+import re
+
 
 
 @dataclass
-class Spread(Instrument):
+class Spread(Derivative):
     # series parameters
     ticker: str
     exchange: str
@@ -44,6 +42,7 @@ class Spread(Instrument):
     sdbadds: SDBAdditional = None
 
     # non-init vars
+    instrument_type: str = 'SPREAD'
     instrument: dict = field(init=False, default_factory=dict)
     reference: dict = field(init=False, default_factory=dict)
     series_tree: list[dict] = field(init=False, default_factory=list)
@@ -73,25 +72,8 @@ class Spread(Instrument):
             # self.reference,
             # self.contracts,
             # self.leg_futures
-        super().__init__(
-            ticker=self.ticker,
-            exchange=self.exchange,
-            instrument={},
-            instrument_type='SPREAD',
-            shortname=self.shortname,
-            parent_folder=self.parent_folder,
-            env=self.env,
-
-            bo=self.bo,
-            sdb=self.sdb,
-            sdbadds=self.sdbadds,
-
-            reload_cache=self.reload_cache,
-            recreate=self.recreate,
-            silent=self.silent,
-
-            spread_type=self.spread_type
-        )
+        super().__init__(self)
+        self.__set_contracts()
         self._align_expiry_la_lt(self.contracts, self.update_expirations)
 
 
@@ -101,6 +83,57 @@ class Spread(Instrument):
 
     def __repr__(self):
         return f"Spread({self.ticker}.{self.exchange}, {self.spread_type=})"
+
+    def __set_contracts(self):
+        if not self.instrument:
+            contracts = []
+        else:
+            contracts = [
+                SpreadExpiration(self, payload=x) for x
+                in self.series_tree
+                if x['path'][:-1] == self.instrument['path']
+                and not x['isAbstract']
+            ]
+            if self.spread_type in ['CALENDAR', 'CALENDAR_SPREAD']:
+                gap_folders = [
+                    x for x
+                    in self.series_tree
+                    if x['path'][:-1] == self.instrument['path']
+                    and x['isAbstract']
+                    and re.match(r'\d{1,2} month', x['name'])
+                ]
+                for gf in gap_folders:
+                    contracts.extend([
+                        SpreadExpiration(self, payload=x) for x
+                        in self.series_tree
+                        if x['path'][:-1] == gf['path']
+                        and not x['isAbstract']
+                    ])
+
+                try:
+                    future = Future(self.ticker, self.exchange, env=self.env, reload_cache=False)
+                    leg_futures = future.contracts
+                except Exception as e:
+                    self.logger.error(
+                        f"{self.ticker}.{self.exchange}: {e.__class__.__name__}: {e}"
+                    )
+                    self.logger.error(
+                        f'{self.ticker}.{self.exchange} '
+                        'futures are not found in sdb! Create them in first place'
+                    )
+            elif len(self.ticker.split('-')) == 2:
+                for leg_ticker in self.ticker.split('-')[:2]:
+                    try:
+                        future = Future(leg_ticker, self.exchange, env=self.env)
+                        leg_futures += future.contracts
+                    except Exception as e:
+                        self.logger.error(
+                            f"{self.ticker}.{self.exchange}: {e.__class__.__name__}: {e}"
+                        )
+                        self.logger.error(
+                            f'{leg_ticker}.{self.exchange} '
+                            'futures are not found in sdb! Create them in first place'
+                        )
 
     def find_calendar_expiration(
             self,
@@ -572,17 +605,11 @@ class SpreadExpiration(Instrument):
         else:
             self.calendar_type = calendar_type
         super().__init__(
-            instrument_type='SPREAD',
-            instrument={},
-            env=self.env,
-
-            bo=spread.bo,
+            instrument_type=spread.instrument_type,
+            env=spread.env,
             sdb=spread.sdb,
             sdbadds=spread.sdbadds,
-
-            tree=spread.tree,
-            calendar_type=self.calendar_type,
-            spread_type=self.spread_type
+            silent=spread.silent
         )
         self.ticker = spread.ticker
         self.first_ticker = spread.first_ticker

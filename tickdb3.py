@@ -1470,8 +1470,8 @@ class TickDB3:
     def get(
             self,
             symbol: str,
-            since: Optional[Union[str, datetime]] = None,
-            till: Optional[Union[str, datetime]] = None,
+            since: Union[str, datetime] = None,
+            till: Union[str, datetime] = None,
             limit: int = None,
             cls=list,
             **kwargs
@@ -1514,8 +1514,8 @@ class TickDB3:
             interval: str = None,
             candles: bool = False,
             position: str = None,
-            since: Optional[Union[str, datetime]] = None,
-            till: Optional[Union[str, datetime]] = None,
+            since: Union[str, datetime] = None,
+            till: Union[str, datetime] = None,
             limit: int = None,
             validate: bool = False,
             **kwargs
@@ -1566,8 +1566,8 @@ class TickDB3:
             self,
             symbol: str,
             interval: str = None,
-            since: Optional[Union[str, datetime]] = None,
-            till: Optional[Union[str, datetime]] = None,
+            since: Union[str, datetime] = None,
+            till: Union[str, datetime] = None,
             limit: int = None,
             validate: bool = False,
             **kwargs
@@ -1615,8 +1615,8 @@ class TickDB3:
             self,
             symbol: str,
             interval: str = None,
-            since: Optional[Union[str, datetime]] = None,
-            till: Optional[Union[str, datetime]] = None,
+            since: Union[str, datetime] = None,
+            till: Union[str, datetime] = None,
             limit: int = None,
             validate: bool = False,
             **kwargs
@@ -1667,8 +1667,8 @@ class TickDB3:
     def get_trades(
             self,
             symbol: str,
-            since: Optional[Union[str, datetime]] = None,
-            till: Optional[Union[str, datetime]] = None,
+            since: Union[str, datetime] = None,
+            till: Union[str, datetime] = None,
             limit: int = None,
             **kwargs
         ):
@@ -1702,8 +1702,8 @@ class TickDB3:
     def get_quotes(
             self,
             symbol: str,
-            since: Optional[Union[str, datetime]] = None,
-            till: Optional[Union[str, datetime]] = None,
+            since: Union[str, datetime] = None,
+            till: Union[str, datetime] = None,
             limit: int = None,
             **kwargs
         ):
@@ -1789,7 +1789,7 @@ class TickDB3:
             self,
             symbols: list,
             data_type: str,
-            timestamp: Optional[Union[str, datetime]] = None
+            timestamp: Union[str, datetime] = None
         ):
         """
         Method allows to get actual quotes for specific moment
@@ -1872,8 +1872,8 @@ class TickDB3:
             symbol: str,
             interval: str = None,
             position: str = None,
-            since: Optional[Union[str,datetime]] = None,
-            till: Optional[Union[str, datetime]] = None,
+            since: Union[str,datetime] = None,
+            till: Union[str, datetime] = None,
             limit: int = None,
             validate: bool = False,
             **kwargs
@@ -1927,8 +1927,8 @@ class TickDB3:
     def get_prices(
             self,
             symbol: str,
-            since: Optional[Union[str, datetime]] = None,
-            till: Optional[Union[str, datetime]] = None,
+            since: Union[str, datetime] = None,
+            till: Union[str, datetime] = None,
             limit: int = None,
             **kwargs
         ):
@@ -1958,10 +1958,12 @@ class TickDB3:
                     price['price']
                 )
 
-    def delete(self,
+    def delete(
+            self,
             symbol: str,
             data_type: Union[MarketData, MarketDepth],
-            timestamp: Optional[Union[str, datetime]]
+            urls: list[str] = None,
+            timestamp: Union[str, datetime] = None
         ):
         """
         Method deletes specified aggregates for specified period
@@ -1976,7 +1978,7 @@ class TickDB3:
         if isinstance(timestamp, str):
             timestamp = parser.parse(timestamp)
         
-        urls = self.define_urls(data_type=data_type, symbol=symbol)
+        urls = urls if urls else self.define_urls(data_type=data_type, symbol=symbol)
 
         logging.debug(urls)
 
