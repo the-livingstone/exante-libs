@@ -164,6 +164,7 @@ class Balancer:
 
     def least_busy_feed(self, demo=False):
         path = ['connections', 'symboldb (feed gateway)', 'symbols']
+        demo_path = ['connections', 'symboldb (feed gateway instrument)', 'objects']
         # for feedname in feeds:
         #     module_name = mapper[self.feed_info(feedname)[-1]]
         #     symbols = self.mon.indicator_status(module_name, path)['state']['description'].split()[0]
@@ -188,7 +189,7 @@ class Balancer:
                 load = int(
                     self.mon.indicator_status(
                         module['monitor_module'],
-                        path
+                        demo_path
                     )['state']['description'].split()[0]
                 )
                 module.update({
