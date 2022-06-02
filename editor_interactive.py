@@ -1150,12 +1150,17 @@ class EditInstrument:
             ]
         ), None)
         while not done:
-            fields_tree = self.__get_properties(path=path).get('properties')
-            available = [
-                x for x
-                in sorted(fields_tree.keys())
-                if x not in target.keys()
-            ]
+            properties = self.__get_properties(path=path)
+            fields_tree = properties.get('properties', {})
+            if fields_tree:
+                available = [
+                    x for x
+                    in sorted(fields_tree.keys())
+                    if x not in target.keys()
+                ]
+            else:
+                available = properties.get('opts_list', [])
+
             available.append('.')
             available.append('..')
             pick = self.input_list.pop(0) if self.input_list else None
@@ -1174,6 +1179,8 @@ class EditInstrument:
                 self.__ls()
                 input('Press Enter to continue')
                 continue
+            if isinstance(available_selected, tuple):
+                available_selected = available_selected[1]
             props = self.__get_properties(path + [available_selected])
 
             target.update({
