@@ -1395,26 +1395,17 @@ class SDBAdditional:
             compiled_instrument = deepcopy(instrument)
         if isinstance(instrument, str) and not self.sdb.is_uuid(instrument):
             compiled_instrument.update(self.sdb.get(instrument, fields=['symbolId', 'expiryTime']))
-        if compiled_instrument.get('symbolId') is None and compiled_instrument.get('_id'):
-            tree = asyncio.run(self.load_tree(fields=['symbolId', 'expiryTime']))
-            compiled_instrument.update(
-                next((
-                    {
-                        'symbolId': x['symbolId'],
-                        'expiryTime': x['expiryTime']
-                    } for x
-                    in tree
-                    if x['_id'] == compiled_instrument['_id']
-                ), {
+        if compiled_instrument.get('symbolId') is None:
+            if compiled_instrument['isAbstract'] is False:
+                compiled_instrument.update({
+                    'symbolId': self.compile_symbol_id(compiled_instrument, compiled=True),
+                    'expiryTime': self.compile_expiry_time(compiled_instrument, compiled=True)
+                })
+            else:
+                compiled_instrument.update({
                     'symbolId': None,
                     'expiryTime': None
                 })
-            )
-        else:
-            compiled_instrument.update({
-                'symbolId': self.compile_symbol_id(compiled_instrument, compiled=True),
-                'expiryTime': self.compile_expiry_time(compiled_instrument, compiled=True)
-            })
         compiled_instrument.update({
             'EXANTEId': compiled_instrument['symbolId']
         })
