@@ -671,7 +671,7 @@ class Option(Derivative):
             for new in target.new_expirations:
                 if target.option_type == 'OPTION ON FUTURE':
                     if not new.instrument.get('underlyingId', {}).get('id'):
-                        self.logger.warning(f"Underlying for {new[1]} is not set!")
+                        self.logger.warning(f"Underlying for {new.get_expiration()[1]} is not set!")
                 new.instrument['path'] = deepcopy(target.instrument['path'])
             if dry_run and target.new_expirations:
                 print(f"Dry run, new expirations to create:")
