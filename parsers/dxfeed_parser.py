@@ -419,20 +419,32 @@ class Parser(DxFeed, ExchangeParser):
             and not series_data.get('underlyingId') \
             and not future_giveup:
 
+            time_giveup = False
             for c in contracts:
                 underlying = c.get('underlying', '')
                 udl_ticker, udl_maturity = dxfeed_maturity_to_sdb(underlying)
                 if udl_maturity:
                     sdb_futures = asyncio.run(self.sdb.get_v2(
                         rf"^{udl_ticker}\.{series_data['exchange']}\.{udl_maturity}$",
-                        fields=['symbolId', 'expiryTime']
+                        fields=['symbolId', 'expiry', 'path']
                     ))
                     if sdb_futures:
-                        udl_e_time = sdb_futures[0]['expiryTime']
-                        if udl_e_time \
-                            and dt.date.fromisoformat(udl_e_time.split('T')[0]) == c['expiry']:
-                            # It's UTC time, should be adjusted with schedule timezone
-                            series_data['expiry_time_'] = udl_e_time.split('T')[1].replace('Z', '') 
+                        udl_future = sdb_futures[0]
+                        expiry_date = self.sdb.sdb_to_date(udl_future['expiry'])
+                        if expiry_date \
+                            and expiry_date == c['expiry']:
+                            
+                            expiry_time = udl_future['expiry'].get('time')
+                            if not series_data.get('expiry_time_'):
+                                series_data['expiry_time_'] = expiry_time
+                            if not time_giveup:
+                                for p in reversed(udl_future['path'][:-1]):
+                                    time_giveup = True
+                                    if series_data.get('expiry_time_'):
+                                        break
+                                    parent = self.sdb.get(p)
+                                    series_data['expiry_time_'] = parent.get('expiry', {}).get('time')
+
                         c['underlyingId'] = {
                             'type': 'symbolId',
                             'id': f"{udl_ticker}.{series_data['exchange']}.{udl_maturity}"

@@ -209,6 +209,7 @@ class ParsedFutureSchema(BaseModel):
     exchange: str
     shortName: str
     description: Optional[str]
+    expiry: Optional[dict]
     feedMinPriceIncrement: Optional[float]
     orderMinPriceIncrement: Optional[float]
     contractMultiplier: Optional[float]
@@ -256,6 +257,19 @@ class ParsedFutureSchema(BaseModel):
             return None
         else:
             raise ValueError(f'Settlement "{item}" is unknown type')
+
+    @root_validator(pre=True, allow_reuse=True)
+    def mk_expiry_time(cls, values):
+        try:
+            if values.get('expiry_time_') and dt.time.fromisoformat(values.get('expiry_time_')):
+                values['expiry'] = {
+                    'year': 2100,
+                    'month': 1,
+                    'day': 1,
+                    'time': values['expiry_time_']}
+        except Exception:
+            pass
+        return values
 
 
 class CalendarSpreadContract(BaseModel):
@@ -457,6 +471,8 @@ class ParsedOptionSchema(BaseModel):
     underlyingId: Optional[UnderlyingId]
     base_ric_: Optional[str]
     strike_price_multiplier_: Optional[float]
+    expiry_time_: Optional[str]
+    expiry: Optional[SdbDate]
     isAbstract: bool = Field(
         True,
         const=True
@@ -500,6 +516,19 @@ class ParsedOptionSchema(BaseModel):
         if item not in ValidationLists.exercise_styles:
             raise ValueError(f'{item} is invalid exercise style')
         return item
+
+    @root_validator(pre=True, allow_reuse=True)
+    def mk_expiry_time(cls, values):
+        try:
+            if values.get('expiry_time_'):
+                values['expiry'] = {
+                    'year': 2100,
+                    'month': 1,
+                    'day': 1,
+                    'time': values['expiry_time_']}
+        except Exception:
+            pass
+        return values
 
 
 class ParsedStockSchema(BaseModel):
