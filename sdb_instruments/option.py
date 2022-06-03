@@ -732,7 +732,7 @@ class Option(Derivative):
 
         if not dry_run:
             self.clean_up_times()
-        if [x for x, y in report.items() if y.get('created')]:
+        if [x for x, y in report.items() if y.get('created')] and self.reload_cache:
             self.logger.info('All good, reloading tree cache...')
             self.force_tree_reload()
         return report
