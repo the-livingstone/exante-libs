@@ -59,15 +59,17 @@ class EditInstrument:
             instrument_type: str = None,
             env: str = 'prod',
             input_list: list = [],
-            final_update_list: list = []
+            final_update_list: list = [],
+            sdb: SymbolDB = None,
+            sdbadds: SDBAdditional = None
         ) -> None:
         self.path = []
         self.final_update_list = final_update_list
         self.input_list = input_list
         self.exanteid = exanteid if exanteid else 'root'
         self.instrument = compiled_instr if compiled_instr else {}
-        self.sdb = SymbolDB(env)
-        self.sdbadds = SDBAdditional(env)
+        self.sdb = sdb if sdb else SymbolDB(env)
+        self.sdbadds = sdbadds if sdbadds else SDBAdditional(env)
         self.modify_copy = deepcopy(compiled_instr)
         if instrument_type:
             self.instrument_type = instrument_type
