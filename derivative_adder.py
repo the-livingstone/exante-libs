@@ -44,6 +44,7 @@ class DerivativeAdder:
             weekly: bool = False,
             allowed_expirations: list = None,
             recreate: bool = False,
+            reload_cache: bool = True,
             croned: bool = False,
             env='prod'
         ) -> None:
@@ -60,7 +61,8 @@ class DerivativeAdder:
         self.derivative_type = derivative
         self.allowed_expirations = allowed_expirations
         self.series = self.set_series(
-            recreate=recreate
+            recreate=recreate,
+            reload_cache=reload_cache
         )
         if self.series:
             self.existing_expirations = [
