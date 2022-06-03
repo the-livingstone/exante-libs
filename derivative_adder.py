@@ -48,6 +48,7 @@ class DerivativeAdder:
             env='prod'
         ) -> None:
         self.errormsg = ''
+        self.comment = ''
         self.env = env
         self.sdb = SymbolDB(env)
         self.sdbadds = SDBAdditional(env)
@@ -74,6 +75,7 @@ class DerivativeAdder:
     def logger(self):
         return logging.getLogger(f"{self.__class__.__name__}")
 
+# common_methods
     def set_series(
             self,
             shortname: str = None,
@@ -85,6 +87,7 @@ class DerivativeAdder:
             self.schema = set_schema[self.env][self.derivative_type]
         else:
             self.schema = set_schema[self.env]['SPREAD'][self.derivative_type]
+
         if self.derivative_type in ['OPTION', 'OPTION ON FUTURE']:
             try:
                 option = Option(
@@ -127,6 +130,7 @@ class DerivativeAdder:
                 return future
             except NoInstrumentError:
                 return None
+
         elif self.derivative_type == 'SPREAD':
             try:
                 spread = Spread(
@@ -150,6 +154,214 @@ class DerivativeAdder:
 
         else:
             raise TypeUndefined(f'Derivative type ({self.derivative_type}) is unknown')
+
+    def get_overrides(self, instrument: Instrument, parent: bool = False):
+        common = [
+            'symbolIdentifier/type',
+            'symbolIdentifier/identifier',
+            'exchangeName',
+            'volumeMultiplier',
+            'priceMultiplier',
+            'strikePriceMultiplier'
+        ]
+        provider_specific = {
+            'REUTERS': [
+                'reutersProperties/tradeRic/base',
+                'reutersProperties/tradeRic/suffix',
+                'reutersProperties/tradeRic/optionSeparator',
+                'reutersProperties/ric/base',
+                'reutersProperties/ric/suffix',
+                'reutersProperties/ric/optionSeparator'
+            ],
+            'DXFEED': [
+                'dxfeedProperties/useLongMaturityFormat',
+                'dxfeedProperties/suffix'
+            ],
+            'P2GATE': [
+                'symbolName'
+            ]
+        }
+
+        http_feeds = [
+            x[1] for x
+            in asyncio.run(self.sdbadds.get_list_from_sdb(SdbLists.GATEWAYS.value))
+            if 'HTTP' in x[0]
+        ]
+        # as CBOE options are constantly balanced between gateways, CBOE folder doesn't have default routes,
+        # so a little bit of help here by hardcoding DXFEED as main feed provider
+        if self.exchange == 'CBOE':
+            prov_name, main_feed_source = next(
+                x for x
+                in asyncio.run(
+                    self.sdbadds.get_list_from_sdb(
+                        SdbLists.FEED_PROVIDERS.value
+                    )
+                ) if x[0] == 'DXFEED'
+            )
+        else:
+            if parent:
+                compiled_parent = asyncio.run(
+                    self.sdbadds.build_inheritance(
+                        [
+                            instrument.compiled_parent,
+                            instrument.instrument
+                        ]
+                    )
+                )
+            else:
+                compiled_parent = instrument.compiled_parent
+            main_feed_source = next((
+                x['gateway']['providerId'] for x
+                in compiled_parent.get('feeds', {}).get('gateways', [])
+                if x.get('gateway', {}).get('enabled')
+                and x.get('gatewayId') not in http_feeds
+            ), None)
+            prov_name = next((
+                x[0] for x
+                in asyncio.run(
+                    self.sdbadds.get_list_from_sdb(
+                        SdbLists.FEED_PROVIDERS.value
+                    )
+                )
+                if x[1] == main_feed_source
+            ), None)
+        payload = {
+            'provider': prov_name,
+            'prov_id': main_feed_source,
+            'instrument_type': next(
+                (
+                    x['name'] for x
+                    in instrument.tree
+                    if x['_id'] == instrument.instrument['path'][1]
+                ),
+                asyncio.run(self.sdb.get(instrument.instrument['path'][1]))['name']
+            ),
+            'exchange_id': instrument.instrument.get(
+                                'exchangeId',
+                                instrument.compiled_parent.get('exchangeId')
+                            )
+        }
+        if not parent:
+            payload.update({
+                'ticker': instrument.instrument.get('ticker')
+            })
+
+        for provider, properties in provider_specific.items():
+            overrides_to_get = properties + common
+            payload[provider] = instrument.get_provider_overrides(
+                provider,
+                *overrides_to_get,
+                compiled=True,
+                silent=True
+            )
+            if not parent:
+                payload[provider].update(
+                    instrument.get_provider_overrides(
+                        provider,
+                        *overrides_to_get,
+                        compiled=False,
+                        silent=True
+                    )
+                )
+
+        return payload
+
+    def set_targets(
+            self,
+            weekly: bool = False,
+            create_weeklies: str = 'Weekly'
+        ) -> list[dict]:
+
+        if not isinstance(self.series, Option):
+            target = self.get_overrides(self.series)
+            target['target_folder'] = self.series
+            return [target]
+        
+        # options only
+        elif not weekly or self.exchange == 'CBOE':
+            # monthly options
+            target = self.get_overrides(self.series)
+            target['target_folder'] = self.series
+            return [target]
+
+        # weekly options
+        weekly_targets = []
+        weekly_commons_names = [
+            x.common_name for x
+            in self.series.weekly_commons
+        ]
+        # if we don't have common weekly folder
+        # or we have one, but we need another with different name
+        if self.series.weekly_commons and create_weeklies in weekly_commons_names:
+            week_options = [
+                x for y in self.series.weekly_commons for x in y.weekly_folders
+            ]
+            for wf in week_options:
+                weekly_target = self.get_overrides(wf)
+                weekly_target['target_folder'] = wf
+                weekly_targets.append(weekly_target)
+            return weekly_targets
+        if self.croned:
+            raise RuntimeError(
+                f'{self.ticker}.{self.exchange} '
+                'weekly folders are not found in SDB and could not be set automatically'
+            )
+        overrides = self.get_overrides(self.series)
+        weekly_templates = self.set_weekly_templates(overrides)
+        weekly_common = self.series.create_weeklies(weekly_templates, common_name=create_weeklies)
+        weekly_targets = self.make_weekly_targets(weekly_common, overrides, weekly_templates)
+        return weekly_targets
+
+    def parse_available(self, target: dict = None) -> list[dict]:
+        feed_provider = target.get('provider')
+        if not feed_provider:
+            self.logger.error(f"Cannot get feed_provider for {target}")
+            return {'series': {}, 'contracts': []}
+        if feed_provider == 'DXFEED':
+            parser = DF()
+        elif feed_provider == 'REUTERS':
+            parser = DS()
+        else:
+            raise RuntimeError(f'Unknown feed provider: {feed_provider}')
+        overrides_to_parse = {
+            key.split('/')[-1]: val for key, val
+            in target.get(feed_provider, {}).items()
+        }
+        ticker = target['target_folder'].ticker
+        exchange = target['target_folder'].exchange
+        self.logger.info(f"Parsing {self.ticker}.{self.exchange} on {feed_provider}...")
+        if isinstance(target['target_folder'], Future):
+            series, contracts = parser.futures(
+                f"{ticker}.{exchange}",
+                overrides=overrides_to_parse)
+        elif isinstance(target['target_folder'], Spread):
+            series, contracts = parser.spreads(
+                f"{self.ticker}.{self.exchange}",
+                overrides=overrides_to_parse)
+        elif isinstance(target['target_folder'], Option):
+            series, contracts = parser.options(
+                f"{ticker}.{exchange}",
+                overrides=overrides_to_parse,
+                product=self.derivative_type
+            )
+        else:
+            return {'series': {}, 'contracts': []}
+        if contracts:
+            good_to_add = parser.transform_to_sdb({}, contracts, product=self.derivative_type)
+        else:
+            self.logger.warning(
+                f"Didn't find anything for {ticker}.{exchange} on {feed_provider}"
+            )
+            return {'series': {}, 'contracts': []}
+        if isinstance(target['target_folder'], Option) and feed_provider != 'REUTERS':
+            spm = target[feed_provider].get('strikePriceMultiplier')
+            if spm:
+                for expiration in good_to_add['contracts']:
+                    self.multiply_strikes(expiration, spm)
+                    self.logger.info(
+                        f"parsed strikes for {expiration} have been multiplied by {1 / spm}"
+                    )
+        return good_to_add
 
     def set_allowed(
             self,
@@ -207,349 +419,177 @@ class DerivativeAdder:
             ]
         target_folder.allowed_expirations = allowed
 
-    def multiply_strikes(
+    def add_expirations(
             self,
-            expiration: dict,
-            multiplier: float = 1
+            target: Option,
+            parsed_contracts: list[dict],
+            skip_if_exists: bool = True
         ):
-        if multiplier == 1 or not multiplier:
-            return None
-        else:
-            # logic was taken from cme_adder
-            # previous = sorted(strikes['PUT'])[0] * multiplier
-            # while (previous * multiplier < 1):
-            #     multiplier = multiplier * 1000
-            #     previous = previous * 1000
-            for side in ['PUT', 'CALL']:
-                for strike in expiration['strikePrices'][side]:
-                    strike.update({
-                        'strikePrice': round(strike['strikePrice'] / multiplier, 3)
-                    })
- 
-    def get_overrides(self, instrument: Instrument, parent: bool = False):
-        http_feeds = [
-            x[1] for x
-            in asyncio.run(self.sdbadds.get_list_from_sdb(SdbLists.GATEWAYS.value))
-            if 'HTTP' in x[0]
-        ]
-        # as CBOE options are constantly balanced between gateways, CBOE folder doesn't have default routes,
-        # so a little bit of help here by hardcoding DXFEED as main feed provider
-        if self.exchange == 'CBOE':
-            prov_name, main_feed_source = next(
-                x for x
-                in asyncio.run(
-                    self.sdbadds.get_list_from_sdb(
-                        SdbLists.FEED_PROVIDERS.value
-                    )
-                ) if x[0] == 'DXFEED'
-            )
-        else:
-            if parent:
-                compiled_parent = asyncio.run(
-                    self.sdbadds.build_inheritance([instrument.compiled_parent, instrument.instrument])
-                )
-            else:
-                compiled_parent = instrument.compiled_parent
-            main_feed_source = next((
-                x['gateway']['providerId'] for x
-                in compiled_parent.get('feeds', {}).get('gateways', [])
-                if x.get('gateway', {}).get('enabled')
-                and x.get('gatewayId') not in http_feeds
-            ), None)
-            prov_name = next((
-                x[0] for x
-                in asyncio.run(self.sdbadds.get_list_from_sdb(SdbLists.FEED_PROVIDERS.value))
-                if x[1] == main_feed_source
-            ), None)
-        payload = {
-            'provider': prov_name,
-            'prov_id': main_feed_source,
-            'instrument_type': next(
-                (
-                    x['name'] for x
-                    in instrument.tree
-                    if x['_id'] == instrument.instrument['path'][1]
-                ),
-                asyncio.run(self.sdb.get(instrument.instrument['path'][1]))['name']
-            ),
-            'exchange_id': instrument.instrument.get('exchangeId', instrument.compiled_parent.get('exchangeId'))
-        }
-        if not parent:
-            payload.update({
-                'ticker': instrument.instrument.get('ticker')
-            })
-        common = [
-            'symbolIdentifier/type',
-            'symbolIdentifier/identifier',
-            'exchangeName',
-            'volumeMultiplier',
-            'priceMultiplier',
-            'strikePriceMultiplier'
-        ]
-        provider_specific = {
-            'REUTERS': [
-                'reutersProperties/tradeRic/base',
-                'reutersProperties/tradeRic/suffix',
-                'reutersProperties/tradeRic/optionSeparator',
-                'reutersProperties/ric/base',
-                'reutersProperties/ric/suffix',
-                'reutersProperties/ric/optionSeparator'
-            ],
-            'DXFEED': [
-                'dxfeedProperties/useLongMaturityFormat',
-                'dxfeedProperties/suffix'
-            ],
-            'P2GATE': [
-                'symbolName'
+        for contract in parsed_contracts:
+            target.add_payload(contract, skip_if_exists=skip_if_exists)
+
+    def validate_series(
+            self, 
+            target: Union[
+                Future,
+                Option,
+                Spread
             ]
-        }
-        for provider, properties in provider_specific.items():
-            overrides_to_get = properties + common
-            payload[provider] = instrument.get_provider_overrides(
-                provider,
-                *overrides_to_get,
-                compiled=True,
-                silent=True
-            )
-            if not parent:
-                payload[provider].update(
-                    instrument.get_provider_overrides(
-                        provider,
-                        *overrides_to_get,
-                        compiled=False,
-                        silent=True
-                    )
-                )
-
-        return payload
-    
-    def make_weekly_targets(
-            self,
-            weekly_common: WeeklyCommon,
-            overrides: dict,
-            weekly_templates: dict
         ):
-        parser_targets = []
-        letters = ' ABCDE'
-        for i in range(1, 6):
-            weekly_folder = next((x for x in weekly_common.weekly_folders if x.week_number == i), None)
-            if not weekly_folder:
-                continue
-            weekly_target = deepcopy(overrides)
-            weekly_target['target_folder'] = weekly_folder
-            weekly_target['ticker'] = copy(weekly_templates['ticker'])
-            weekly_target['ticker'] = weekly_target['ticker'].replace('$', str(i))
-            weekly_target['ticker'] = weekly_target['ticker'].replace('@', letters[i])
-            for provider, ovrs in weekly_target.items():
-                if isinstance(ovrs, dict):
-                    weekly_target[provider] = {}
-                    for key, override in ovrs.items():
-                        if not isinstance(override, str):
-                            weekly_target[provider].update({key: override})
-                            continue
-                        weekly_target[provider].update({
-                            key: override.replace('$', str(i)).replace('@', letters[i])
-                        })
-            if weekly_target.get('REUTERS'):
-                rics = {
-                    key.split('/')[-1]: val for key, val
-                    in weekly_templates['REUTERS'].items()
-                }
-                weekly_target['REUTERS'].update(rics)
-            parser_targets.append(weekly_target)
-        return parser_targets
-
-    def parse_available(self, overrides: dict = None) -> list[dict]:
-        feed_provider = overrides.get('provider')
-        if not feed_provider:
-            self.logger.error(f"Cannot get feed_provider for {overrides}")
-            return {'series': {}, 'contracts': []}
-        if feed_provider == 'DXFEED':
-            parser = DF()
-        elif feed_provider == 'REUTERS':
-            parser = DS()
-        else:
-            raise RuntimeError(f'Unknown feed provider: {feed_provider}')
-        overrides_to_parse = {
-            key.split('/')[-1]: val for key, val
-            in overrides.get(feed_provider, {}).items()
-        }
-        if self.derivative_type == 'FUTURE':
-            overrides.update({'ticker': self.ticker})
-            self.logger.info(f"Parsing {self.ticker}.{self.exchange} on {feed_provider}...")
-            series, contracts = parser.futures(
-                f"{self.ticker}.{self.exchange}",
-                overrides=overrides_to_parse)
-            if contracts:
-                good_to_add = parser.transform_to_sdb({}, contracts, product=self.derivative_type)
-            else:
-                self.logger.warning(
-                    f"Didn't find anything for {overrides['ticker']}.{self.exchange} on {feed_provider}"
-                )
-                good_to_add = {}
-                return {'series': {}, 'contracts': []}
-        elif self.derivative_type == 'SPREAD':
-            overrides.update({'ticker': self.ticker})
-            self.logger.info(f"Parsing {self.ticker}.{self.exchange} on {feed_provider}...")
-            series, contracts = parser.spreads(
-                f"{self.ticker}.{self.exchange}",
-                overrides=overrides_to_parse)
-            if contracts:
-                good_to_add = parser.transform_to_sdb({}, contracts, product=self.series.spread_type)
-                # dirty hack to limit contracts to the next two years to ensure
-                # that leg gap is calculated correctly in every adding expiration
-                good_to_add['contracts'] = [
-                    x for x
-                    in good_to_add['contracts']
-                    if x['expiry']['year'] < dt.date.today().year + 3
-                ]
-            else:
-                self.logger.warning(
-                    f"Didn't find anything for {overrides['ticker']}.{self.exchange} on {feed_provider}"
-                )
-                good_to_add = {}
-                return {'series': {}, 'contracts': []}
-        elif self.derivative_type in ['OPTION', 'OPTION ON FUTURE']:
-            if not (overrides['ticker'] or overrides_to_parse):
-                return {'series': {}, 'contracts': []}
-            self.logger.info(f"Parsing {overrides['ticker']}.{self.exchange} on {feed_provider}...")
-            series, contracts = parser.options(
-                f"{overrides['ticker']}.{self.exchange}",
-                overrides=overrides_to_parse,
-                product=self.derivative_type
+        if target.update_expirations:
+            some_contract = [x for x in target.update_expirations][0]
+        elif target.new_expirations:
+            some_contract = [x for x in target.new_expirations][0]
+        elif target.contracts:
+            some_contract = max(
+                [x for x in target.contracts],
+                key=lambda e: e.expiration
             )
-            if contracts:
-                good_to_add = parser.transform_to_sdb({}, contracts, product=self.derivative_type)
-            else:
-                self.logger.warning(
-                    f"Didn't find anything for {overrides['ticker']}.{self.exchange} on {feed_provider}"
-                )
-                return {'series': {}, 'contracts': []}
-            if feed_provider != 'REUTERS':
-                spm = overrides[feed_provider].get('strikePriceMultiplier')
-                if spm:
-                    for expiration in good_to_add['contracts']:
-                        self.multiply_strikes(expiration, spm)
-                        self.logger.info(f"parsed strikes for {expiration} have been multiplied by {1 / spm}")
         else:
-            return {'series': {}, 'contracts': []}
-        return good_to_add
-
-    def set_reuters_overrides(self, overrides: dict = None, weeklies=False):
-        if overrides is None:
-            overrides = {}
-        if weeklies:
-            ticker = input('Type weekly ticker template: ')
-            if not ticker:
-                return overrides
-        else:
-            ticker = self.ticker    
-        overrides.update({'ticker': ticker})
+            logging.warning('no existing or new expirations found, cannot validate')
+            return None
         while True:
-            base = input("ric base (the part preceeding expiration code): ")
-            if not base:
-                return overrides
-            suffix = input(
-                "ric suffix (the part after expiration code. Press enter if none): "
-            )
-            if self.derivative_type in ['OPTION', 'OPTION ON FUTURE']:
-                separator = input(
-                    "option separator (the part that separates expiration from strike. Press enter if none): "
-                )
-                print('Test search...')
-                if '$' in base or '$' in separator or '$' in suffix:
-                    sym = '$'
-                    weeks = '12345'
-                elif '@' in base or '@' in separator or '@' in suffix:
-                    sym = '@'
-                    weeks = 'ABCDE'
-                else:
-                    sym = '~~~' # smth that is never expected
-                    weeks = ' '
-                found = False
-                for i in weeks:
-                    srch_pld = {
-                        'base': base.replace(sym, i),
-                        'suffix': suffix.replace(sym, i),
-                        'optionSeparator': separator.replace(sym, i),
-                    }
-                    search = self.ds.options(
-                        f"{ticker.replace(sym, i)}.{self.exchange}",
-                        overrides=srch_pld
-                    )
-                    if search.get('contracts') and weeklies:
-                        found = True
-                        pprint(f"Week {i}: {search['contracts']}")
-                    elif search.get('contracts'):
-                        found = True
-                        to_print = search['contracts'][:3]
-                        if len(search['contracts']) > 3:
-                            to_print.append(f"and {len(search['contracts']) - 3} more expirations")
-                        pprint(f"Found contracts: {to_print}")
-            elif self.derivative_type == 'FUTURE':
-                separator = None
-                print('Test search...')
-                srch_pld = {
-                    'base': base,
-                    'suffix': suffix,
-                }
-                search = self.ds.futures(
-                    f"{ticker}.{self.exchange}",
-                    overrides=srch_pld
-                )
-                if search.get('contracts'):
-                    found = True
-                    to_print = search['contracts'][:3]
-                    if len(search['contracts']) > 3:
-                        to_print.append(f"and {len(search['contracts']) - 3} more expirations")
-                    pprint(f"Found contracts: {to_print}")
-
-            if found:
-                try_again = input('Looks good? Y/n: ')
-                if try_again != 'n':
+            highlighted = {}
+            # we need to reload compiled parent instrument here
+            some_contract.set_instrument(some_contract.instrument, self.series)
+            validated = some_contract.validate_instrument()
+            if isinstance(validated, dict) and validated.get('validation_errors'):
+                for v in validated['validation_errors']:
+                    highlighted.update({
+                        f"{'/'.join([x for x in v['loc']])}": v['msg']
+                    })
+                # if the only validation issue is underlyingId and opt type is oof, then folder is good
+                expiration_issues = [
+                    key for key, val
+                    in highlighted.items()
+                    if 'Expiry is less than last trading' in val
+                    or 'Last available is less than expiry' in val
+                ]
+                if self.derivative_type == 'OPTION ON FUTURE':
+                    expiration_issues.extend([
+                        key for key, val
+                        in highlighted.items()
+                        if 'expires earlier than instrument' in val
+                        or key == 'underlyingId'
+                        or 'does not exist in sdb' in val
+                    ])
+                for eiss in expiration_issues:
+                    highlighted.pop(eiss)
+                if not highlighted:
                     break
-            else:
-                try_again = input(
-                    f"nothing is found... try again? Y/n: "
+                if self.croned:
+                    self.logger.error(
+                        f"{self.ticker}.{self.exchange}: Series validation has been failed on following fields:"
+                    )
+                    self.logger.error(pformat(highlighted))
+                    self.errormsg += f"{self.ticker}.{self.exchange}: Series validation has been failed on following fields:"
+                    self.errormsg += '\n' + pformat(highlighted) + '\n'
+                    return None
+
+            elif validated is True:
+                break
+            self.series.instrument = EditInstrument(
+                f'{self.ticker}.{self.exchange}',
+                self.series.instrument,
+                instrument_type = self.derivative_type.split(' ')[0], # Mind 'CALENDAR SPREAD'!!
+                env=self.env
+            ).edit_instrument(highlight=highlighted)
+        return True
+
+    def validate_expirations(
+            self,
+            expirations: list[
+                Union[
+                    FutureExpiration,
+                    OptionExpiration,
+                    SpreadExpiration
+                ]
+            ]
+        ):
+        drop_expirations = []
+        if not expirations:
+            return []
+        for exp in expirations:
+            attempts = 0
+            dropped = False
+            while True:
+                symbolid = exp.get_expiration()[1]
+                highlighted = {}
+                exp.set_instrument(exp.instrument, self.series)
+                validated = exp.validate_instrument()
+                if isinstance(validated, dict) and validated.get('validation_errors'):
+                    for v in validated['validation_errors']:
+                        highlighted.update({
+                            f"{'/'.join([x for x in v['loc']])}": v['msg']
+                        })
+                    if self.croned:
+                        self.logger.error(
+                            f"{symbolid}: Expiration validation has been failed on following fields:"
+                        )
+                        self.logger.error(pformat(highlighted))
+                        self.errormsg += f"{symbolid}: Expiration validation has been failed on following fields:"
+                        self.errormsg += '\n' + pformat(highlighted) + '\n'
+                        drop_expirations.append(symbolid)
+                        dropped = True
+                elif validated is True:
+                    break
+                if attempts > 0 and not self.croned:
+                    message = f"Validation of {symbolid} has failed. Do you want to edit it once more or drop it?"
+                    edit_expiration = pick_from_list_tm(
+                        ['Drop', 'Edit more'],
+                        message=message,
+                        clear_screen=False
+                    )
+                    if not edit_expiration:
+                        drop_expirations.append(symbolid)
+                        dropped = True
+                        break
+                if not dropped:
+                    exp.instrument = EditInstrument(
+                        symbolid,
+                        exp.instrument,
+                        instrument_type=self.derivative_type.split(' ')[0],
+                        env=self.env,
+                        sdb=self.sdb,
+                        sdbadds=self.sdbadds
+                    ).edit_instrument(highlight=highlighted)
+                    attempts += 1
+        for drop in drop_expirations:
+            expirations.pop(
+                next(
+                    num for num, x
+                    in enumerate(expirations)
+                    if x.get_expiration()[1] == drop
                 )
-                if try_again == 'n':
-                    return overrides
-        overrides['REUTERS'] = {
-            'reutersProperties/quoteRic/base': base,
-            'reutersProperties/tradeRic/base': base
-        }
-        if suffix:
-            overrides['REUTERS'].update({
-                'reutersProperties/quoteRic/suffix': suffix,
-                'reutersProperties/tradeRic/suffix': suffix
-            })
-        if separator:
-            overrides['REUTERS'].update({
-                'reutersProperties/quoteRic/optionSeparator': separator,
-                'reutersProperties/tradeRic/optionSeparator': separator
-            })
-        return overrides
+            )
+        return expirations
 
-    def set_weekly_templates(self, overrides: dict):
-        ticker = ''
-        feed_provider = overrides.get('provider')
-        message = '''
-        We are about to create new folders for weekly options.
-        · If week identifier is a number replace it with "$"
-        (e.g. for weeklies ZW1, ZW2, ..., ZW5 type ZW$
-        and for weeklies R1E, R2E, ..., R5E type R$E)
-        · If week identifier is a letter replace it with "@"
-        (e.g for weeklies Si/A, Si/B, ..., Si/E type Si/@):
-        '''
-        print(message)
-        if feed_provider == 'REUTERS':
-            overrides = self.set_reuters_overrides(deepcopy(overrides), weeklies=True)
-        else:
-            while '$' not in ticker and '@' not in ticker:
-                ticker = input('Type weekly ticker template: ')
-            overrides.update({'ticker': ticker})
-        return overrides
+    def post_to_sdb(self, dry_run: bool):
+        report = self.series.post_to_sdb(dry_run)
+        if report:
+            for series, part_report in report.items():
+                if part_report.get('created') or part_report.get('updated'):
+                    self.comment += f'{series}' + '\n'
+                else:
+                    pass
+                    # self.commented due to excessive output
+                    # self.comment += f'No new data for {series}' + '\n'
+                if part_report.get('updated'):
+                    self.comment += 'Updated:\n'
+                    for upd in part_report['updated']:
+                        self.comment += f'* {upd}' + '\n'
+                    self.comment += '\n'
+                if part_report.get('created'):
+                    self.comment += 'New Expirations:\n'
+                    for new in part_report['created']:
+                        self.comment += f'* {new}' + '\n'
+                    self.comment += '\n'
+                self.errormsg += pformat(part_report['create_error']) + '\n' if part_report.get('create_error') else ''
+                self.errormsg += pformat(part_report['update_error']) + '\n' if part_report.get('update_error') else ''
+        return self.comment, self.errormsg
 
+
+# new series actions
     def setup_new_ticker(self, recreate: bool = False):
         message = '''
         Ticker is not found in sdb, we are about to create new ticker folder.
@@ -667,6 +707,11 @@ class DerivativeAdder:
                 overrides=overrides.get(feed_provider),
                 product=self.derivative_type
             )
+        if self.derivative_type == 'SPREAD':
+            parsed_series, parsed_contracts = parser.spreads(
+                f'{self.ticker}.{self.exchange}',
+                overrides=overrides.get(feed_provider)
+            )
         overrides['DXFEED'] = {}
         if not parsed_series:
             self.logger.error(f'Nothing has been found for {self.ticker}.{self.exchange}')
@@ -757,230 +802,185 @@ class DerivativeAdder:
                     provider=bp,
                     **broker_currency_override
                 )
-
-        # now it's time to define what expirations we actually want to add
-        self.set_allowed(self.series, contracts)
-        for c in contracts:
-            self.series.add_payload(c, skip_if_exists=(not recreate))
-        if self.series.new_expirations:
-            some_contract = self.series.new_expirations[0]
-        elif self.series.update_expirations:
-            some_contract = self.series.update_expirations[0]
-        elif self.series.contracts:
-            some_contract = max(
-                [
-                    x for x
-                    in self.series.contracts
-                    if x.instrument.get('isTrading') is not False
-                ],
-                key=lambda e: e.expiration
-            )
-        else:
-            self.logger.error(
-                f"{self.series.ticker}.{self.series.exchange}: "
-                "No expirations have been added or modified"
-            )
-            return None
-        # let's try to validate some expiration and try to fix any issues with folder
-        self.validate_series(some_contract)        
-        # now when folder is ok let's try to validate EVERY expiration and fix them particularly if needed
-        self.series.new_expirations = self.validate_expirations(self.series.new_expirations)
-        self.series.update_expirations = self.validate_expirations(self.series.update_expirations)
-        return self.series
-
-    def validate_series(
-            self, 
-            some_contract: Union[
-                FutureExpiration,
-                OptionExpiration,
-                SpreadExpiration
-            ]):
-        if not some_contract:
-            return None
-        while True:
-            highlighted = {}
-            # we need to reload compiled parent instrument here
-            some_contract.set_instrument(some_contract.instrument, self.series)
-            validated = some_contract.validate_instrument()
-            if isinstance(validated, dict) and validated.get('validation_errors'):
-                for v in validated['validation_errors']:
-                    highlighted.update({
-                        f"{'/'.join([x for x in v['loc']])}": v['msg']
-                    })
-                # if the only validation issue is underlyingId and opt type is oof, then folder is good
-                expiration_issues = [
-                    key for key, val
-                    in highlighted.items()
-                    if 'Expiry is less than last trading' in val
-                    or 'Last available is less than expiry' in val
-                ]
-                if self.derivative_type == 'OPTION ON FUTURE':
-                    expiration_issues.extend([
-                        key for key, val
-                        in highlighted.items()
-                        if 'expires earlier than instrument' in val
-                        or key == 'underlyingId'
-                        or 'does not exist in sdb' in val
-                    ])
-                for eiss in expiration_issues:
-                    highlighted.pop(eiss)
-                if not highlighted:
-                    break
-                if self.croned:
-                    self.logger.error(
-                        f"{self.ticker}.{self.exchange}: Series validation has been failed on following fields:"
-                    )
-                    self.logger.error(pformat(highlighted))
-                    self.errormsg += f"{self.ticker}.{self.exchange}: Series validation has been failed on following fields:"
-                    self.errormsg += '\n' + pformat(highlighted) + '\n'
-                    return None
-
-            elif validated is True:
-                break
-            self.series.instrument = EditInstrument(
-                f'{self.ticker}.{self.exchange}',
-                self.series.instrument,
-                instrument_type = self.derivative_type.split(' ')[0], # Mind 'CALENDAR SPREAD'!!
-                env=self.env
-            ).edit_instrument(highlight=highlighted)
-        return True
-
-    def validate_expirations(
-            self,
-            expirations: list[
-                Union[
-                    FutureExpiration,
-                    OptionExpiration,
-                    SpreadExpiration
-                ]
-            ]
-        ):
-        drop_expirations = []
-        if not expirations:
-            return []
-        for exp in expirations:
-            attempts = 0
-            dropped = False
-            while True:
-                symbolid = exp.get_expiration()[1]
-                highlighted = {}
-                exp.set_instrument(exp.instrument, self.series)
-                validated = exp.validate_instrument()
-                if isinstance(validated, dict) and validated.get('validation_errors'):
-                    for v in validated['validation_errors']:
-                        highlighted.update({
-                            f"{'/'.join([x for x in v['loc']])}": v['msg']
-                        })
-                    if self.croned:
-                        self.logger.error(
-                            f"{symbolid}: Expiration validation has been failed on following fields:"
-                        )
-                        self.logger.error(pformat(highlighted))
-                        self.errormsg += f"{symbolid}: Expiration validation has been failed on following fields:"
-                        self.errormsg += '\n' + pformat(highlighted) + '\n'
-                        drop_expirations.append(symbolid)
-                        dropped = True
-                elif validated is True:
-                    break
-                if attempts > 0 and not self.croned:
-                    message = f"Validation of {symbolid} has failed. Do you want to edit it once more or drop it?"
-                    edit_expiration = pick_from_list_tm(
-                        ['Drop', 'Edit more'],
-                        message=message,
-                        clear_screen=False
-                    )
-                    if not edit_expiration:
-                        drop_expirations.append(symbolid)
-                        dropped = True
-                        break
-                if not dropped:
-                    exp.instrument = EditInstrument(
-                        symbolid,
-                        exp.instrument,
-                        instrument_type=self.derivative_type.split(' ')[0],
-                        env=self.env
-                    ).edit_instrument(highlight=highlighted)
-                    attempts += 1
-        expirations = [
-            x for x
-            in expirations
-            if x.get_expiration()[1] not in drop_expirations
-        ]
-        return expirations
-
-
-        # elif feed_provider == 'P2GATE':
-        #     new_ticker_properties, p2gate_overrides = self._p2gate_new_ticker_setup()
-        #     overrides.update(p2gate_overrides)
-
-        # if self.exchange == 'CBOE':
-        #     payload.update({
-        #         'exchangeLink': f'https://www.cboe.com/delayed_quotes/{self.ticker}'
-        #     })
-
-
-    # it's useless method for now but it contains some useful info how to make validation schemas
-    def _p2gate_new_ticker_setup(self):
-        payload = {}
-        overrides = {}
-        parser = self.PARSERS['P2GATE']()
-        self.logger.info('Getting data from p2gate...')
-        if self.derivative_type == 'FUTURE':
-            parsed = parser.futures(f'{self.ticker}.{self.exchange}')
-        else:
-            parsed = parser.options(f'{self.ticker}.{self.exchange}', option_type=self.derivative_type)
-        if not parsed:
-            self.logger.error(f'Nothing is found on dxfeed for {self.ticker}.{self.exchange}')
-            return payload, {'P2GATE': {}}
-        parsed = parsed.get(self.exchange, {}).get(self.ticker, {})
-        if not self.shortname:
-            self.shortname = parsed.get('description')\
-                            if parsed.get('description')\
-                            else input(f'Type {self.derivative_type} description: ')
-        # check the underlying expiration time
-        underlying_expiry_time = str()
-        if self.derivative_type == 'OPTION ON FUTURE':
-            underlying_expiration = next((x['underlying'] for x
-                                        in parsed.get(self.exchange, {}).get(self.ticker, {}).values()
-                                        if x.get('underlying')), None)
-            if underlying_expiration:
-                underlying_get_expiry: dict = next((
-                    asyncio.run(
-                        self.sdb.get_v2(
-                            f'^{underlying_expiration}$',
-                            fields=['symbolId', 'expiryTime']
-                        )
-                    )
-                ), {})
-                if underlying_get_expiry:
-                    underlying_expiry_time = underlying_get_expiry.get(
-                        'expiryTime', ''
-                    ).split('T')[-1].split('.')[0] # trim date at the beginning and ".000Z" at the end
-        payload.update({
-            'shortName': self.shortname,
+        overrides.update({
+            'target_folder': self.series
         })
-        if parsed.get('contractMultiplier'):
-            payload.update({
-                'contractMultiplier': parsed['contractMultiplier']
+        parsed = {
+            'contracts': contracts
+        }
+        return overrides, parsed
+
+    def set_reuters_overrides(self, overrides: dict = None, weeklies=False):
+        if overrides is None:
+            overrides = {}
+        if weeklies:
+            ticker = input('Type weekly ticker template: ')
+            if not ticker:
+                return overrides
+        else:
+            ticker = self.ticker    
+        overrides.update({'ticker': ticker})
+        while True:
+            base = input("ric base (the part preceeding expiration code): ")
+            if not base:
+                return overrides
+            suffix = input(
+                "ric suffix (the part after expiration code. Press enter if none): "
+            )
+            if self.derivative_type in ['OPTION', 'OPTION ON FUTURE']:
+                separator = input(
+                    "option separator (the part that separates expiration from strike. Press enter if none): "
+                )
+                print('Test search...')
+                if '$' in base or '$' in separator or '$' in suffix:
+                    sym = '$'
+                    weeks = '12345'
+                elif '@' in base or '@' in separator or '@' in suffix:
+                    sym = '@'
+                    weeks = 'ABCDE'
+                else:
+                    sym = '~~~' # smth that is never expected
+                    weeks = ' '
+                found = False
+                for i in weeks:
+                    srch_pld = {
+                        'base': base.replace(sym, i),
+                        'suffix': suffix.replace(sym, i),
+                        'optionSeparator': separator.replace(sym, i),
+                    }
+                    search = self.ds.options(
+                        f"{ticker.replace(sym, i)}.{self.exchange}",
+                        overrides=srch_pld
+                    )
+                    if search.get('contracts') and weeklies:
+                        found = True
+                        pprint(f"Week {i}: {search['contracts']}")
+                    elif search.get('contracts'):
+                        found = True
+                        to_print = search['contracts'][:3]
+                        if len(search['contracts']) > 3:
+                            to_print.append(f"and {len(search['contracts']) - 3} more expirations")
+                        pprint(f"Found contracts: {to_print}")
+            elif self.derivative_type == 'FUTURE':
+                separator = None
+                print('Test search...')
+                srch_pld = {
+                    'base': base,
+                    'suffix': suffix,
+                }
+                search = self.ds.futures(
+                    f"{ticker}.{self.exchange}",
+                    overrides=srch_pld
+                )
+                if search.get('contracts'):
+                    found = True
+                    to_print = search['contracts'][:3]
+                    if len(search['contracts']) > 3:
+                        to_print.append(f"and {len(search['contracts']) - 3} more expirations")
+                    pprint(f"Found contracts: {to_print}")
+
+            if found:
+                try_again = input('Looks good? Y/n: ')
+                if try_again != 'n':
+                    break
+            else:
+                try_again = input(
+                    f"nothing is found... try again? Y/n: "
+                )
+                if try_again == 'n':
+                    return overrides
+        overrides['REUTERS'] = {
+            'reutersProperties/quoteRic/base': base,
+            'reutersProperties/tradeRic/base': base
+        }
+        if suffix:
+            overrides['REUTERS'].update({
+                'reutersProperties/quoteRic/suffix': suffix,
+                'reutersProperties/tradeRic/suffix': suffix
             })
-        if parsed.get('cfi'):
-            payload.update({
-                'assetInformation/CFI': parsed['cfi']
+        if separator:
+            overrides['REUTERS'].update({
+                'reutersProperties/quoteRic/optionSeparator': separator,
+                'reutersProperties/tradeRic/optionSeparator': separator
             })
-        if parsed.get('mpi'):
-            payload.update({
-                'feedMinPriceIncrement': parsed['mpi'],
-                'orderMinPriceIncrement': parsed['mpi']
-            })
-        if parsed.get('symbolName'):
-            overrides.update({
-                'symbolName': parsed['symbolName']
-            })
-        if underlying_expiry_time:
-            payload.update({
-                'expiry/time': underlying_expiry_time
-            })
-        return payload, {'P2GATE': overrides}
+        return overrides
+
+
+# option methods
+    def multiply_strikes(
+            self,
+            expiration: dict,
+            multiplier: float = 1
+        ):
+        if multiplier == 1 or not multiplier:
+            return None
+        else:
+            # logic was taken from cme_adder
+            # previous = sorted(strikes['PUT'])[0] * multiplier
+            # while (previous * multiplier < 1):
+            #     multiplier = multiplier * 1000
+            #     previous = previous * 1000
+            for side in ['PUT', 'CALL']:
+                for strike in expiration['strikePrices'][side]:
+                    strike.update({
+                        'strikePrice': round(strike['strikePrice'] / multiplier, 3)
+                    })
+ 
+    def make_weekly_targets(
+            self,
+            weekly_common: WeeklyCommon,
+            overrides: dict,
+            weekly_templates: dict
+        ):
+        parser_targets = []
+        letters = ' ABCDE'
+        for i in range(1, 6):
+            weekly_folder = next((x for x in weekly_common.weekly_folders if x.week_number == i), None)
+            if not weekly_folder:
+                continue
+            weekly_target = deepcopy(overrides)
+            weekly_target['target_folder'] = weekly_folder
+            weekly_target['ticker'] = copy(weekly_templates['ticker'])
+            weekly_target['ticker'] = weekly_target['ticker'].replace('$', str(i))
+            weekly_target['ticker'] = weekly_target['ticker'].replace('@', letters[i])
+            for provider, ovrs in weekly_target.items():
+                if isinstance(ovrs, dict):
+                    weekly_target[provider] = {}
+                    for key, override in ovrs.items():
+                        if not isinstance(override, str):
+                            weekly_target[provider].update({key: override})
+                            continue
+                        weekly_target[provider].update({
+                            key: override.replace('$', str(i)).replace('@', letters[i])
+                        })
+            if weekly_target.get('REUTERS'):
+                rics = {
+                    key.split('/')[-1]: val for key, val
+                    in weekly_templates['REUTERS'].items()
+                }
+                weekly_target['REUTERS'].update(rics)
+            parser_targets.append(weekly_target)
+        return parser_targets
+
+    def set_weekly_templates(self, overrides: dict):
+        ticker = ''
+        feed_provider = overrides.get('provider')
+        message = '''
+        We are about to create new folders for weekly options.
+        · If week identifier is a number replace it with "$"
+        (e.g. for weeklies ZW1, ZW2, ..., ZW5 type ZW$
+        and for weeklies R1E, R2E, ..., R5E type R$E)
+        · If week identifier is a letter replace it with "@"
+        (e.g for weeklies Si/A, Si/B, ..., Si/E type Si/@):
+        '''
+        print(message)
+        if feed_provider == 'REUTERS':
+            overrides = self.set_reuters_overrides(deepcopy(overrides), weeklies=True)
+        else:
+            while '$' not in ticker and '@' not in ticker:
+                ticker = input('Type weekly ticker template: ')
+            overrides.update({'ticker': ticker})
+        return overrides
 
 
 if __name__ == '__main__':
