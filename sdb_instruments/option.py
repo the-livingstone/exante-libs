@@ -699,6 +699,13 @@ class Option(Derivative):
             elif create_result:
                 if isinstance(create_result, str):
                     create_result = json.loads(create_result)
+                if create_result.get('symbolId', {}).get('message') == 'already exist':
+                    for key, val in create_result['symbolId']['description'].items():
+                        if isinstance(val, list):
+                            create_result['symbolId']['description'][key] = [
+                                '.'.join(val[0].split('.')[:-1]),
+                                '...'
+                            ]
                 self.logger.error(
                     f'problems with creating new expirations: {pformat(create_result)}'
                 )
