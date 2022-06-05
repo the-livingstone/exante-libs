@@ -533,6 +533,7 @@ class DerivativeAdder:
                         self.errormsg += '\n' + pformat(highlighted) + '\n'
                         drop_expirations.append(symbolid)
                         dropped = True
+                        continue
                 elif validated is True:
                     break
                 if attempts > 0 and not self.croned:
