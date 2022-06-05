@@ -565,11 +565,11 @@ class SDBAdditional:
         elif instrument_type == 'CALENDAR_SPREAD':
             try:
                 near_symbolic = (
-                    f"{Months([compiled_instrument['nearMaturityDate']['month']]).name}"
+                    f"{Months(compiled_instrument['nearMaturityDate']['month']).name}"
                     f"{compiled_instrument['nearMaturityDate']['year']}"
                 )
                 far_symbolic = (
-                    f"{Months([compiled_instrument['farMaturityDate']['month']]).name}"
+                    f"{Months(compiled_instrument['farMaturityDate']['month']).name}"
                     f"{compiled_instrument['farMaturityDate']['year']}"
                 )
             except KeyError:
@@ -585,7 +585,7 @@ class SDBAdditional:
             try:
                 symbolic = (
                     f"{compiled_instrument['maturityDate'].get('day', '')}"
-                    f"{Months([compiled_instrument['maturityDate']['month']]).name}"
+                    f"{Months(compiled_instrument['maturityDate']['month']).name}"
                     f"{compiled_instrument['maturityDate']['year']}"
                 )
             except KeyError:
