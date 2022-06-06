@@ -474,6 +474,7 @@ class DerivativeAdder:
                         if 'expires earlier than instrument' in val
                         or key == 'underlyingId'
                         or 'does not exist in sdb' in val
+                        or 'UnderlyingId is not set' in val
                     ])
                 for eiss in expiration_issues:
                     highlighted.pop(eiss)
