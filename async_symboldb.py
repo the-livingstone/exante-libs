@@ -923,4 +923,4 @@ class SymbolDB:
         :return: number of affected children
         """
         response = await self._get(f'instruments/{_id}/deps')
-        return response['affectedSymbols'] if response.get('affectedSymbols') else None
+        return response['affectedSymbols'] if response.get('affectedSymbols') else 1

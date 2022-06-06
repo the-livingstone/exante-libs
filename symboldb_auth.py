@@ -879,4 +879,4 @@ class SymbolDB:
         """
         response = self._get(f'instruments/{_id}/deps')
         if response.ok:
-            return response.json()['affectedSymbols'] if response.json().get('affectedSymbols') else None
+            return response.json()['affectedSymbols'] if response.json().get('affectedSymbols') else 1
