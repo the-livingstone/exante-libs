@@ -1,4 +1,4 @@
-
+import asyncio
 import datetime as dt
 import logging
 import pandas as pd
@@ -9,10 +9,12 @@ from libs.parsers import (
     FractionCurrencies,
     ExchangeParser,
     convert_maturity,
-    Datascope
+    Datascope,
+    Months
 )
-from libs.sdb_additional import SDBAdditional
+from libs.async_sdb_additional import SDBAdditional
 from libs.sdb_instruments import Future, Instrument, Option, Stock
+from libs.sdb_instruments.instrument import get_part
 from pydantic import BaseModel, Field, root_validator, validator, ValidationError
 
 
@@ -220,7 +222,13 @@ class Parser(Datascope, ExchangeParser):
     def __init__(self):
         super().__init__()
         self.sdbadds = SDBAdditional()
-        self.provider_id = next((x[1] for x in self.sdbadds.get_list_from_sdb('feedProviders') if x[0] == 'REUTERS'), None)
+        self.provider_id = next((
+            x[1] for x
+            in asyncio.run(
+                self.sdbadds.get_list_from_sdb('feed_providers')
+            )
+            if x[0] == 'REUTERS'
+        ), None)
         if not self.provider_id:
             raise RuntimeError('Reuters is not found in the sdb providers list... Strange!')
 
@@ -231,8 +239,65 @@ class Parser(Datascope, ExchangeParser):
     def stock(self, **kwargs):
         pass
 
-    def __search_underlying(self, series_data: dict, underlying_type: str):
-        pass
+    def __search_underlying(self, series_data: dict, contracts: list[dict], underlying_type: str):
+        if underlying_type == 'index':
+            pass
+        elif underlying_type == 'future':
+            exchange_futures_uuid = asyncio.run(
+                self.sdbadds.sdb.get_uuid_by_path(
+                    ['Root', 'FUTURE', series_data['exchange']],
+                    self.sdbadds.tree
+                )
+            )
+            all_exchange_futures = asyncio.run(
+                self.sdbadds.sdb.get_heirs(
+                    exchange_futures_uuid, recursive=True, full=True
+                )
+            )
+
+            for c in contracts:
+                match = re.match(r'^(?P<ticker>\w+)(?P<maturity>[FGHJKMNQUVXZ]\d{1,2}).*', c['underlying_ric'])
+                if match:
+                    ric_base = match.group('ticker')
+                    underlying_futures_folder = next((
+                        x for x in all_exchange_futures
+                        if x['isAbstract']
+                        and get_part(
+                            x, [
+                                'feeds',
+                                'providerOverrides',
+                                self.provider_id,
+                                'reutersProperties',
+                                'tradeRic',
+                                'base'
+                            ]
+                        ) == ric_base
+                    ), None)
+                    if underlying_futures_folder:
+                        children = [
+                            x for x
+                            in all_exchange_futures
+                            if x['path'][:len(underlying_futures_folder['path'])] == underlying_futures_folder['path']
+                            and not x['isAbstract']
+                        ]
+                        underlying_future = next((
+                            self.sdbadds.compile_symbol_id(x) for x
+                            in children
+                            if f"{ric_base}{Months(x['maturityDate']['month']).name}{str(x['maturityDate']['year'])[-1]}" == c['underlying_ric']
+                        ), None)
+                    else:
+                        underlying_future = next((
+                            self.sdbadds.compile_symbol_id(x) for x
+                            in all_exchange_futures
+                            if x.get('identifiers', {}).get('RIC') == c['underlying_ric']
+                        ), None)
+                    if underlying_future:
+                        c['underlyingId'] = {
+                            'type': 'symbolId',
+                            'id': underlying_future
+                        }
+
+
 
     def __create_search_list(self, series: str, product: str, overrides: dict = None) -> dict:
         try:
@@ -466,8 +531,8 @@ class Parser(Datascope, ExchangeParser):
             'maturity'
         ]
         if product == 'FuturesOnOptions':
-            series_exclude.append('underlying')
-            contract_include.append('underlying')
+            series_exclude.append('underlying_ric')
+            contract_include.append('underlying_ric')
         for key in data_df.columns:
             val = next((x for x in data_df[key]), None)
             if val is None or key in series_exclude:
@@ -490,11 +555,14 @@ class Parser(Datascope, ExchangeParser):
                 if key in contract_include
             })
             for side in ['PUT', 'CALL']:
-                side_df = contract_df.loc[contract_df['_strike_side'] == side][['strikePrice', 'ISIN']]
+                side_df = contract_df.loc[contract_df['strike_side_'] == side][['strikePrice', 'ISIN']]
                 contract['strikePrices'][side] = side_df.to_dict('records')
             contracts.append(contract)
         underlying_type = 'index' if product == 'Options' else 'future'
-        self.__search_underlying(series_data, underlying_type)
+        if product == 'Options':
+            self.__search_underlying(series_data, contracts, 'index')
+        else:
+            self.__search_underlying(series_data, contracts, 'future')
         return series_data, contracts
 
     def spreads(
