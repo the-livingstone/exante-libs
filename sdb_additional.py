@@ -17,7 +17,9 @@ from libs.terminal_tools import (
     pick_from_list,
     pick_from_list_tm,
     colorize,
-    sorting_expirations
+    sorting_expirations,
+    ColorMode,
+    StatusColor
 )
 from typing import Union
 
@@ -1822,16 +1824,16 @@ class SDBAdditional:
                     ])
         for e in elements:
             if e[2] in current_colorize:
-                e[0] = colorize(e[0], state=current_colorize[e[2]])
-                e[1] = colorize(e[1], state=current_colorize[e[2]])
+                e[0] = colorize(e[0], ColorMode.STATUS, state=current_colorize[e[2]])
+                e[1] = colorize(e[1], ColorMode.STATUS, state=current_colorize[e[2]])
             elif (
                 'None' in current_colorize
                 and e[3] is None
                 and e[2]
                 and e[2] != 'availableOrderDurationTypes'
             ):
-                e[0] = colorize(e[0], state=current_colorize['None'])
-                e[1] = colorize(e[1], state=current_colorize['None'])
+                e[0] = colorize(e[0], ColorMode.STATUS, state=current_colorize['None'])
+                e[1] = colorize(e[1], ColorMode.STATUS, state=current_colorize['None'])
         for missing in [
             x for x
             in current_colorize
@@ -1842,8 +1844,8 @@ class SDBAdditional:
         ]:
             elements.insert(0,
                 [
-                    colorize(prefix(depth), state='missing'),
-                    colorize(f"{missing}: missing", state='missing'),
+                    colorize(prefix(depth), ColorMode.STATUS, state=StatusColor.MISSING),
+                    colorize(f"{missing}: missing", ColorMode.STATUS, state=StatusColor.MISSING),
                     missing,
                     None
                 ]

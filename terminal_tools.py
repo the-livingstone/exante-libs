@@ -1,54 +1,116 @@
 #!/usr/bin/env python3
 
-import re
-import os
 import colorama as clr
+import logging
+import os
+import re
+from typing import Union
+from enum import Enum
 from tabulate import tabulate
 from simple_term_menu import TerminalMenu as TM
 
-    
+
+class ColorMode(Enum):
+    SYMBOL_TYPE = 'symbol_type'
+    STATUS = 'status'
+    SYMBOL_PERMS = 'symbol_perms'
+
+class SymbolTypeColor(Enum):
+    STOCK = clr.Fore.WHITE
+    FX_SPOT = clr.Fore.WHITE
+    FOREX = clr.Fore.WHITE
+    FUTURE = clr.Fore.GREEN
+    FUND = clr.Fore.WHITE
+    SPREAD = clr.Fore.YELLOW
+    CALENDAR_SPREAD = clr.Fore.YELLOW
+    OPTION = clr.Fore.CYAN
+    BOND = clr.Fore.MAGENTA
+    CFD = clr.Fore.BLUE
+
+class StatusColor(Enum):
+    EXISTING = clr.Fore.WHITE
+    NEW = clr.Back.GREEN + clr.Style.BRIGHT
+    USED_NE = clr.Back.YELLOW + clr.Style.BRIGHT
+    REMOVED = clr.Fore.BLACK + clr.Back.WHITE + clr.Style.BRIGHT
+    HIGHLIGHTED = clr.Fore.BLACK + clr.Back.WHITE
+    MISSING = clr.Fore.RED +clr.Back.WHITE + clr.Style.DIM
+    INVALID = clr.Fore.RED + clr.Style.BRIGHT
+
+class Modifiers(Enum):
+    RESET = clr.Style.RESET_ALL
+    BRIGHT = clr.Style.BRIGHT
+    DIM = clr.Style.DIM
+
+class PermsColors(Enum):
+    NO_VIEW = clr.Fore.RED + clr.Style.BRIGHT
+    NO_TRADE = clr.Fore.YELLOW + clr.Style.BRIGHT
+    VIEW_TRADE = clr.Fore.WHITE + clr.Style.BRIGHT
+    ALLOW_SHORT = clr.Fore.GREEN + clr.Style.BRIGHT
+
+
+
 def clear():
     os.system('clear')
 
-def colorize(text, sym_type='STOCK', expired=False, is_trading=True, state=''):
-    type_colors = {
-        'STOCK': clr.Fore.WHITE,
-        'FX_SPOT': clr.Fore.WHITE,
-        'FOREX': clr.Fore.WHITE,
-        'FUTURE': clr.Fore.GREEN,
-        'FUND': clr.Fore.WHITE,
-        'SPREAD': clr.Fore.YELLOW,
-        'CALENDAR_SPREAD': clr.Fore.YELLOW,
-        'OPTION': clr.Fore.CYAN,
-        'BOND': clr.Fore.MAGENTA,
-        'CFD': clr.Fore.BLUE,
-    }
-    status_colors = {
-        'new': clr.Back.GREEN + clr.Style.BRIGHT,
-        'used_ne': clr.Back.YELLOW + clr.Style.BRIGHT,
-        'removed': clr.Fore.BLACK + clr.Back.WHITE + clr.Style.BRIGHT,
-        'highlighted': clr.Fore.BLACK + clr.Back.WHITE,
-        'missing': clr.Fore.RED +clr.Back.WHITE + clr.Style.DIM,
-        'invalid': clr.Fore.RED + clr.Style.BRIGHT
-    }
-    modifiers = {
-        'reset': clr.Style.RESET_ALL,
-        'bright': clr.Style.BRIGHT,
-        'dim': clr.Style.DIM,
+def colorize(text, color_mode: Union[str, ColorMode], **params):
 
-    }
-    if not state:
-        if not expired and is_trading:
-            colored = type_colors[sym_type] + modifiers['bright'] + text
-        elif is_trading:
-            colored = type_colors[sym_type] + text
+    if isinstance(color_mode, str):
+        try:
+            cm = ColorMode(color_mode)
+        except ValueError:
+            logging.warning(f"wrong color_mode value: {color_mode}")
+            logging.warning(f"available ones: {', '.join([x.value for x in ColorMode])}")
+            return text
+    elif isinstance(color_mode, ColorMode):
+        cm = color_mode
+    else:
+        logging.warning(f"wrong color_mode value: {color_mode}")
+        logging.warning(f"available ones: {', '.join([x.value for x in ColorMode])}")
+        return text
+
+    if cm is ColorMode.SYMBOL_TYPE:
+        st = params.get('sym_type', 'STOCK')
+        if isinstance(st, SymbolTypeColor):
+            sym_type = st
         else:
-            colored = type_colors[sym_type] + modifiers['dim'] + text
-    elif state in status_colors:
-        colored = status_colors[state] + text
+            try:
+                sym_type = SymbolTypeColor[st]
+            except KeyError:
+                logging.warning(f"wrong sym_type value: {params.get('sym_type')}")
+                logging.warning(f"available ones: {', '.join([x.name for x in SymbolTypeColor])}")
+                return text
+        if params.get('is_trading') is not False:
+            if not params.get('expired'): 
+                colored = sym_type.value + Modifiers.BRIGHT.value + text
+            else:
+                colored = sym_type.value + text
+        else:
+            colored = sym_type.value + Modifiers.DIM.value + text
+    elif cm is ColorMode.STATUS:
+        s = params.get('state', 'EXISTING')
+        if isinstance(s, StatusColor):
+            state = s
+        else:
+            try:
+                state = StatusColor[s]
+            except KeyError:
+                logging.warning(f"wrong state value: {params.get('state')}")
+                logging.warning(f"available ones: {', '.join([x.name for x in StatusColor])}")
+                return text
+        colored = state.value + text
+    elif cm is ColorMode.SYMBOL_PERMS:
+        perms = params.get('perms', '...')
+        if 'v' not in perms:
+            colored = PermsColors.NO_VIEW.value + text
+        elif 't' not in perms:
+            colored = PermsColors.NO_TRADE.value + text
+        elif 's' not in perms:
+            colored = PermsColors.VIEW_TRADE.value + text
+        else:
+            colored = PermsColors.ALLOW_SHORT.value + text
     else:
         return text
-    return colored + modifiers['reset']
+    return colored + Modifiers.RESET.value
 
 def pick_from_list_tm(
     options_list: list,
