@@ -864,18 +864,19 @@ class SDBAdditional:
             for uc in update_cache:
                 self.__write_cache_iter(uc, sdb_lists[uc])
 
-        if list_name == 'currencies':
+        check_cache()
+        if list_name == SdbLists.CURRENCIES.value:
             fields = ['_id', '_id'] + additional_fields
             currencies = [tuple([x.get(field) for field in fields]) for x in self.sdb_currencies]
             return currencies
-        elif list_name == 'exchanges':
+        elif list_name == SdbLists.EXCHANGES.value:
             if id_only:
                 fields = ['exchangeName', '_id'] + additional_fields
             else:
                 fields = ['name', '_id'] + additional_fields
             exchanges = [tuple([x.get(field) for field in fields]) for x in self.sdb_exchs]
             return exchanges
-        elif list_name == 'accounts':
+        elif list_name == SdbLists.ACCOUNTS.value:
             accounts = []
             for account in self.sdb_accs:
                 br_name = account['providerName']
@@ -895,7 +896,7 @@ class SDBAdditional:
                     fields = [human_name, base] + [account[f] for f in additional_fields]
                 accounts.append(tuple(fields))
             return accounts
-        elif list_name == 'gateways':
+        elif list_name == SdbLists.GATEWAYS.value:
             gateways = []
             for gateway in self.sdb_gws:
                 pr_name = gateway['providerName']
@@ -913,23 +914,23 @@ class SDBAdditional:
                     fields = [human_name, base] + [gateway[f] for f in additional_fields]
                 gateways.append(tuple(fields))
             return gateways
-        elif list_name == 'execSchemes':
+        elif list_name == SdbLists.EXECSCHEMES.value:
             fields = ['name', '_id'] + additional_fields
             exec_schemes = [tuple([x.get(field) for field in fields]) for x in self.sdb_execs]
             return exec_schemes
-        elif list_name == 'feedProviders':
+        elif list_name == SdbLists.FEED_PROVIDERS.value:
             providers = []
             for gw in self.sdb_gws:
                 if gw['providerId'] not in [x[1] for x in providers]:
                     providers.append((gw['providerName'], gw['providerId']))
             return providers
-        elif list_name == 'brokerProviders':
+        elif list_name == SdbLists.BROKER_PROVIDERS.value:
             providers = []
             for br in self.sdb_accs:
                 if br['providerId'] not in [x[1] for x in providers]:
                     providers.append((br['providerName'], br['providerId']))
             return providers
-        elif list_name == 'schedules':
+        elif list_name == SdbLists.SCHEDULES.value:
             fields = ['name', '_id'] + additional_fields
             schedules = [tuple([x.get(field) for field in fields]) for x in self.sdb_scheds]
             return schedules
