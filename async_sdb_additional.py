@@ -636,51 +636,42 @@ class SDBAdditional:
                 return None
 
             sym_uuid = {
-                '_id': browsed[1],
                 'columns': [
                     browsed[0]
-                ]
+                ],
+                '_id': browsed[1]
             }
+            return sym_uuid
         # another option is to directly specify the instrument uuid
-        elif self.sdb.is_uuid(search_string):
-            if not tree or not next((x for x in tree if x.get('symbolId')), None):
-                tree = asyncio.run(self.load_tree(
-                fields=[
-                    'expiryTime',
-                    'exchangeId',
-                    'ticker',
-                    'symbolId',
-                    'description',
-                    'type'
-                ]
-            ))
-            instrument = next(deepcopy(x) for x in tree if x['_id'] == search_string)
-            if instrument['symbolId'] is not None:
+        if self.sdb.is_uuid(search_string):
+            instrument = asyncio.run(self.sdb.get(search_string))
+            if instrument:
+                symbol_id = self.compile_symbol_id(instrument)
                 sym_uuid = {
                     'columns': [
-                        instrument['symbolId']
+                        symbol_id if symbol_id else instrument['name']
                     ],
                     '_id': search_string
                 }
-            else:
-                sym_uuid = {
-                    'columns': [
-                        instrument['name']
-                    ],
-                    '_id': search_string
-                }
+                return sym_uuid
         # oh wow search by shortname works
-        elif is_shortname:
-            search_sdb = [
-                deepcopy(x) for x in tree
-                if x['description'] is not None
-                and re.search(rf'{input_path[0].lower()}', x['description'].lower())
-            ]
-            for sym in search_sdb:
-                if sym['isAbstract']:
-                    sym.update({
-                        'symbolId': sym['name']
-                    })
+        if is_shortname:
+            search_sdb = asyncio.run(
+                self.sdb.get_by_shortname(
+                    search_string,
+                    fields=[
+                        'expiryTime',
+                        'exchangeId',
+                        'ticker',
+                        'symbolId',
+                        'description',
+                        'type',
+                        '_id',
+                        'isAbstract',
+                        'path'
+                    ]
+                )
+            )
         else:
             search_sdb = asyncio.run(self.sdb.get_v2(
                 input_path[0],
@@ -696,79 +687,84 @@ class SDBAdditional:
                     'path'
                 ]
             ))
+        for sym in search_sdb:
+            if sym['isAbstract']:
+                sym.update({
+                    'symbolId': sym['name']
+                })
             # if we request the exact name of instrument we won't bother with suggestions list
-            if len(search_sdb) == 1:
-                sym_uuid = {
+        if len(search_sdb) == 1:
+            sym_uuid = {
+                'columns': [
+                    search_sdb[0]['symbolId']
+                ],
+                '_id': search_sdb[0]['_id']
+            }
+            return sym_uuid
+        srch = list()
+        for entry in search_sdb:
+            entry_type = asyncio.run(self.get_instrument_type(entry['_id']))
+            is_expired = True if entry.get('expiryTime')\
+                and dt.datetime.fromisoformat(entry['expiryTime'][:-1]) < dt.datetime.now()\
+                    else False
+            if entry['_id'] in [x['_id'] for x in srch]:
+                continue
+            # we indicate non-abstract instruments with '·' sign:
+            # · INSTRUMENT
+            if entry['isAbstract']:
+                srch.append({
                     'columns': [
-                        search_sdb[0]['symbolId']
+                        f"» {self.show_path(entry['path'])}",
+                        ''
                     ],
-                    '_id': search_sdb[0]['_id']
-                }
-        if not sym_uuid:
-            srch = list()
-            for entry in search_sdb:
-                entry_type = self.get_instrument_type(entry['_id'])
-                is_expired = True if entry.get('expiryTime')\
-                    and dt.datetime.fromisoformat(entry['expiryTime'][:-1]) < dt.datetime.now()\
-                        else False
-                if entry['_id'] in [x['_id'] for x in srch]:
-                    continue
-                # we indicate non-abstract instruments with '·' sign:
-                # · INSTRUMENT
-                if entry['isAbstract']:
-                    srch.append({
-                        'columns': [
-                            f"» {self.show_path(entry['path'])}",
-                            ''
-                        ],
-                        '_id': entry['_id'],
-                        'symbol_type': entry_type,
-                        'is_expired': is_expired
-                    })
-                else:
-                    entry_payload = {
-                        'columns': [
-                            f"· {entry['symbolId']}",
-                        ],
-                        '_id': entry['_id'],
-                        'symbol_type': entry_type,
-                        'is_expired': is_expired
-                    }
-                    if entry.get('description') is not None:
-                        entry_payload['columns'].append(entry['description'])
-                        if is_shortname:
-                            match = re.search(
-                                rf'{input_path[0].lower()}',
-                                entry['description'].lower()
-                            )
-                            entry_payload.update({'highlight': match.span()})
-                    else:
-                        entry_payload['columns'].append('')
-                    srch.append(entry_payload)
-                if entry['path'][-2] not in [x['_id'] for x in srch]:
-                    # we indicate folders with '»' sign and also write the path:
-                    # » PATH → TO → THE → FOLDER
-                    srch.append({
-                        'columns': [
-                            f"» {self.show_path(entry['path'][:-1])}",
-                            ''
-                        ],
-                        '_id': entry['path'][-2],
-                        'symbol_type': entry_type,
-                        'is_expired': is_expired
-                    })
-            if not srch:
-                self.logger.error(f'nothing was found for {input_path[0]}')
-                return None
-            srch = sorted(srch, key=lambda e: sorting_expirations(e['columns'][0]))
-            if len(input_path) > 1:
-                specify = input_path[1]
+                    '_id': entry['_id'],
+                    'symbol_type': entry_type,
+                    'is_expired': is_expired
+                })
             else:
-                specify = None
-            selected = pick_from_list(srch, 'instruments', specify=specify, color=True)
-            if selected is None:
-                return None
-            sym_uuid = srch[selected]
+                entry_payload = {
+                    'columns': [
+                        f"· {entry['symbolId']}",
+                    ],
+                    '_id': entry['_id'],
+                    'symbol_type': entry_type,
+                    'is_expired': is_expired
+                }
+                if entry.get('description') is not None:
+                    entry_payload['columns'].append(entry['description'])
+                    if is_shortname:
+                        match = re.search(
+                            rf'{input_path[0].lower()}',
+                            entry['description'].lower()
+                        )
+                        entry_payload.update({'highlight': match.span()})
+                else:
+                    entry_payload['columns'].append('')
+                srch.append(entry_payload)
+            if entry['path'][-2] not in [x['_id'] for x in srch]:
+                # we indicate folders with '»' sign and also write the path:
+                # » PATH → TO → THE → FOLDER
+                srch.append({
+                    'columns': [
+                        f"» {self.show_path(entry['path'][:-1])}",
+                        ''
+                    ],
+                    '_id': entry['path'][-2],
+                    'symbol_type': entry_type,
+                    'is_expired': is_expired
+                })
+        if not srch:
+            self.logger.error(f'nothing was found for {input_path[0]}')
+            return None
+        srch = sorted(srch, key=lambda e: sorting_expirations(e['columns'][0]))
+        if len(input_path) > 1:
+            specify = input_path[1]
+        else:
+            specify = None
+        selected = pick_from_list(srch, 'instruments', specify=specify, color=True)
+        if selected is None:
+            return None
+        sym_uuid = srch[selected]
         return sym_uuid
 
     def generate_lambda_futures(self, instrument, second_sequence: bool):
@@ -806,7 +802,7 @@ class SDBAdditional:
             x for x
             in asyncio.run(self.sdb.get_v2(
                 rf'{instrument}[^CPS]+$',
-                fields=['symbolId, expiryTime']
+                fields=['symbolId', 'expiryTime']
             ))
             if x['path'][1] == future_folder_id
         ]
@@ -847,24 +843,35 @@ class SDBAdditional:
         
         return dict_part
 
-    def get_instrument_type(self, symbol) -> str:
+    async def get_instrument_type(self, symbol) -> str:
         """
         Method to get the inherited instrument type
         :param uuid: uuid or symbolId of instrument
         :return: instrument type
         """
-        tree = asyncio.run(self.load_tree(fields=['type', 'symbolId']))
         if isinstance(symbol, str):
-            path = next((x['path'] for x in tree if x['_id'] == symbol or x['symbolId'] == symbol), None)
+            if self.sdb.is_uuid(symbol):
+                parents = await self.sdb.get_parents(symbol)
+            instrument = await self.sdb.get(symbol)
+            parents = await self.sdb.get_parents(instrument['_id']) if instrument else []
         elif isinstance(symbol, dict) and symbol.get('path'):
-            path = symbol['path']
+            if symbol.get('type'):
+                return symbol['type']
+            if symbol.get('id'):
+                parents = await self.sdb.get_parents(symbol['_id'])
+            else:
+                get_parents = []
+                for p in symbol['path']:
+                    get_parents.append(self.sdb.get(p))
+                parents = list(await asyncio.gather(*get_parents))
         else:
             return None
-        for p in reversed(path):
-            sym_type = next((x.get('type') for x in tree if x['_id'] == p), None)
-            if sym_type:
-                return sym_type
-        return None
+        sym_type = next((
+            x['type'] for x
+            in reversed(sorted(parents, key=lambda x: len(x['path'])))            
+            if x.get('type')
+        ), None)
+        return sym_type
 
     async def get_list_from_sdb(self, list_name, id_only=True, additional_fields=[]) -> list:
         """
