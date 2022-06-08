@@ -442,7 +442,7 @@ class Parser(DxFeed, ExchangeParser):
                                     time_giveup = True
                                     if series_data.get('expiry_time_'):
                                         break
-                                    parent = self.sdb.get(p)
+                                    parent = asyncio.run(self.sdb.get(p))
                                     series_data['expiry_time_'] = parent.get('expiry', {}).get('time')
 
                         c['underlyingId'] = {
