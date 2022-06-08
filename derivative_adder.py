@@ -458,7 +458,7 @@ class DerivativeAdder:
             if isinstance(validated, dict) and validated.get('validation_errors'):
                 for v in validated['validation_errors']:
                     highlighted.update({
-                        f"{'/'.join([x for x in v['loc']])}": v['msg']
+                        f"{'/'.join([str(x) for x in v['loc']])}": v['msg']
                     })
                 # if the only validation issue is underlyingId and opt type is oof, then folder is good
                 expiration_issues = [
@@ -523,7 +523,7 @@ class DerivativeAdder:
                 if isinstance(validated, dict) and validated.get('validation_errors'):
                     for v in validated['validation_errors']:
                         highlighted.update({
-                            f"{'/'.join([x for x in v['loc']])}": v['msg']
+                            f"{'/'.join([str(x) for x in v['loc']])}": v['msg']
                         })
                     if self.croned:
                         self.logger.error(
