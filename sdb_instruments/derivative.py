@@ -249,21 +249,15 @@ class Derivative(Instrument):
         self.shortname = series.shortname
         self.parent_folder = series.parent_folder
         self.instrument_type = InstrumentTypes[series.instrument_type]
-        self.spread_type = None
 
         self.reload_cache = series.reload_cache
         self.recreate = series.recreate
         self.silent = series.silent
-        if 'week_number' in series.__dir__():
-            self.week_number = series.week_number
-        if 'option_type' in series.__dir__():
-            self.option_type = series.option_type
-        if 'parent_tree' in series.__dir__():
-            self.parent_tree = series.parent_tree
-        if 'spread_type' in series.__dir__():
-            self.spread_type = series.spread_type
-        if 'calendar_type' in series.__dir__():
-            self.calendar_type = series.calendar_type
+        self.week_number = series.week_number if 'week_number' in series.__dir__() else None
+        self.option_type = series.option_type if 'option_type' in series.__dir__() else None
+        self.parent_tree = series.parent_tree if 'parent_tree' in series.__dir__() else None
+        self.spread_type = series.spread_type if 'spread_type' in series.__dir__() else None
+        self.calendar_type = series.calendar_type if 'calendar_type' in series.__dir__() else None
         
         self.tree = asyncio.run(
             self.sdbadds.load_tree(
@@ -296,6 +290,11 @@ class Derivative(Instrument):
             sdbadds=self.sdbadds,
             tree=self.tree,
             reload_cache=self.reload_cache,
+            week_number=self.week_number,
+            option_type=self.option_type,
+            parent_tree=self.parent_tree,
+            spread_type=self.spread_type,
+            calendar_type=self.calendar_type,
 
             silent=self.silent
         )
