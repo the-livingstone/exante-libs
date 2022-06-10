@@ -43,6 +43,7 @@ class DerivativeAdder:
             derivative='FUTURE',
             weekly: bool = False,
             allowed_expirations: list = None,
+            max_timedelta: int = None,
             recreate: bool = False,
             reload_cache: bool = True,
             croned: bool = False,
@@ -60,6 +61,7 @@ class DerivativeAdder:
         self.shortname = shortname
         self.derivative_type = derivative
         self.allowed_expirations = allowed_expirations
+        self.max_timedelta = max_timedelta
         self.series = self.set_series(
             recreate=recreate,
             reload_cache=reload_cache
@@ -349,7 +351,12 @@ class DerivativeAdder:
         else:
             return {'series': {}, 'contracts': []}
         if contracts:
-            good_to_add = parser.transform_to_sdb({}, contracts, product=self.derivative_type)
+            good_to_add = parser.transform_to_sdb(
+                {},
+                contracts,
+                product=self.derivative_type,
+                spread_type=target['target_folder'].spread_type if self.derivative_type == 'SPREAD' else None
+            )
         else:
             self.logger.warning(
                 f"Didn't find anything for {ticker}.{exchange} on {feed_provider}"
@@ -419,6 +426,29 @@ class DerivativeAdder:
                 in contracts
                 if x.get('name') in filter_expirations
             ]
+        if self.max_timedelta is not None:
+            approved = deepcopy(allowed)
+            if contracts[0].get('farMaturityDate'):
+                allowed = [
+                    f"{Months(x['nearMaturityDate']['month']).name}{x['nearMaturityDate']['year']}-"
+                    f"{Months(x['farMaturityDate']['month']).name}{x['farMaturityDate']['year']}" for x
+                    in contracts
+                    if (self.sdb.sdb_to_date(x['farMaturityDate']) - dt.date.today()).days < self.max_timedelta * 365
+                    and (
+                        approved is None
+                        or self.sdb.sdb_to_date(x['expiry']).isoformat() in approved
+                    )
+                ]
+            else:
+                allowed = [
+                    self.sdb.sdb_to_date(x['expiry']).isoformat() for x
+                    in contracts
+                    if (self.sdb.sdb_to_date(x['expiry']) - dt.date.today()).days < self.max_timedelta * 365
+                    and (
+                        approved is None
+                        or self.sdb.sdb_to_date(x['expiry']).isoformat() in approved
+                    )
+                ]
         target_folder.allowed_expirations = allowed
 
     def add_expirations(
