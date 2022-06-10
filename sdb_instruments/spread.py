@@ -610,6 +610,7 @@ class SpreadExpiration(Instrument):
             env=spread.env,
             sdb=spread.sdb,
             sdbadds=spread.sdbadds,
+            spread_type=self.spread_type,
             silent=spread.silent
         )
         self.ticker = spread.ticker
