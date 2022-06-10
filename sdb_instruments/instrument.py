@@ -374,7 +374,7 @@ class Instrument:
             self.instrument_type = set_instrument_type(instrument_type=instrument_type)
             if self.instrument_type is InstrumentTypes.SPREAD:
                 if kwargs.get('spread_type') in ['SPREAD', 'CALENDAR_SPREAD']:
-                    self.schema: BaseModel = set_schema[env][instrument_type][kwargs['spread_type']]
+                    self.schema: BaseModel = set_schema[env][self.instrument_type.value][kwargs['spread_type']]
                 else:
                     raise RuntimeError(
                         f"Spread type {kwargs.get('spread_type')} is unknown, cannot set Instrument schema"
