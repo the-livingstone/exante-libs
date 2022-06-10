@@ -583,25 +583,27 @@ class Parser(DxFeed, ExchangeParser):
                 else:
                     if second_futs:
                         self.logger.warning(
-                            f"{first_ticker}-{second_ticker}.{exchange} {c['MMY']}: "
+                            f"{first_ticker}-{second_ticker}.{exchange}.{dxfeed_maturity_to_sdb(c['SYMBOL'].split('-')[0])[1]}: "
                             f"leg future ({leg_ticker}.{exchange}.{leg_maturity}) "
                             f"is not found in sdb"
                         )
                     else:
                         self.logger.warning(
-                            f"{first_ticker}.{exchange}.*S/ {c['MMY']}: "
+                            f"{first_ticker}.{exchange}.*S/"
+                            f"{dxfeed_maturity_to_sdb(c['SYMBOL'].split('-')[0])[1]}-{dxfeed_maturity_to_sdb(c['SYMBOL'].split('-')[1])[1]}: "
                             f"leg future ({leg_ticker}.{exchange}.{leg_maturity}) "
                             f"is not found in sdb"
                         )
             if len(post_legs) != 2:
                 if second_futs:
                     self.logger.warning(
-                        f"{first_ticker}-{second_ticker}.{exchange} {c['MMY']}: "
+                        f"{first_ticker}-{second_ticker}.{exchange}{dxfeed_maturity_to_sdb(c['SYMBOL'].split('-')[0])[1]}: "
                         "legs are not set"
                     )
                 else:
                     self.logger.warning(
-                        f"{first_ticker}.{exchange}.*S/ {c['MMY']}: "
+                        f"{first_ticker}.{exchange}.*S/"
+                        f"{dxfeed_maturity_to_sdb(c['SYMBOL'].split('-')[0])[1]}-{dxfeed_maturity_to_sdb(c['SYMBOL'].split('-')[1])[1]}: "
                         "legs are not set"
                     )
                 continue
