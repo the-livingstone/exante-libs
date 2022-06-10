@@ -610,7 +610,8 @@ class ExchangeParser(ABC):
             self,
             series_data: dict,
             contracts: list = None,
-            product: str = 'FUTURE'
+            product: str = 'FUTURE',
+            spread_type: str = None
         ):
         if product in [
             'FUTURE',
@@ -622,7 +623,10 @@ class ExchangeParser(ABC):
             series_folder = {}
             if series_data:
                 try:
-                    series = self.to_sdb_schema[product]['series'](**series_data)
+                    if spread_type:
+                        series = self.to_sdb_schema[spread_type]['series'](**series_data)
+                    else:
+                        series = self.to_sdb_schema[product]['series'](**series_data)
                 except ValidationError as valerr:
                     self.logger.error(
                         f"{series_data.get('ticker')}.{series_data.get('exchange')}: "
@@ -648,7 +652,10 @@ class ExchangeParser(ABC):
                 contracts = sorted(contracts, key=lambda d: d['expiry'])
                 for c in contracts:
                     try:
-                        expiration = self.to_sdb_schema[product]['contract'](**c)
+                        if spread_type:
+                            expiration = self.to_sdb_schema[spread_type]['contract'](**c)
+                        else:
+                            expiration = self.to_sdb_schema[product]['contract'](**c)
                         expiration_exclude = {
                             x for x
                             in expiration.__dir__()
