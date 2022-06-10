@@ -588,8 +588,10 @@ class DerivativeAdder:
                     for new in part_report['created']:
                         self.comment += f'* {new}' + '\n'
                     self.comment += '\n'
-                self.errormsg += pformat(part_report['create_error']) + '\n' if part_report.get('create_error') else ''
-                self.errormsg += pformat(part_report['update_error']) + '\n' if part_report.get('update_error') else ''
+                self.errormsg += f"{self.series.ticker}.{self.series.exchange} create error:" \
+                    + pformat(part_report['create_error']) + '\n' if part_report.get('create_error') else ''
+                self.errormsg += f"{self.series.ticker}.{self.series.exchange} update error:" \
+                    + pformat(part_report['update_error']) + '\n' if part_report.get('update_error') else ''
         return self.comment, self.errormsg
 
 
