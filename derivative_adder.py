@@ -47,13 +47,15 @@ class DerivativeAdder:
             recreate: bool = False,
             reload_cache: bool = True,
             croned: bool = False,
+            sdb: SymbolDB = None,
+            sdbadds: SDBAdditional = None,
             env='prod'
         ) -> None:
         self.errormsg = ''
         self.comment = ''
         self.env = env
-        self.sdb = SymbolDB(env)
-        self.sdbadds = SDBAdditional(env)
+        self.sdb = sdb if isinstance(sdb, SymbolDB) else SymbolDB(env)
+        self.sdbadds = sdbadds if isinstance(sdbadds, SDBAdditional) else SDBAdditional(env)
         self.croned = croned
         self.ticker = ticker
         self.weekly = weekly
@@ -71,6 +73,8 @@ class DerivativeAdder:
             x for x in self.series.contracts
             if x.instrument.get('isTrading') is not False
         ]
+            if isinstance(self.series, Option):
+                self.derivative_type = self.series.option_type
         else:
             self.existing_expirations = []
         self.navi = set_schema[self.env]['navigation'](self.schema)
@@ -98,7 +102,6 @@ class DerivativeAdder:
                     self.ticker,
                     self.exchange,
                     shortname=shortname,
-                    option_type=self.derivative_type,
                     parent_folder=destination,
 
                     recreate=recreate,
@@ -428,7 +431,7 @@ class DerivativeAdder:
             ]
         if self.max_timedelta is not None:
             approved = deepcopy(allowed)
-            if contracts[0].get('farMaturityDate'):
+            if contracts and contracts[0].get('farMaturityDate'):
                 allowed = [
                     f"{Months(x['nearMaturityDate']['month']).name}{x['nearMaturityDate']['year']}-"
                     f"{Months(x['farMaturityDate']['month']).name}{x['farMaturityDate']['year']}" for x
