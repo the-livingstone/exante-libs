@@ -236,9 +236,9 @@ class Derivative(Instrument):
             series
         ):
         self.env = series.env
-        self.sdb = series.sdb if series.sdb else SymbolDB(self.env)
-        self.bo = series.bo if series.bo else BackOffice(env=self.env)
-        self.sdbadds = series.sdbadds if series.sdbadds else SDBAdditional(self.env)
+        self.sdb = series.sdb if isinstance(series.sdb, SymbolDB) else SymbolDB(self.env)
+        self.bo = series.bo if isinstance(series.bo, BackOffice) else BackOffice(env=self.env)
+        self.sdbadds = series.sdbadds if isinstance(series.sdbadds, SDBAdditional) else SDBAdditional(self.env)
 
         self.set_la = False
         self.set_lt = False
@@ -268,8 +268,15 @@ class Derivative(Instrument):
 
         if isinstance(self.parent_folder, str):
             self.parent_folder = asyncio.run(self.sdb.get(self.parent_folder))
+
             if self.parent_folder and self.parent_folder.get('isAbstract'):
                 self.parent_folder_id = self.parent_folder['_id']
+                if self.instrument_type is InstrumentTypes.OPTION:
+                    self.option_type = next(
+                        x['name'] for x
+                        in self.tree
+                        if x['_id'] == self.parent_folder['path'][1]
+                    )
             else:
                 raise RuntimeError(
                     f"Wrong parent folder id is given: {self.parent_folder}. "
@@ -277,8 +284,12 @@ class Derivative(Instrument):
                 )
         elif isinstance(self.parent_folder, dict):
             self.parent_folder_id = self.parent_folder.get('_id')
-            pass
-            # ?????????????????????????????
+            if self.instrument_type is InstrumentTypes.OPTION:
+                self.option_type = next(
+                    x['name'] for x
+                    in self.tree
+                    if x['_id'] == self.parent_folder['path'][1]
+                )
         elif not self.parent_folder:
             self.parent_folder_id = self._find_parent_folder()
             self.parent_folder = asyncio.run(self.sdb.get(self.parent_folder_id))
@@ -305,7 +316,9 @@ class Derivative(Instrument):
         sets parent_folder_id if none
         """
         if self.instrument_type is InstrumentTypes.OPTION:
+            # decide if option_type is OPTION or OPTION ON FUTURE
             for o_type in [self.option_type, 'OPTION', 'OPTION ON FUTURE']:
+                # check if we have an existing path to self.exchange inside selected option_type
                 parent_folder_id = asyncio.run(
                     self.sdb.get_uuid_by_path(
                         ['Root', o_type, self.exchange],
@@ -313,8 +326,22 @@ class Derivative(Instrument):
                     )
                 )
                 if parent_folder_id:
-                    self.option_type = o_type
-                    break
+                    tree_part = [
+                        x for x
+                        in self.tree
+                        if parent_folder_id in x['path']
+                    ]
+                    # sometimes we have same exchange both in OPTION and OPTION ON FUTURE
+                    # check if we have self.ticker in selected exchange
+                    if next((
+                        x for x
+                        in tree_part
+                        if x['name'] == self.ticker
+                        and x['isAbstract']
+                        and x['isTrading'] is not False
+                    ), None):
+                        self.option_type = o_type
+                        break
         elif self.instrument_type in [InstrumentTypes.SPREAD, InstrumentTypes.FUTURE]:
             parent_folder_id = asyncio.run(
                 self.sdb.get_uuid_by_path(
