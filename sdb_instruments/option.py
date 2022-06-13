@@ -26,7 +26,6 @@ class Option(Derivative):
     ticker: str
     exchange: str
     shortname: Optional[str] = None
-    option_type: str = None
     underlying: Optional[str] = None
     parent_folder: Union[str, dict] = None
     week_number: int = 0
@@ -46,7 +45,8 @@ class Option(Derivative):
     parent_tree: list[dict] = None
 
     # non-init vars
-    instrument_type = 'OPTION'
+    instrument_type: str = field(init=False, default='OPTION')
+    option_type: str = field(init=False, default=None)
     instrument: dict = field(init=False, default_factory=dict)
     reference: dict = field(init=False, default_factory=dict)
     series_tree: list[dict] = field(init=False, default_factory=list)
@@ -132,7 +132,46 @@ class Option(Derivative):
         expiration_date = None
 
         # prepare expiration_date as dt.date
-        if isinstance(expiration, str):
+        if isinstance(expiration, OptionExpiration):
+            lookup_folders = [self]
+            lookup_folders.extend([
+                x for y in self.weekly_commons for x in y.weekly_folders
+                if x.week_number == week_num
+                or x.ticker == ticker
+            ])
+            for lf in lookup_folders:
+                if lf.update_expirations:
+                    expiration_nums = [
+                        num for num, x
+                        in enumerate(lf.update_expirations)
+                        if x == expiration
+                        and x.instrument.get('isTrading') is not False
+                    ]
+                    if len(expiration_nums) > 1:
+                        self.logger.error(
+                            'More than one expiration have been found, try to narrow search criteria'
+                        )
+                        return None, None
+                    elif len(expiration_nums) == 1:
+                        present_expirations.append(
+                            (lf.update_expirations.pop(expiration_nums[0]), lf)
+                        )
+                        return present_expirations[0]
+                present_expirations.extend([
+                    (x, lf) for x
+                    in lf.contracts
+                    if x == expiration
+                    and x.instrument.get('isTrading') is not False
+                ])
+            if len(present_expirations) == 1:
+                present_expiration, lookup_folder = present_expirations[0]
+                return present_expiration, lookup_folder
+            elif len(present_expirations) > 1:
+                self.logger.error('More than one expiration have been found, try to narrow search criteria')
+                return None, None
+            return None, self
+
+        elif isinstance(expiration, str):
             try:
                 expiration_date = dt.date.fromisoformat(expiration)
             except ValueError:
@@ -145,7 +184,6 @@ class Option(Derivative):
             expiration_date = expiration.date()
         elif isinstance(expiration, dt.date):
             expiration_date = expiration
-        
         # try to extract ticker from maturity
         if maturity and len(maturity.split('.')) > 1:
             ticker = maturity.split('.')[0]
@@ -829,6 +867,11 @@ class OptionExpiration(Instrument):
             f"{self.expiration.isoformat()}, {week_indication})"
         )
 
+    def __eq__(self, other):
+        if self.expiration == other.expiration and self.ticker == other.ticker and self.exchange == other.exchange:
+            return True
+        else:
+            return False
 
     @property
     def logger(self):
@@ -1049,7 +1092,11 @@ class OptionExpiration(Instrument):
             return None, None
         for side in ['PUT', 'CALL']:
             added[side] = strike_prices[side] - {x['strikePrice'] for x in self.instrument['strikePrices'][side]}
-            disabled[side] = {x['strikePrice'] for x in self.instrument['strikePrices'][side]} - strike_prices[side]
+            disabled[side] = {
+                x['strikePrice'] for x
+                in self.instrument['strikePrices'][side]
+                if x.get('isAvailable') is not False # already disabled
+            } - strike_prices[side]
         self.enable_strikes(disabled, enable=False)
         self.enable_strikes(added, enable=True)
         return added, disabled
@@ -1294,7 +1341,6 @@ class WeeklyCommon(Option):
                     weekly_folder = Option(
                         ticker=x,
                         exchange=self.option.exchange,
-                        option_type=self.option.option_type,
                         parent_folder=self.payload,
                         reload_cache=False,
                         week_number=int(re.search(r'[12345]', x).group()),
@@ -1387,7 +1433,6 @@ class WeeklyCommon(Option):
                 ticker=weekly_ticker,
                 exchange=self.option.exchange,
                 shortname=shortname,
-                option_type=self.option.option_type,
                 parent_folder=self.payload,
                 week_number=num,
                 recreate=recreate,
