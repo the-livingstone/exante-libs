@@ -134,11 +134,12 @@ class Option(Derivative):
         # prepare expiration_date as dt.date
         if isinstance(expiration, OptionExpiration):
             lookup_folders = [self]
-            lookup_folders.extend([
-                x for y in self.weekly_commons for x in y.weekly_folders
-                if x.week_number == week_num
-                or x.ticker == ticker
-            ])
+            if self.week_number == 0:
+                lookup_folders.extend([
+                    x for y in self.weekly_commons for x in y.weekly_folders
+                    if x.week_number == week_num
+                    or x.ticker == ticker
+                ])
             for lf in lookup_folders:
                 if lf.update_expirations:
                     expiration_nums = [
