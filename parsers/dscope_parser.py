@@ -284,6 +284,7 @@ class Parser(Datascope, ExchangeParser):
                             self.sdbadds.compile_symbol_id(x) for x
                             in children
                             if f"{ric_base}{Months(x['maturityDate']['month']).name}{str(x['maturityDate']['year'])[-1]}" == c['underlying_ric']
+                            and self.sdbadds.sdb.sdb_to_date(x['expiry']) > dt.date.today()
                         ), None)
                     else:
                         underlying_future = next((
