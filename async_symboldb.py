@@ -80,6 +80,8 @@ class SymbolDB:
         self.domain = 'zorg.sh'
         self.version = 'v1.0'
         self.url = f'http://symboldb.{self.env}.{self.domain}/symboldb-editor/api/{self.version}/'
+        self.url_v2 = f'http://symboldb.{self.env}.{self.domain}/symboldb/api/v2.0/'
+
 
     def __repr__(self):
         return f'SymbolDB({self.env!r})'
@@ -158,6 +160,52 @@ class SymbolDB:
                 async with session.request(
                     method,
                     self.url+handle,
+                    params=params,
+                    json=jdata,
+                    data=data
+                ) as response:
+                    if response.status in [404, 400] or response.ok:
+                        return await response.json(content_type=None)
+                    else:
+                        response.raise_for_status()
+            except Exception as e:
+                self.logger.error(f"{e.__class__.__name__}: {e}")
+                raise e
+
+    @retry(
+        retry=retry_if_exception_type((
+            ClientConnectionError,
+            ServerDisconnectedError,
+            ClientPayloadError
+        )),
+        stop=stop_after_attempt(10),
+        wait=wait_fixed(10)
+    )
+    async def __request_v2(
+            self,
+            method: str,
+            handle: str,
+            params: dict = None,
+            jdata: dict = None,
+            data=None,
+            headers=None
+        ):
+        if not headers:
+            headers = self.headers
+        params = {} if not params else params
+        # jdata = {} if not jdata else jdata
+        
+        async with ClientSession(connector=TCPConnector(limit=50, limit_per_host=30), headers=headers) as session:
+            try:
+                if method == 'get':
+                    params = {
+                        k: str(v) if not isinstance(v,(list,tuple)) else ','.join(v) for k, v
+                        in params.items()
+                    }
+                self.logger.debug(f"{method.upper()} {self.url+handle}, {params=}, {jdata=}")
+                async with session.request(
+                    method,
+                    self.url_v2+handle,
                     params=params,
                     json=jdata,
                     data=data
@@ -425,6 +473,38 @@ class SymbolDB:
                 'fields': ','.join(fields)
             }
         return await self._get(f'instruments', params=params)
+
+    async def get_snapshot(
+            self,
+            symbol_id_regex: str = None,
+            types: list = None,
+            status: str = None,
+            fields: list = None,
+            last_event_id: str = None
+            ):
+        
+        params = {}
+        if symbol_id_regex:
+            params.update({
+                'id_regexp': symbol_id_regex
+            })
+        if types:
+            params.update({
+                'symbolTypes': ','.join(types)
+            })
+        if status:
+            params.update({
+                'symbolStatus': status
+            })
+        if fields:
+            params.update({
+                'with': ','.join(fields)
+            })
+        if last_event_id:
+            params.update({
+                'lastEventId': last_event_id
+            })
+        return await self.__request_v2(method='get', handle='snapshot', params=params)
 
     async def get_brokers(self, _id: str = None) -> list[dict]:
         """
