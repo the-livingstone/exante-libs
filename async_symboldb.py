@@ -2,7 +2,7 @@
 
 import asyncio
 from enum import Enum
-from aiohttp import ClientSession, TCPConnector
+from aiohttp import ClientResponseError, ClientSession, TCPConnector
 from aiohttp.client_exceptions import (
     ClientConnectionError,
     ServerDisconnectedError,
@@ -94,7 +94,8 @@ class SymbolDB:
         retry=retry_if_exception_type((
             ClientConnectionError,
             ServerDisconnectedError,
-            ClientPayloadError
+            ClientPayloadError,
+            ClientResponseError
         )),
         stop=stop_after_attempt(10),
         wait=wait_fixed(10)
@@ -176,7 +177,8 @@ class SymbolDB:
         retry=retry_if_exception_type((
             ClientConnectionError,
             ServerDisconnectedError,
-            ClientPayloadError
+            ClientPayloadError,
+            ClientResponseError
         )),
         stop=stop_after_attempt(10),
         wait=wait_fixed(10)
