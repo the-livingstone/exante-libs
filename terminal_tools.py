@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+from copy import deepcopy
 import colorama as clr
 import logging
 import os
@@ -182,37 +183,54 @@ def pick_from_list_tm(
     return selected
 
 def pick_from_list(options_list: list, option_name='options', message: str = '', specify='', color=False):
+    options = deepcopy(options_list)
     selected = None
     try_again = 'y'
     while try_again != 'n' and selected is None:
         search_results = {}
         options_str = []
-        if type(options_list) != list:
+        if not isinstance(options, list):
             print('(o_O) ???')
-            print(f'Bad input data type ({type(options_list)}), should be a list')
+            print(f'Bad input data type ({type(options)}), should be a list')
             break
-        for num, s in enumerate(options_list):
-            if type(s) == str:
+        for num, s in enumerate(options):
+            if isinstance(s, str):
                 options_str.append(s)
-            elif type(s) == tuple:
+            elif isinstance(s, tuple):
                 if color:
-                    options_str.append(colorize(s[0], sym_type=s[2], expired=s[3]))
+                    options_str.append(
+                        colorize(
+                            s[0],
+                            color_mode=ColorMode.SYMBOL_TYPE,
+                            sym_type=s[2],
+                            expired=s[3]
+                        )
+                    )
                 else:
                     options_str.append(s[0])
-            elif type(s) == dict and len(s) == 1:
+            elif isinstance(s, dict) and len(s) == 1:
                 options_str.append(sorted(s.keys())[0])
-            elif type(s) == dict and s.get('columns'):
+            elif isinstance(s, dict) and s.get('columns'):
                 if color:
-                    s['columns'][0] = colorize(s['columns'][0], sym_type=s['symbol_type'], expired=s['is_expired'])
+                    s['columns'][0] = colorize(
+                        s['columns'][0],
+                        color_mode=ColorMode.SYMBOL_TYPE,
+                        sym_type=s['symbol_type'],
+                        expired=s['is_expired']
+                    )
                     if len(s['columns']) > 1 and s.get('highlight'):
-                        highlighted = colorize(s['columns'][1][s['highlight'][0]:s['highlight'][1]], state='highlighted')
+                        highlighted = colorize(
+                            s['columns'][1][s['highlight'][0]:s['highlight'][1]],
+                            color_mode=ColorMode.STATUS,
+                            state='HIGHLIGHTED'
+                        )
                         s['columns'][1] = f"{s['columns'][1][:s['highlight'][0]]}{highlighted}{s['columns'][1][s['highlight'][1]:]}"
                 options_str.append(s['columns'])
             else:
                 print('(o_O) ???')
                 print(f'Bad input list entry type: {num}, {type(s)}')
                 return None
-        if len(options_list) == len(options_str):
+        if len(options) == len(options_str):
             if isinstance(options_str[0], str):
                 search_results = [(num + 1, r) for num, r in enumerate(options_str)]
             elif isinstance(options_str[0], list):
