@@ -38,7 +38,6 @@ class Option(Derivative):
     reload_cache: bool = True
     recreate: bool = False
     silent: bool = False
-    use_df: bool = False
 
     # class instances
     bo: BackOffice = None
@@ -1383,16 +1382,14 @@ class WeeklyCommon(Option):
             self.payload['_id'] = create['_id']
             self.payload['_rev'] = create['_rev']
             self.payload['path'].append(self.payload['_id'])
-            if self.use_df:
-                new_record = pd.DataFrame([{
-                    key: val for key, val
-                    in self.payload.items()
-                    if key in self.tree_df.columns
-                }], index=[self.payload['_id']])
-                pd.concat([self.tree_df, new_record])
-                self.tree_df.replace({np.nan: None})
-            else:
-                self.option.tree.append(self.payload)
+            new_record = pd.DataFrame([{
+                key: val for key, val
+                in self.payload.items()
+                if key in self.tree_df.columns
+            }], index=[self.payload['_id']])
+            pd.concat([self.tree_df, new_record])
+            self.tree_df.replace({np.nan: None})
+            # self.option.tree.append(self.payload)
 
     def update(self, diff: dict, dry_run: bool = False):
         self.option.logger.info(
