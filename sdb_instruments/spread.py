@@ -1,5 +1,7 @@
 import asyncio
 import datetime as dt
+import pandas as pd
+import numpy as np
 import logging
 import json
 from copy import deepcopy
@@ -463,7 +465,15 @@ class Spread(Derivative):
             new_folder['_id'] = create['_id']
             new_folder['_rev'] = create['_rev']
             new_folder['path'].append(new_folder['_id'])
-            self.tree.append(new_folder)
+            new_record = pd.DataFrame([{
+                key: val for key, val
+                in self.payload.items()
+                if key in self.tree_df.columns
+            }], index=[self.payload['_id']])
+            pd.concat([self.tree_df, new_record])
+            self.tree_df.replace({np.nan: None})
+
+            # self.tree.append(new_folder)
         return new_folder
 
     def post_to_sdb(self, dry_run=True) -> dict:

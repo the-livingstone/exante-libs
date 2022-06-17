@@ -3,10 +3,13 @@ from abc import ABC, abstractmethod
 import asyncio
 from copy import deepcopy
 import datetime as dt
-from enum import Enum
+import pandas as pd
+import numpy as np
 import json
 import re
 import logging
+
+from pandas import DataFrame
 from libs.backoffice import BackOffice
 from libs.monitor import Monitor
 from libs.async_symboldb import SymbolDB
@@ -15,12 +18,27 @@ from pprint import pformat, pp
 from libs.sdb_instruments import (
     Instrument,
     InstrumentTypes,
-    ExpirationError,
-    NoInstrumentError,
-    NoExchangeError
+    NoInstrumentError
 )
 
 EXPIRY_BEFORE_MATURITY = ['VIX']
+
+def get_uuid_by_path(input_path: list, df: DataFrame) -> str:
+    path = deepcopy(input_path)
+    candidates = df[df['name'] == path.pop(-1)]
+    while candidates.shape[0] > 1:
+        parent_name = path.pop(-1)
+        possible_parents = df[df['name'] == parent_name]
+        candidates = candidates[
+            candidates.apply(
+                lambda x: x['path'][len(path)] in possible_parents['_id'],
+                axis=1
+            )
+        ]    
+    if candidates.shape[0] == 1:
+        return candidates.iloc[0]['_id']
+    else:
+        return None
 
 def format_maturity(input_data):
     """
@@ -265,6 +283,7 @@ class Derivative(Instrument):
                 reload_cache=self.reload_cache
             )
         )
+        self.tree_df = self.sdbadds.tree_df
 
         if isinstance(self.parent_folder, str):
             self.parent_folder = asyncio.run(self.sdb.get(self.parent_folder))
@@ -272,11 +291,15 @@ class Derivative(Instrument):
             if self.parent_folder and self.parent_folder.get('isAbstract'):
                 self.parent_folder_id = self.parent_folder['_id']
                 if self.instrument_type is InstrumentTypes.OPTION:
-                    self.option_type = next(
-                        x['name'] for x
-                        in self.tree
-                        if x['_id'] == self.parent_folder['path'][1]
-                    )
+                    self.option_type = self.tree_df.loc[
+                        self.tree_df['_id'] == self.parent_folder['path'][1]
+                    ].iloc[0]['name']
+                    
+                    # self.option_type = next(
+                    #     x['name'] for x
+                    #     in self.tree
+                    #     if x['_id'] == self.parent_folder['path'][1]
+                    # )
             else:
                 raise RuntimeError(
                     f"Wrong parent folder id is given: {self.parent_folder}. "
@@ -285,11 +308,14 @@ class Derivative(Instrument):
         elif isinstance(self.parent_folder, dict):
             self.parent_folder_id = self.parent_folder.get('_id')
             if self.instrument_type is InstrumentTypes.OPTION:
-                self.option_type = next(
-                    x['name'] for x
-                    in self.tree
-                    if x['_id'] == self.parent_folder['path'][1]
-                )
+                self.option_type = self.tree_df.loc[
+                    self.tree_df['_id'] == self.parent_folder['path'][1]
+                ].iloc[0]['name']
+                # self.option_type = next(
+                #     x['name'] for x
+                #     in self.tree
+                #     if x['_id'] == self.parent_folder['path'][1]
+                # )
         elif not self.parent_folder:
             self.parent_folder_id = self._find_parent_folder()
             self.parent_folder = asyncio.run(self.sdb.get(self.parent_folder_id))
@@ -300,10 +326,10 @@ class Derivative(Instrument):
             sdb=self.sdb,
             sdbadds=self.sdbadds,
             tree=self.tree,
+            tree_df=self.tree_df,
             reload_cache=self.reload_cache,
             week_number=self.week_number,
             option_type=self.option_type,
-            parent_tree=self.parent_tree,
             spread_type=self.spread_type,
             calendar_type=self.calendar_type,
 
@@ -315,40 +341,64 @@ class Derivative(Instrument):
         """
         sets parent_folder_id if none
         """
+
+
         if self.instrument_type is InstrumentTypes.OPTION:
             # decide if option_type is OPTION or OPTION ON FUTURE
             for o_type in [self.option_type, 'OPTION', 'OPTION ON FUTURE']:
                 # check if we have an existing path to self.exchange inside selected option_type
-                parent_folder_id = asyncio.run(
-                    self.sdb.get_uuid_by_path(
+                parent_folder_id = get_uuid_by_path(
                         ['Root', o_type, self.exchange],
-                        self.tree
+                        self.tree_df
                     )
-                )
+                # parent_folder_id = asyncio.run(
+                #     self.sdb.get_uuid_by_path(
+                #         ['Root', o_type, self.exchange],
+                #         self.tree
+                #     )
+                # )
+
                 if parent_folder_id:
-                    tree_part = [
-                        x for x
-                        in self.tree
-                        if parent_folder_id in x['path']
+                    tree_part = self.tree_df[
+                        self.tree_df.path.map(
+                            set([parent_folder_id]).issubset
+                        )
                     ]
+                    # tree_part = [
+                    #     x for x
+                    #     in self.tree
+                    #     if parent_folder_id in x['path']
+                    # ]
                     # sometimes we have same exchange both in OPTION and OPTION ON FUTURE
                     # check if we have self.ticker in selected exchange
-                    if next((
-                        x for x
-                        in tree_part
-                        if x['name'] == self.ticker
-                        and x['isAbstract']
-                        and x['isTrading'] is not False
-                    ), None):
+                    ticker_is_here = tree_part.loc[
+                        (tree_part['name'] == self.ticker) &
+                        (tree_part['isAbstract']) &
+                        (tree_part['isTrading'] != False)
+                    ]
+                    if not ticker_is_here.empty:
                         self.option_type = o_type
                         break
+                    # if next((
+                    #     x for x
+                    #     in tree_part
+                    #     if x['name'] == self.ticker
+                    #     and x['isAbstract']
+                    #     and x['isTrading'] is not False
+                    # ), None):
+                    #     self.option_type = o_type
+                    #     break
         elif self.instrument_type in [InstrumentTypes.SPREAD, InstrumentTypes.FUTURE]:
-            parent_folder_id = asyncio.run(
-                self.sdb.get_uuid_by_path(
+            parent_folder_id = get_uuid_by_path(
                     ['Root', self.instrument_type.name, self.exchange],
-                    self.tree
-                )
+                    self.tree_df
             )
+            # parent_folder_id = asyncio.run(
+            #     self.sdb.get_uuid_by_path(
+            #         ['Root', self.instrument_type.name, self.exchange],
+            #         self.tree
+            #     )
+            # )
         else:
             raise NotImplementedError(
                     f'Instrument type {self.instrument_type.name} is unknown'
@@ -368,12 +418,19 @@ class Derivative(Instrument):
                 if x[0] == self.exchange
             ]
             if self.instrument_type is InstrumentTypes.OPTION:
-                opt_id = asyncio.run(self.sdb.get_uuid_by_path(
-                    ['Root', 'OPTION'], self.tree
-                ))
-                oof_id = asyncio.run(self.sdb.get_uuid_by_path(
-                    ['Root', 'OPTION ON FUTURE'], self.tree
-                ))
+                opt_id =get_uuid_by_path(
+                    ['Root', 'OPTION'], self.tree_df
+                )
+                oof_id =get_uuid_by_path(
+                    ['Root', 'OPTION ON FUTURE'], self.tree_df
+                )
+                # opt_id = asyncio.run(self.sdb.get_uuid_by_path(
+                #     ['Root', 'OPTION'], self.tree
+                # ))
+                # oof_id = asyncio.run(self.sdb.get_uuid_by_path(
+                #     ['Root', 'OPTION ON FUTURE'], self.tree
+                # ))
+
                 exchange_folders = asyncio.run(self.sdb.get_heirs(
                     opt_id,
                     fields=['name', 'exchangeId']))
@@ -381,9 +438,13 @@ class Derivative(Instrument):
                     oof_id,
                     fields=['name', 'exchangeId']))
             else:
-                fld_id = asyncio.run(self.sdb.get_uuid_by_path(
-                    ['Root', self.instrument_type.name], self.tree
-                ))
+                fld_id = get_uuid_by_path(
+                    ['Root', self.instrument_type.name], self.tree_df
+                )
+                # fld_id = asyncio.run(self.sdb.get_uuid_by_path(
+                #     ['Root', self.instrument_type.name], self.tree
+                # ))
+
                 exchange_folders = asyncio.run(self.sdb.get_heirs(
                     fld_id,
                     fields=['name', 'exchangeId']
@@ -413,11 +474,14 @@ class Derivative(Instrument):
                 ]
                 if len(ticker_folders) == 1:
                     parent_folder_id = ticker_folders[0]['path'][2]
-                    self.option_type = next(
-                        x['name'] for x
-                        in self.tree
-                        if x['_id'] == ticker_folders[0]['path'][1]
-                    )
+                    self.option_type = self.tree_df.loc[
+                        self.tree_df['_id'] == ticker_folders[0]['path'][1]
+                    ].iloc[0]['name']
+                    # self.option_type = next(
+                    #     x['name'] for x
+                    #     in self.tree
+                    #     if x['_id'] == ticker_folders[0]['path'][1]
+                    # )
                 else:
                     raise RuntimeError(
                         f'{self.ticker}.{self.exchange}: cannot select exchange folder'
@@ -452,12 +516,21 @@ class Derivative(Instrument):
                 if x['name'] == self.ticker
             ), None)
         else:
-            instr_id = next((
-                x['_id'] for x
-                in self.tree
-                if self.parent_folder_id in x['path']
-                and x['name'] == self.ticker
-            ), None)
+            same_name = self.tree_df[self.tree_df['name'] == self.ticker]
+            instr_id = same_name[
+                (
+                    same_name.apply(
+                        lambda x: self.parent_folder_id in x['path'],
+                        axis=1
+                    )
+                )
+            ].iloc[0]['_id']
+            # instr_id = next((
+            #     x['_id'] for x
+            #     in self.tree
+            #     if self.parent_folder_id in x['path']
+            #     and x['name'] == self.ticker
+            # ), None)
             instrument = asyncio.run(self.sdb.get(instr_id)) if instr_id else {}
             if instrument.get('message') and instrument.get('description'):
                 raise RuntimeError('sdb_tree is out of date')
@@ -652,7 +725,15 @@ class Derivative(Instrument):
             self.instrument['_id'] = create['_id']
             self.instrument['_rev'] = create['_rev']
             self.instrument['path'].append(self.instrument['_id'])
-            self.tree.append(self.instrument)
+            new_record = pd.DataFrame([{
+                key: val for key, val
+                in self.instrument.items()
+                if key in self.tree_df.columns
+            }], index=[self.instrument['_id']])
+            pd.concat([self.tree_df, new_record])
+            self.tree_df.replace({np.nan: None})
+            # self.tree.append(new_record)
+
         self.reference = deepcopy(self.instrument)
 
     def update(self, diff: dict = None, dry_run: bool = False):
