@@ -25,7 +25,9 @@ EXPIRY_BEFORE_MATURITY = ['VIX']
 
 def get_uuid_by_path(input_path: list, df: DataFrame) -> str:
     path = deepcopy(input_path)
+    # get instruments with the same name as last one in path
     candidates = df[df['name'] == path.pop(-1)]
+    # filter candidates by path length: it should be the same as input path
     candidates = candidates[
         candidates.apply(
                         lambda x: len(x['path']) == len(input_path),
@@ -34,7 +36,10 @@ def get_uuid_by_path(input_path: list, df: DataFrame) -> str:
     ]
     while candidates.shape[0] > 1:
         parent_name = path.pop(-1)
+        # same procedure as for candidates: filter by name and then by path length
         possible_parents = df[df['name'] == parent_name]
+        if not possible_parents.empty:
+            return None
         possible_parents = possible_parents[
             possible_parents.apply(
                 lambda x: len(x['path']) == len(path) + 1,
