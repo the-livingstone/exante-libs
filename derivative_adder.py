@@ -1,6 +1,6 @@
 import asyncio
 import datetime as dt
-import re
+from pandas import DataFrame
 import logging
 from copy import copy, deepcopy
 from typing import Union
@@ -49,6 +49,7 @@ class DerivativeAdder:
             croned: bool = False,
             sdb: SymbolDB = None,
             sdbadds: SDBAdditional = None,
+            tree_df: DataFrame = None,
             env='prod'
         ) -> None:
         self.errormsg = ''
@@ -56,6 +57,8 @@ class DerivativeAdder:
         self.env = env
         self.sdb = sdb if isinstance(sdb, SymbolDB) else SymbolDB(env)
         self.sdbadds = sdbadds if isinstance(sdbadds, SDBAdditional) else SDBAdditional(env)
+        if tree_df is not None and not tree_df.empty:
+            self.sdbadds.tree_df = tree_df
         self.croned = croned
         self.ticker = ticker
         self.weekly = weekly
@@ -235,18 +238,21 @@ class DerivativeAdder:
         payload = {
             'provider': prov_name,
             'prov_id': main_feed_source,
-            'instrument_type': next(
-                (
-                    x['name'] for x
-                    in instrument.tree
-                    if x['_id'] == instrument.instrument['path'][1]
-                ),
-                asyncio.run(self.sdb.get(instrument.instrument['path'][1]))['name']
-            ),
+            'instrument_type': self.sdbadds.tree_df.loc[
+                self.sdbadds.tree_df['_id'] == instrument.instrument['path'][1]
+            ].iloc[0]['name'],
+            # 'instrument_type': next(
+            #     (
+            #         x['name'] for x
+            #         in instrument.tree
+            #         if x['_id'] == instrument.instrument['path'][1]
+            #     ),
+            #     asyncio.run(self.sdb.get(instrument.instrument['path'][1]))['name']
+            # ),
             'exchange_id': instrument.instrument.get(
-                                'exchangeId',
-                                instrument.compiled_parent.get('exchangeId')
-                            )
+                'exchangeId',
+                instrument.compiled_parent.get('exchangeId')
+            )
         }
         if not parent:
             payload.update({
@@ -651,26 +657,32 @@ class DerivativeAdder:
             self.logger.error('New folder destination is not set')
             return None
 
-        # we have already loaded tree in browse_folders, so it will cost us nothing this time
-        tree = asyncio.run(self.sdbadds.load_tree())
         # you should choose the folder where series folder meant to be placed (generally the exchange folder)
         # but if you choose the old series folder I won't judge you, it's also ok:)
         if new_folder_destination[0] == self.ticker:
-            old_folder = next(x for x in tree if x['_id'] == new_folder_destination[1])
-            destination_path = next(
-                x['path'] for x
-                in tree
-                if x['_id'] == old_folder['path'][-2]
-            )
+            old_folder = self.sdbadds.tree_df.loc[
+                self.sdbadds.tree_df['_id'] == new_folder_destination[1]
+            ].iloc[0]
+            # old_folder = next(x for x in tree if x['_id'] == new_folder_destination[1])
+            destination_path = self.sdbadds.tree_df.loc[
+                self.sdbadds.tree_df['_id'] ==  old_folder['path'][-2]
+            ].iloc[0]['path']
+            # destination_path = next(
+            #     x['path'] for x
+            #     in tree
+            #     if x['_id'] == old_folder['path'][-2]
+            # )
         else:
-            destination_path = next(
-                x['path'] for x
-                in tree
-                if x['_id'] == new_folder_destination[1]
-            )
+            destination_path = self.sdbadds.tree_df.loc[
+                self.sdbadds.tree_df['_id'] == new_folder_destination[1]
+            ].iloc[0]['path']
 
         # check the derivative_type one more time
-        inherited_type = next(x['name'] for x in tree if x['_id'] == destination_path[1])
+        inherited_type = self.sdbadds.tree_df.loc[
+            self.sdbadds.tree_df['_id'] == destination_path[1]
+        ].iloc[0]['name']
+
+        # inherited_type = next(x['name'] for x in tree if x['_id'] == destination_path[1])
         if self.derivative_type == 'FUTURE':
             if inherited_type != 'FUTURE':
                 self.logger.error(f"You should not place new futures here: {self.sdbadds.show_path(destination_path)}")
