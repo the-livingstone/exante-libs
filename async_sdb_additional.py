@@ -52,11 +52,11 @@ class SdbLists(Enum):
     SCHEDULES = 'schedules'
     CURRENCIES = 'currencies'
 
-    FEED_PROVIDERS = 'feed_providers'
-    BROKER_PROVIDERS = 'broker_providers'
-
     EXECUTION_TO_ROUTE = 'execution_to_route'
     FEED_PERMISSIONS = 'feed_permissions'
+
+    FEED_PROVIDERS = 'feed_providers'
+    BROKER_PROVIDERS = 'broker_providers'
 
     STOCK_RICS = 'stock_rics'
     USED_SYMBOLS = 'used_symbols'
@@ -146,7 +146,7 @@ class SDBAdditional:
         # smaller lists we download wtihout asking
         # bigger ones (like USED_SYMBOLS or TREE) we download on demand
         collect_tasks = []
-        for l in list(SdbLists.__members__)[:6]:
+        for l in list(SdbLists.__members__)[:8]:
             collect_tasks.append(
                 self.__load_cache_iter(SdbLists[l], silent=True)
             )
