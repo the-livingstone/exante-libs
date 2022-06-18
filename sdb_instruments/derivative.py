@@ -47,7 +47,7 @@ def get_uuid_by_path(input_path: list, df: DataFrame) -> str:
         )]
         candidates = candidates[
             candidates.apply(
-                lambda x: x['path'][len(path)] in possible_parents['_id'],
+                lambda x: x['path'][len(path)] in possible_parents.index,
                 axis=1
             )
         ]    
@@ -341,7 +341,6 @@ class Derivative(Instrument):
 
             sdb=self.sdb,
             sdbadds=self.sdbadds,
-            tree=self.tree,
             tree_df=self.tree_df,
             reload_cache=self.reload_cache,
             week_number=self.week_number,
