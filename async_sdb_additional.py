@@ -146,7 +146,7 @@ class SDBAdditional:
         # smaller lists we download wtihout asking
         # bigger ones (like USED_SYMBOLS or TREE) we download on demand
         collect_tasks = []
-        for l in list(SdbLists.__members__)[:8]:
+        for l in list(SdbLists.__members__)[:6]:
             collect_tasks.append(
                 self.__load_cache_iter(SdbLists[l], silent=True)
             )
