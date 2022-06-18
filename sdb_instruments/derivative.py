@@ -26,9 +26,20 @@ EXPIRY_BEFORE_MATURITY = ['VIX']
 def get_uuid_by_path(input_path: list, df: DataFrame) -> str:
     path = deepcopy(input_path)
     candidates = df[df['name'] == path.pop(-1)]
+    candidates = candidates[
+        candidates.apply(
+                        lambda x: len(x['path']) == len(input_path),
+                        axis=1
+                    )
+    ]
     while candidates.shape[0] > 1:
         parent_name = path.pop(-1)
         possible_parents = df[df['name'] == parent_name]
+        possible_parents = possible_parents[
+            possible_parents.apply(
+                lambda x: len(x['path']) == len(path) + 1,
+                axis=1
+        )]
         candidates = candidates[
             candidates.apply(
                 lambda x: x['path'][len(path)] in possible_parents['_id'],
