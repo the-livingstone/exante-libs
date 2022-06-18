@@ -224,6 +224,13 @@ class SDBAdditional:
                     os.mkdir(f"{self.current_dir}/cache/{env}")
                 if not os.path.exists(f"{self.current_dir}/cache/{env}/{list_name.value}.jsonl"):
                     return []
+            except json.decoder.JSONDecodeError:
+                if not silent:
+                    self.logger.warning(
+                        f"{self.cache_conf[list_name]['path']} cache file is malformed, cache will be refreshed in runtime"
+                    )
+                return []
+
         last_update = dt.datetime.fromtimestamp(
             os.path.getctime(
                 f"{self.current_dir}/cache/{env}/{list_name.value}.jsonl"
