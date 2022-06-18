@@ -38,7 +38,7 @@ def get_uuid_by_path(input_path: list, df: DataFrame) -> str:
         parent_name = path.pop(-1)
         # same procedure as for candidates: filter by name and then by path length
         possible_parents = df[df['name'] == parent_name]
-        if not possible_parents.empty:
+        if possible_parents.empty:
             return None
         possible_parents = possible_parents[
             possible_parents.apply(
