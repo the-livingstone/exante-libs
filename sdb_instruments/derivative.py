@@ -292,14 +292,15 @@ class Derivative(Instrument):
         self.parent_tree = series.parent_tree if 'parent_tree' in series.__dir__() else None
         self.spread_type = series.spread_type if 'spread_type' in series.__dir__() else None
         self.calendar_type = series.calendar_type if 'calendar_type' in series.__dir__() else None
-        
-        self.tree = asyncio.run(
-            self.sdbadds.load_tree(
-                fields=['expiryTime'],
-                reload_cache=self.reload_cache
-            )
-        )
         self.tree_df = self.sdbadds.tree_df
+        if self.sdbadds.tree_df.empty:
+            asyncio.run(
+                self.sdbadds.load_tree(
+                    fields=['expiryTime'],
+                    reload_cache=self.reload_cache
+                )
+            )
+            self.tree_df = self.sdbadds.tree_df
 
         if isinstance(self.parent_folder, str):
             self.parent_folder = asyncio.run(self.sdb.get(self.parent_folder))
