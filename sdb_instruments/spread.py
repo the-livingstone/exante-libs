@@ -340,7 +340,7 @@ class Spread(Derivative):
             diff: dict = DeepDiff(reference, update_contract.instrument)
             if diff:
                 self.logger.info(
-                    f'{self.ticker}.{self.exchange} {exp_date}: '
+                    f'{self.ticker}.{self.exchange} {exp_date.isoformat()}: '
                     'following changes have been made:'
                 )
                 self.logger.info(pformat(diff))
@@ -349,7 +349,7 @@ class Spread(Derivative):
 
         if self.allowed_expirations:
             if self.spread_type == 'SPREAD':
-                symbolic = self._date_to_symbolic(exp_date[:7])
+                symbolic = self._date_to_symbolic(exp_date.isoformat()[:7])
             if self.spread_type == 'CALENDAR_SPREAD':
                 symbolic = f"{self._date_to_symbolic(near_maturity)}-{self._date_to_symbolic(far_maturity)}"
 
