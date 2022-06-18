@@ -89,24 +89,24 @@ class Spread(Derivative):
 
     def __set_contracts(self):
         if not self.instrument:
-            contracts = []
+            self.contracts = []
         else:
-            contracts = [
+            self.contracts = [
                 SpreadExpiration(self, payload=x) for x
                 in self.series_tree
                 if x['path'][:-1] == self.instrument['path']
                 and not x['isAbstract']
             ]
             if self.spread_type in ['CALENDAR', 'CALENDAR_SPREAD']:
-                gap_folders = [
+                self.gap_folders = [
                     x for x
                     in self.series_tree
                     if x['path'][:-1] == self.instrument['path']
                     and x['isAbstract']
                     and re.match(r'\d{1,2} month', x['name'])
                 ]
-                for gf in gap_folders:
-                    contracts.extend([
+                for gf in self.gap_folders:
+                    self.contracts.extend([
                         SpreadExpiration(self, payload=x) for x
                         in self.series_tree
                         if x['path'][:-1] == gf['path']
@@ -115,7 +115,7 @@ class Spread(Derivative):
 
                 try:
                     future = Future(self.ticker, self.exchange, env=self.env, reload_cache=False)
-                    leg_futures = future.contracts
+                    self.leg_futures = future.contracts
                 except Exception as e:
                     self.logger.error(
                         f"{self.ticker}.{self.exchange}: {e.__class__.__name__}: {e}"
@@ -128,7 +128,7 @@ class Spread(Derivative):
                 for leg_ticker in self.ticker.split('-')[:2]:
                     try:
                         future = Future(leg_ticker, self.exchange, env=self.env)
-                        leg_futures += future.contracts
+                        self.leg_futures += future.contracts
                     except Exception as e:
                         self.logger.error(
                             f"{self.ticker}.{self.exchange}: {e.__class__.__name__}: {e}"
