@@ -6,6 +6,8 @@ import re
 import logging
 from deepdiff import DeepDiff
 from functools import reduce
+
+from pandas import DataFrame
 from libs import sdb_schemas_cprod as cdb_schemas
 from libs import sdb_schemas as sdb_schemas
 from libs.sdb_schemas import type_mapping
@@ -352,7 +354,7 @@ class Instrument:
 
             sdb: SymbolDB = None,
             sdbadds: SDBAdditional = None,
-            tree: list[dict] = None,
+            tree_df: DataFrame = None,
             reload_cache: bool = False,
 
             silent: bool = False,
@@ -393,12 +395,18 @@ class Instrument:
         self.silent = silent
         self.sdb = sdb if sdb else SymbolDB(env)
         self.sdbadds = sdbadds if sdbadds else SDBAdditional(env)
-        self.tree = tree if tree else asyncio.run(
-            self.sdbadds.load_tree(
-                fields=['expiryTime'],
-                reload_cache=reload_cache
+        if tree_df is not None and not tree_df.empty:
+            self.tree_df = tree_df
+        elif not self.sdbadds.tree_df.empty:
+            self.tree_df = self.sdbadds.tree_df
+        else:
+            asyncio.run(
+                self.sdbadds.load_tree(
+                    fields=['expiryTime'],
+                    reload_cache=reload_cache
+                )
             )
-        )
+            self.tree_df = self.sdbadds.tree_df
         if instrument is None:
             instrument = {}
         self.set_instrument(instrument)
@@ -418,6 +426,7 @@ class Instrument:
             fields=fields_list,
             reload_cache=True
         ))
+        self.tree_df = self.sdbadds.tree_df
 
     def set_instrument(self, instrument: dict, parent = None):
         self.instrument = instrument
