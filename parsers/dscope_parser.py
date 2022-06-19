@@ -340,7 +340,13 @@ class Parser(Datascope, ExchangeParser):
         return cleared
 
 
-    def futures(self, series: str, overrides: dict = None, **kwargs) -> dict:
+    def futures(
+            self,
+            series: str,
+            overrides: dict = None,
+            data: list[dict] = None,
+            **kwargs
+        ) -> dict:
         series_data = {}
         contracts = []
         product = 'Futures'
@@ -431,9 +437,10 @@ class Parser(Datascope, ExchangeParser):
             series: str,
             overrides: dict = None,
             product: str = 'FuturesOnOptions',
-            underlying=None,
-            currency=None,
-            only_active='Active',
+            underlying: str = None,
+            currency: str = None,
+            only_active: str = 'Active',
+            data: list[dict] = None,
             **kwargs
         ) -> dict:
         series_data = {}
@@ -571,6 +578,7 @@ class Parser(Datascope, ExchangeParser):
             series: str,
             overrides: dict = None,
             spread_type: str = 'CALENDAR SPREAD',
+            data: list[dict] = None,
             **kwargs
         ):
         """

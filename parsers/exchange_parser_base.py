@@ -685,6 +685,7 @@ class ExchangeParser(ABC):
             self,
             series: str,
             overrides: dict = None,
+            data: list[dict] = None,
             **kwargs
         ):
         """
@@ -698,6 +699,7 @@ class ExchangeParser(ABC):
             series: str,
             overrides: dict = None,
             product: str = 'OPTION ON FUTURE',
+            data: list[dict] = None,
             **kwargs
         ):
         """
@@ -711,6 +713,7 @@ class ExchangeParser(ABC):
             series: str,
             overrides: dict = None,
             spread_type: str = 'CALENDAR SPREAD',
+            data: list[dict] = None,
             **kwargs
         ):
         """
