@@ -20,7 +20,8 @@ from libs.sdb_instruments import (
     Spread,
     SpreadExpiration,
     Instrument,
-    set_schema
+    set_schema,
+    get_uuid_by_path
 )
 from libs.terminal_tools import pick_from_list_tm
 from pprint import pformat, pprint
@@ -662,14 +663,13 @@ class DerivativeAdder:
                 suggested_path, message=message, only_folders=True
             )
         elif self.exchange in allowed_automation.get(self.derivative_type, []):
+            path = ['Root', self.derivative_type, self.exchange]
+            path.extend(allowed_automation[self.derivative_type][self.exchange])
             new_folder_destination = (
                 allowed_automation[self.derivative_type][self.exchange][-1],
-                asyncio.run(
-                    self.sdb.get_uuid_by_path(
-                        ['Root', self.derivative_type, self.exchange].extend(
-                            allowed_automation[self.derivative_type][self.exchange]
-                        )
-                    )
+                get_uuid_by_path(
+                    path,
+                    self.sdbadds.tree_df
                 )
             )
         if not new_folder_destination:
@@ -868,7 +868,7 @@ class DerivativeAdder:
                     in asyncio.run(self.sdbadds.get_list_from_sdb(SdbLists.BROKER_PROVIDERS.value))
                     if y[1] == x
                 ) for x
-                in self.series.compiled_parent.get('brokers', {}).get('providerOverrides')
+                in self.series.compiled_parent.get('brokers', {}).get('providerOverridetes')
             ]
             for fp in series_feed_providers:
                 self.series.set_provider_overrides(
