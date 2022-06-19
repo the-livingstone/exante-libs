@@ -775,36 +775,63 @@ class Parser(DxFeed, ExchangeParser):
         })
         return payload
     
-    def futures(self, series: str, overrides: dict = None, **kwargs) -> dict:
-        series_data = {}
-        contracts = []
-        product = 'FUTURE'
+    def __get_and_filter_data(self, series: str, product: str, overrides: dict):
         ticker, exchange = series.split('.')[:2]
-        if overrides is None:
-            overrides = {}
-        data = []
         if exchange in ['ICE', 'LIFFE']:
             self.set_region('ICE')
-            if kwargs.get('overrides', {}).get('suffix'):
-                search_list = self.__create_search_list(series, product, overrides)
-                self.logger.debug(f'Search list: {pformat(search_list)}')
-                data = self.search_future([search_list['search_str']])
-            else:
-                for s in self.exchange_set['ICE']['suffix']:
-                    overrides['suffix'] = s
-                    search_list = self.__create_search_list(series, product, overrides)
-                    self.logger.debug(f'Search list: {pformat(search_list)}')
-                    data = self.search_future([search_list['search_str']])
-                    if data:
-                        break
         else:
             self.set_region('US')
+        if exchange in ['ICE', 'LIFFE'] and not overrides.get('suffix'):
+            for s in self.exchange_set['ICE']['suffix']:
+                overrides['suffix'] = s
+                search_list = self.__create_search_list(series, product, overrides)
+                self.logger.debug(f'Search list: {pformat(search_list)}')
+                if product == 'FUTURE':
+                    data = self.search_future([search_list['search_str']])
+                elif product == 'OPTION':
+                    data = self.search_option([search_list['search_str']])
+                elif product in ['PRODUCT', 'CALENDAR']:
+                    data = self.search_spread([search_list['search_str']])
+                else:
+                    raise RuntimeError(f'{product} search is not implemented')
+                if data:
+                    break
+        else:
             search_list = self.__create_search_list(series, product, overrides)
             self.logger.debug(f'Search list: {pformat(search_list)}')
-            data = self.search_future([search_list['search_str']])
+            if product == 'FUTURE':
+                data = self.search_future([search_list['search_str']])
+            elif product == 'OPTION':
+                data = self.search_option([search_list['search_str']])
+            elif product in ['PRODUCT', 'CALENDAR']:
+                data = self.search_spread([search_list['search_str']])
+            else:
+                raise RuntimeError(f'{product} search is not implemented')
+
         filter_re = self.__filtering_regexp(search_list, product=product)
         if filter_re:
             data = [x for x in data if re.match(filter_re, x['SYMBOL'])]
+        return data, search_list
+
+    def futures(
+            self,
+            series: str,
+            overrides: dict = None,
+            data: list[dict] = None,
+            **kwargs
+        ):
+        series_data = {}
+        contracts = []
+        ticker, exchange = series.split('.')[:2]
+        if overrides is None:
+            overrides = {}
+        if not data:
+            data, search_list = self.__get_and_filter_data(series, 'FUTURE', overrides)
+        else:
+            search_list = {
+                'ticker': ticker,
+                'exchange': exchange
+            }
         if not data:
             self.logger.info(f"Nothing found for {search_list['ticker']}.{search_list['exchange']}")
             return series_data, contracts
@@ -841,35 +868,30 @@ class Parser(DxFeed, ExchangeParser):
         self.logger.info(pformat(contracts))
         return series_data, contracts
 
-    def options(self, series: str, overrides: dict = None, product: str = 'OPTION', **kwargs):
+    def options(
+            self,
+            series: str,
+            overrides: dict = None,
+            product: str = 'OPTION',
+            data: list[dict] = None,
+            **kwargs
+        ):
         series_data = {}
         contracts = []
         ticker, exchange = series.split('.')[:2]
         if overrides is None:
             overrides = {}
-        if exchange in ['ICE', 'LIFFE']:
-            self.set_region('ICE')
-            if kwargs.get('overrides', {}).get('suffix'):
-                search_list = self.__create_search_list(series, product, overrides)
-                self.logger.info(f'Search list: {pformat(search_list)}')
-                data = self.search_option([search_list['search_str']])
-            else:
-                for s in self.exchange_set['ICE']['suffix']:
-                    overrides['suffix'] = s
-                    search_list = self.__create_search_list(series, product, overrides)
-                    self.logger.info(f'Search list: {pformat(search_list)}')
-                    data = self.search_option([search_list['search_str']])
-                    if data:
-                        break
+        if not data:
+            data, search_list = self.__get_and_filter_data(series, product, overrides)
         else:
-            self.set_region('US')
-            search_list = self.__create_search_list(series, product, overrides)
-            self.logger.info(f'Search list: {pformat(search_list)}')
-            data = self.search_option([search_list['search_str']])
+            search_list = {
+                'ticker': ticker,
+                'exchange': exchange
+            }
+        if not data:
+            self.logger.info(f"Nothing found for {search_list['ticker']}.{search_list['exchange']}")
+            return series_data, contracts
         formatted_data = []
-        filter_re = self.__filtering_regexp(search_list, product=product)
-        if filter_re:
-            data = [x for x in data if re.match(filter_re, x['SYMBOL'])]
         for d in data:
             try:
                 formatted_data.append(
@@ -943,7 +965,13 @@ class Parser(DxFeed, ExchangeParser):
         self.logger.info(pformat(contracts))
         return series_data, contracts
 
-    def spreads(self, series: str, overrides: dict = None, **kwargs):
+    def spreads(
+            self,
+            series: str,
+            overrides: dict = None,
+            data: list[dict] = None,
+            **kwargs
+        ):
         series_data = {}
         contracts = []
         futures = []
@@ -963,31 +991,16 @@ class Parser(DxFeed, ExchangeParser):
             return series_data, contracts
         if overrides is None:
             overrides = {}
-        data = []
-        if exchange in ['ICE', 'LIFFE']:
-            self.set_region('ICE')
-            if kwargs.get('overrides', {}).get('suffix'):
-                search_list = self.__create_search_list(series, spread_type, overrides)
-                self.logger.debug(f'Search list: {pformat(search_list)}')
-                data = self.search_spread([search_list['search_str']])
-            else:
-                for s in self.exchange_set['ICE']['suffix']:
-                    overrides['suffix'] = s
-                    search_list = self.__create_search_list(series, spread_type, overrides)
-                    self.logger.debug(f'Search list: {pformat(search_list)}')
-                    data = self.search_spread([search_list['search_str']])
-                    if data:
-                        break
-        else:
-            self.set_region('US')
-            search_list = self.__create_search_list(series, spread_type, overrides)
-            self.logger.debug(f'Search list: {pformat(search_list)}')
-            data = self.search_spread([search_list['search_str']])
-        filter_re = self.__filtering_regexp(search_list, product=spread_type)
         if not data:
+            data, search_list = self.__get_and_filter_data(series, spread_type, overrides)
+        else:
+            search_list = {
+                'ticker': ticker,
+                'exchange': exchange
+            }
+        if not data:
+            self.logger.info(f"Nothing found for {search_list['ticker']}.{search_list['exchange']}")
             return series_data, contracts
-        if filter_re:
-            data = [x for x in data if re.match(filter_re, x['SYMBOL'])]
         first_fut_series, first_fut_contracts = self.futures(f"{ticker}.{exchange}")
         if second_ticker:
             second_fut_series, second_fut_contracts = self.futures(f"{second_ticker}.{exchange}")
