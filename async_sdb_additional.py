@@ -227,7 +227,7 @@ class SDBAdditional:
             except json.decoder.JSONDecodeError:
                 if not silent:
                     self.logger.warning(
-                        f"{self.cache_conf[list_name]['path']} cache file is malformed, cache will be refreshed in runtime"
+                        f"{self.cache_conf[list_name.value]['path']} cache file is malformed, cache will be refreshed in runtime"
                     )
                 return []
 
