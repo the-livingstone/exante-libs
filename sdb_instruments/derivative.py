@@ -448,10 +448,10 @@ class Derivative(Instrument):
 
                 exchange_folders = asyncio.run(self.sdb.get_heirs(
                     opt_id,
-                    fields=['name', 'exchangeId']))
+                    fields=['name', 'exchangeId', 'path']))
                 exchange_folders += asyncio.run(self.sdb.get_heirs(
                     oof_id,
-                    fields=['name', 'exchangeId']))
+                    fields=['name', 'exchangeId', 'path']))
             else:
                 fld_id = get_uuid_by_path(
                     ['Root', self.instrument_type.name], self.tree_df
@@ -462,7 +462,7 @@ class Derivative(Instrument):
 
                 exchange_folders = asyncio.run(self.sdb.get_heirs(
                     fld_id,
-                    fields=['name', 'exchangeId']
+                    fields=['name', 'exchangeId', 'path']
                 ))
 
             possible_exchange_folders = [
