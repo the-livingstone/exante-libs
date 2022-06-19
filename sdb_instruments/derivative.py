@@ -475,6 +475,11 @@ class Derivative(Instrument):
                 )
             elif len(possible_exchange_folders) == 1:
                 parent_folder_id = possible_exchange_folders[0]['_id']
+                if self.instrument_type is InstrumentTypes.OPTION:
+                    self.option_type = self.tree_df.loc[
+                        self.tree_df['_id'] == possible_exchange_folders[0]['path'][1]
+                    ].iloc[0]['name']
+
             else:
                 ticker_folders = [
                     x for pef in possible_exchange_folders for x
@@ -531,13 +536,11 @@ class Derivative(Instrument):
                 if x['name'] == self.ticker
             ), None)
         else:
-            same_name = self.tree_df[self.tree_df['name'] == self.ticker]
+            same_name = self.tree_df.loc[self.tree_df['name'] == self.ticker]
             instr_id = same_name[
-                (
-                    same_name.apply(
-                        lambda x: self.parent_folder_id in x['path'],
-                        axis=1
-                    )
+                same_name.apply(
+                    lambda x: self.parent_folder_id in x['path'],
+                    axis=1
                 )
             ].iloc[0]['_id']
             # instr_id = next((
