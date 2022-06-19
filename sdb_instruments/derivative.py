@@ -223,7 +223,7 @@ class Balancer:
                 load = int(
                     self.mon.indicator_status(
                         module['monitor_module'],
-                        demo_path
+                        path
                     )['state']['description'].split()[0]
                 )
                 module.update({
