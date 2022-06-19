@@ -807,6 +807,11 @@ class DerivativeAdder:
             if not transformed.get('validation_errors'):
                 self.logger.error('smth wrong with transform_to_sdb method')
                 return None
+            if self.croned:
+                self.errormsg += f"{self.ticker}.{self.exchange}: series validation has been failed:"
+                for err in transformed.get('validation_errors'):
+                    self.errormsg += f"{'/'.join([str(x) for x in err['loc']])}: {err['msg']}" + '\n'
+                return None
             for err in transformed.get('validation_errors'):
                 err_field = '/'.join([x for x in err['loc'] if '__' not in x])
                 parsed_series.update({
