@@ -400,7 +400,7 @@ class DerivativeAdder:
                 self.sdb.sdb_to_date(x['expiry']).isoformat() for x
                 in contracts
             ]
-        elif len(self.allowed_expirations) == 1 and len(self.allowed_expirations[0]) < 3:
+        elif len(self.allowed_expirations) == 1 and len(str(self.allowed_expirations[0])) < 3:
             try:
                 forthcoming = int(self.allowed_expirations[0])
                 allowed = sorted([
