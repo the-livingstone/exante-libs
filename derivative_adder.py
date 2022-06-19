@@ -25,6 +25,13 @@ from libs.sdb_instruments import (
 from libs.terminal_tools import pick_from_list_tm
 from pprint import pformat, pprint
 
+
+allowed_automation = {
+    'OPTION': {
+        'CBOE': ['Equity Options']
+    }
+}
+
 class TypeUndefined(Exception):
     pass
 
@@ -635,24 +642,36 @@ class DerivativeAdder:
 
 
 # new series actions
-    def setup_new_ticker(self, recreate: bool = False):
+    def setup_new_ticker(self, recreate: bool = False, parsed_data: list[dict] = None):
         message = '''
         Ticker is not found in sdb, we are about to create new ticker folder.
         Select folder to go deeper into the tree, select the same folder again
         to set as destination for new ticker:
         '''
         # choose destination folder
-        if self.derivative_type == 'FUTURE':
-            suggested_path = ['FUTURE', self.exchange]
-        elif self.derivative_type == 'OPTION' and self.exchange == 'CBOE':
-            suggested_path = ['OPTION', 'CBOE', 'Equity Options']
-        elif self.derivative_type == 'OPTION':
-            suggested_path = ['OPTION', self.exchange]
-        elif self.derivative_type == 'OPTION ON FUTURE':
-            suggested_path = ['OPTION ON FUTURE', self.exchange]
-        new_folder_destination = self.sdbadds.browse_folders(
-            suggested_path, message=message, only_folders=True
-        )
+        if not self.croned:
+            if self.derivative_type == 'FUTURE':
+                suggested_path = ['FUTURE', self.exchange]
+            elif self.derivative_type == 'OPTION' and self.exchange == 'CBOE':
+                suggested_path = ['OPTION', 'CBOE', 'Equity Options']
+            elif self.derivative_type == 'OPTION':
+                suggested_path = ['OPTION', self.exchange]
+            elif self.derivative_type == 'OPTION ON FUTURE':
+                suggested_path = ['OPTION ON FUTURE', self.exchange]
+            new_folder_destination = self.sdbadds.browse_folders(
+                suggested_path, message=message, only_folders=True
+            )
+        elif self.exchange in allowed_automation.get(self.derivative_type, []):
+            new_folder_destination = (
+                allowed_automation[self.derivative_type][self.exchange][-1],
+                asyncio.run(
+                    self.sdb.get_uuid_by_path(
+                        ['Root', self.derivative_type, self.exchange].extend(
+                            allowed_automation[self.derivative_type][self.exchange]
+                        )
+                    )
+                )
+            )
         if not new_folder_destination:
             self.logger.error('New folder destination is not set')
             return None
@@ -686,15 +705,14 @@ class DerivativeAdder:
         if self.derivative_type == 'FUTURE':
             if inherited_type != 'FUTURE':
                 self.logger.error(f"You should not place new futures here: {self.sdbadds.show_path(destination_path)}")
-                return None, None
+                return None
         elif inherited_type in ['OPTION', 'OPTION ON FUTURE']:
             if self.derivative_type != inherited_type:
                 self.logger.info(f'Derivative type is set to {inherited_type}')
                 self.derivative_type = inherited_type
         else:
             self.logger.error(f"You should not place new options here: {self.sdbadds.show_path(destination_path)}")
-            return None, None
-
+            return None
         #try to get inherited overrides
         parent = Instrument(
             self.schema,
@@ -710,6 +728,12 @@ class DerivativeAdder:
 
         # if no inherited feeds let's choose it
         if not feed_provider:
+            if self.croned:
+                self.logger.error(
+                    'Feed provider is not defined, cannot create new folder'
+                )
+                return None
+
             message = '''
             Feed provider is unknown. Please select one:
             '''
@@ -750,18 +774,21 @@ class DerivativeAdder:
         if self.derivative_type == 'FUTURE':
             parsed_series, parsed_contracts = parser.futures(
                 f'{self.ticker}.{self.exchange}',
-                overrides=overrides.get(feed_provider)
+                overrides=overrides.get(feed_provider),
+                data=parsed_data
             )
         elif self.derivative_type in ['OPTION', 'OPTION ON FUTURE']:
             parsed_series, parsed_contracts = parser.options(
                 f'{self.ticker}.{self.exchange}',
                 overrides=overrides.get(feed_provider),
-                product=self.derivative_type
+                product=self.derivative_type,
+                data=parsed_data
             )
         if self.derivative_type == 'SPREAD':
             parsed_series, parsed_contracts = parser.spreads(
                 f'{self.ticker}.{self.exchange}',
-                overrides=overrides.get(feed_provider)
+                overrides=overrides.get(feed_provider),
+                data=parsed_data
             )
         overrides['DXFEED'] = {}
         if not parsed_series:
