@@ -292,6 +292,26 @@ class Derivative(Instrument):
         self.parent_tree = series.parent_tree if 'parent_tree' in series.__dir__() else None
         self.spread_type = series.spread_type if 'spread_type' in series.__dir__() else None
         self.calendar_type = series.calendar_type if 'calendar_type' in series.__dir__() else None
+        if series.series_payload:
+            self._series_payload(series)
+            super().__init__(
+                instrument=self.instrument,
+                instrument_type=self.instrument_type,
+                env=self.env,
+
+                sdb=self.sdb,
+                sdbadds=self.sdbadds,
+                tree_df=self.tree_df,
+                reload_cache=self.reload_cache,
+                week_number=self.week_number,
+                option_type=self.option_type,
+                spread_type=self.spread_type,
+                calendar_type=self.calendar_type,
+
+                silent=self.silent
+            )
+            return None
+
         if self.sdbadds.tree_df.empty:
             asyncio.run(
                 self.sdbadds.load_tree(
@@ -300,7 +320,41 @@ class Derivative(Instrument):
                 )
             )
         self.tree_df = self.sdbadds.tree_df
+        self._set_parent_folder()
+        super().__init__(
+            instrument_type=self.instrument_type,
+            env=self.env,
 
+            sdb=self.sdb,
+            sdbadds=self.sdbadds,
+            tree_df=self.tree_df,
+            reload_cache=self.reload_cache,
+            week_number=self.week_number,
+            option_type=self.option_type,
+            spread_type=self.spread_type,
+            calendar_type=self.calendar_type,
+
+            silent=self.silent
+        )
+        self.instrument, self.reference = self._find_series()
+
+    def _series_payload(self, series):
+        self.instrument = series.series_payload
+        if self.instrument.get('_id'):
+            if self.instrument['_id'] != self.instrument['path'][-1]:
+                raise RuntimeError(
+                    "Bad input data: series _id is not equal to the last uuid in its path"
+                )
+            self.parent_folder = asyncio.run(self.sdb.get(self.instrument['path'][-2]))
+        else:
+            self.parent_folder = asyncio.run(self.sdb.get(self.instrument['path'][-1]))
+        self.parent_folder_id = self.parent_folder['_id']
+        if self.instrument_type is InstrumentTypes.OPTION:
+            self.option_type = asyncio.run(self.sdb.get(self.instrument['path'][1]))['name']
+
+        self.set_instrument(self.instrument)
+
+    def _set_parent_folder(self):
         if isinstance(self.parent_folder, str):
             self.parent_folder = asyncio.run(self.sdb.get(self.parent_folder))
 
@@ -335,22 +389,6 @@ class Derivative(Instrument):
         elif not self.parent_folder:
             self.parent_folder_id = self._find_parent_folder()
             self.parent_folder = asyncio.run(self.sdb.get(self.parent_folder_id))
-        super().__init__(
-            instrument_type=self.instrument_type,
-            env=self.env,
-
-            sdb=self.sdb,
-            sdbadds=self.sdbadds,
-            tree_df=self.tree_df,
-            reload_cache=self.reload_cache,
-            week_number=self.week_number,
-            option_type=self.option_type,
-            spread_type=self.spread_type,
-            calendar_type=self.calendar_type,
-
-            silent=self.silent
-        )
-        self.instrument, self.reference = self._find_series()
 
     def _find_parent_folder(self) -> str:
         """

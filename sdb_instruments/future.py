@@ -36,6 +36,7 @@ class Future(Derivative):
     sdb: SymbolDB = None
     sdbadds: SDBAdditional = None
 
+    series_payload: dict = field(default_factory=dict)
     # non-init vars
     instrument_type = 'FUTURE'
     instrument: dict = field(init=False, default_factory=dict)
@@ -67,17 +68,12 @@ class Future(Derivative):
         return f"Future({self.ticker}.{self.exchange})"
 
     def __set_contracts(self):
-        if self.instrument:
-            self.contracts = [
-                FutureExpiration(self, payload=x) for x
-                in self.series_tree
-                if x['path'][:-1] == self.instrument['path']
-                and not x['isAbstract']
-            ]
-            # common weekly folders where single week folders are stored
-            # in most cases only one is needed but there are cases like EW.CME
-        else:
-            self.contracts = []
+        self.contracts = [
+            FutureExpiration(self, payload=x) for x
+            in self.series_tree
+            if x['path'][:-1] == self.instrument['path']
+            and not x['isAbstract']
+        ]
 
     def find_expiration(
             self,

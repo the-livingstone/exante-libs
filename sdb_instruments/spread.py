@@ -44,6 +44,7 @@ class Spread(Derivative):
     sdb: SymbolDB = None
     sdbadds: SDBAdditional = None
 
+    series_payload: dict = field(default_factory=dict)
     # non-init vars
     instrument_type: str = 'SPREAD'
     instrument: dict = field(init=False, default_factory=dict)
@@ -88,55 +89,53 @@ class Spread(Derivative):
         return f"Spread({self.ticker}.{self.exchange}, {self.spread_type=})"
 
     def __set_contracts(self):
-        if not self.instrument:
-            self.contracts = []
-        else:
-            self.contracts = [
-                SpreadExpiration(self, payload=x) for x
+
+        self.contracts = [
+            SpreadExpiration(self, payload=x) for x
+            in self.series_tree
+            if x['path'][:-1] == self.instrument['path']
+            and not x['isAbstract']
+        ]
+        if self.spread_type in ['CALENDAR', 'CALENDAR_SPREAD']:
+            self.gap_folders = [
+                x for x
                 in self.series_tree
                 if x['path'][:-1] == self.instrument['path']
-                and not x['isAbstract']
+                and x['isAbstract']
+                and re.match(r'\d{1,2} month', x['name'])
             ]
-            if self.spread_type in ['CALENDAR', 'CALENDAR_SPREAD']:
-                self.gap_folders = [
-                    x for x
+            for gf in self.gap_folders:
+                self.contracts.extend([
+                    SpreadExpiration(self, payload=x) for x
                     in self.series_tree
-                    if x['path'][:-1] == self.instrument['path']
-                    and x['isAbstract']
-                    and re.match(r'\d{1,2} month', x['name'])
-                ]
-                for gf in self.gap_folders:
-                    self.contracts.extend([
-                        SpreadExpiration(self, payload=x) for x
-                        in self.series_tree
-                        if x['path'][:-1] == gf['path']
-                        and not x['isAbstract']
-                    ])
+                    if x['path'][:-1] == gf['path']
+                    and not x['isAbstract']
+                ])
 
+            try:
+                future = Future(self.ticker, self.exchange, env=self.env, reload_cache=False)
+                self.leg_futures = future.contracts
+            except Exception as e:
+                self.logger.error(
+                    f"{self.ticker}.{self.exchange}: {e.__class__.__name__}: {e}"
+                )
+                self.logger.error(
+                    f'{self.ticker}.{self.exchange} '
+                    'futures are not found in sdb! Create them in first place'
+                )
+        elif len(self.ticker.split('-')) == 2:
+            for leg_ticker in self.ticker.split('-')[:2]:
                 try:
-                    future = Future(self.ticker, self.exchange, env=self.env, reload_cache=False)
-                    self.leg_futures = future.contracts
+                    future = Future(leg_ticker, self.exchange, env=self.env)
+                    self.leg_futures += future.contracts
                 except Exception as e:
                     self.logger.error(
                         f"{self.ticker}.{self.exchange}: {e.__class__.__name__}: {e}"
                     )
                     self.logger.error(
-                        f'{self.ticker}.{self.exchange} '
+                        f'{leg_ticker}.{self.exchange} '
                         'futures are not found in sdb! Create them in first place'
                     )
-            elif len(self.ticker.split('-')) == 2:
-                for leg_ticker in self.ticker.split('-')[:2]:
-                    try:
-                        future = Future(leg_ticker, self.exchange, env=self.env)
-                        self.leg_futures += future.contracts
-                    except Exception as e:
-                        self.logger.error(
-                            f"{self.ticker}.{self.exchange}: {e.__class__.__name__}: {e}"
-                        )
-                        self.logger.error(
-                            f'{leg_ticker}.{self.exchange} '
-                            'futures are not found in sdb! Create them in first place'
-                        )
 
     def find_calendar_expiration(
             self,

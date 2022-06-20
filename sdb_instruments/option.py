@@ -47,6 +47,7 @@ class Option(Derivative):
     # pass series tree to week instances
     parent_tree: list[dict] = None
 
+    series_payload: dict = field(default_factory=dict)
     # non-init vars
     instrument_type: str = field(init=False, default='OPTION')
     option_type: str = field(init=False, default=None)
@@ -97,28 +98,24 @@ class Option(Derivative):
         return f"Option({self.ticker}.{self.exchange}, {self.option_type=}, {week_indication} series)"
 
     def __set_contracts(self):
-        if self.instrument:
-            self.contracts = [
-                OptionExpiration(self, payload=x) for x
-                in self.series_tree
+        self.contracts = [
+            OptionExpiration(self, payload=x) for x
+            in self.series_tree
+            if x['path'][:-1] == self.instrument['path']
+            and not x['isAbstract']
+        ]
+        # common weekly folders where single week folders are stored
+        # in most cases only one is needed but there are cases like EW.CME
+        if not self.week_number:
+            weekly_folders = [
+                x for x in self.series_tree
                 if x['path'][:-1] == self.instrument['path']
-                and not x['isAbstract']
+                and 'weekly' in x['name'].lower()
+                and x['isAbstract']
             ]
-            # common weekly folders where single week folders are stored
-            # in most cases only one is needed but there are cases like EW.CME
-            if not self.week_number:
-                weekly_folders = [
-                    x for x in self.series_tree
-                    if x['path'][:-1] == self.instrument['path']
-                    and 'weekly' in x['name'].lower()
-                    and x['isAbstract']
-                ]
-                self.weekly_commons = [
-                    WeeklyCommon(self, uuid=x['_id']) for x in weekly_folders
-                ]
-        else:
-            self.contracts = []
-            self.weekly_commons = []
+            self.weekly_commons = [
+                WeeklyCommon(self, uuid=x['_id']) for x in weekly_folders
+            ]
 
     def find_expiration(
             self,
