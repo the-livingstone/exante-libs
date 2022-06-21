@@ -135,7 +135,7 @@ class DxFeed:
         data = self.get(['STOCK'], ticker, mode='list')
 
         if data:
-            scheme = self.load_scheme('STOCK', data.pop(0))
+            scheme = self.load_scheme('TYPE', data.pop(0))
             data = [{key: record[i] for i, key in enumerate(scheme)} for record in data if len(record) > 1]
             if description:
                 data = [row for row in data if description in row['DESCRIPTION']]
@@ -153,7 +153,7 @@ class DxFeed:
         data = self.get(['ETF'], ticker, mode='list')
 
         if data:
-            scheme = self.load_scheme('ETF', data.pop(0))
+            scheme = self.load_scheme('TYPE', data.pop(0))
             data = [{key: record[i] for i, key in enumerate(scheme)} for record in data if len(record) > 1]
             if description:
                 data = [row for row in data if description in row['DESCRIPTION']]
@@ -175,7 +175,7 @@ class DxFeed:
         data = self.get(['FUTURE'], ticker, mode='list', PRODUCT=products)
 
         if data:
-            scheme = self.load_scheme('FUTURE', data.pop(0))
+            scheme = self.load_scheme('TYPE', data.pop(0))
             data = [{key: record[i] for i, key in enumerate(scheme)} for record in data if len(record) > 1]
             if description:
                 data = [row for row in data if description in row['DESCRIPTION']]
@@ -191,7 +191,7 @@ class DxFeed:
         data = self.get(['SPREAD'], ticker, mode='list')
 
         if data:
-            scheme = self.load_scheme('SPREAD', data.pop(0))
+            scheme = self.load_scheme('TYPE', data.pop(0))
             data = [{key: record[i] for i, key in enumerate(scheme)} for record in data if len(record) > 1]
             return data
         return []
@@ -209,7 +209,7 @@ class DxFeed:
         data = self.get(['OPTION'], ticker, mode='list', PRODUCT=products)
 
         if data:
-            scheme = self.load_scheme('OPTION', data.pop(0))
+            scheme = self.load_scheme('TYPE', data.pop(0))
             data = [{key: record[i] for i, key in enumerate(scheme)} for record in data if len(record) > 1]
             if description:
                 data = [row for row in data if description in row['DESCRIPTION']]
