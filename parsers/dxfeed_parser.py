@@ -711,7 +711,10 @@ class Parser(DxFeed, ExchangeParser):
             col_suffix = f':{suffix}' if suffix else ''
 
             if product == 'FUTURE':
-                search_str = f"{prefix[product]}{payload['ticker']}{maturity_type}{col_suffix}"
+                if payload['exchange'] != 'EUREX':
+                    search_str = f"{prefix[product]}{payload['ticker']}???{col_suffix}"
+                else:
+                    search_str = f"{prefix[product]}{payload['ticker']}??????{col_suffix}"
             elif payload['exchange'] == 'EUREX':
                 search_str = (
                     f".{payload['ticker']}{maturity_type}P*{col_suffix},"
