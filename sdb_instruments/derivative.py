@@ -301,7 +301,7 @@ class Derivative(Instrument):
 
                 sdb=self.sdb,
                 sdbadds=self.sdbadds,
-                tree_df=self.tree_df,
+                series_payload=True,
                 reload_cache=self.reload_cache,
                 week_number=self.week_number,
                 option_type=self.option_type,
@@ -575,12 +575,16 @@ class Derivative(Instrument):
             ), None)
         else:
             same_name = self.tree_df.loc[self.tree_df['name'] == self.ticker]
-            instr_id = same_name[
+            same_parent = same_name[
                 same_name.apply(
                     lambda x: self.parent_folder_id in x['path'],
                     axis=1
                 )
-            ].iloc[0]['_id']
+            ]
+            if not same_parent.empty:
+                instr_id = same_parent.iloc[0]['_id']
+            else:
+                instr_id = None
             # instr_id = next((
             #     x['_id'] for x
             #     in self.tree

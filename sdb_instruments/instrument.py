@@ -350,6 +350,7 @@ class Instrument:
             schema: BaseModel = None,
             instrument: dict = None,
             instrument_type: str = None,
+            series_payload: bool = False,
             env: str = 'prod',
 
             sdb: SymbolDB = None,
@@ -397,7 +398,7 @@ class Instrument:
         self.sdbadds = sdbadds if sdbadds else SDBAdditional(env)
         if tree_df is not None and not tree_df.empty:
             self.tree_df = tree_df
-        elif not self.sdbadds.tree_df.empty:
+        elif not self.sdbadds.tree_df.empty or series_payload:
             self.tree_df = self.sdbadds.tree_df
         else:
             asyncio.run(
