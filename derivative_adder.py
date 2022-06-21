@@ -47,6 +47,7 @@ class DerivativeAdder:
             self,
             ticker,
             exchange,
+            series_payload: dict = None,
             shortname: str = None,
             derivative='FUTURE',
             weekly: bool = False,
@@ -65,8 +66,10 @@ class DerivativeAdder:
         self.env = env
         self.sdb = sdb if isinstance(sdb, SymbolDB) else SymbolDB(env)
         self.sdbadds = sdbadds if isinstance(sdbadds, SDBAdditional) else SDBAdditional(env)
-        if tree_df is not None and not tree_df.empty:
-            self.sdbadds.tree_df = tree_df
+        if not series_payload:
+            series_payload = {}
+            if tree_df is not None and not tree_df.empty:
+                self.sdbadds.tree_df = tree_df
         self.croned = croned
         self.ticker = ticker
         self.weekly = weekly
@@ -76,6 +79,7 @@ class DerivativeAdder:
         self.allowed_expirations = allowed_expirations
         self.max_timedelta = max_timedelta
         self.series = self.set_series(
+            series_payload=series_payload,
             recreate=recreate,
             reload_cache=reload_cache
         )
@@ -97,11 +101,14 @@ class DerivativeAdder:
 # common_methods
     def set_series(
             self,
+            series_payload: dict = None,
             shortname: str = None,
             destination: str = None,
             recreate: bool = False,
             reload_cache: bool = True
         ):
+        if not series_payload:
+            series_payload = {}
         if 'SPREAD' not in self.derivative_type:
             self.schema = set_schema[self.env][self.derivative_type]
         else:
@@ -112,6 +119,7 @@ class DerivativeAdder:
                 option = Option(
                     self.ticker,
                     self.exchange,
+                    series_payload=series_payload,
                     shortname=shortname,
                     parent_folder=destination,
 
@@ -122,6 +130,7 @@ class DerivativeAdder:
                     sdb=self.sdb,
                     sdbadds=self.sdbadds
                 )
+                self.derivative_type = option.option_type
                 if option.instrument.get('isTrading') is not None:
                     option.instrument.pop('isTrading')
                 return option
@@ -133,6 +142,7 @@ class DerivativeAdder:
                 future = Future(
                     self.ticker,
                     self.exchange,
+                    series_payload=series_payload,
                     shortname=shortname,
                     parent_folder=destination,
 
@@ -154,6 +164,7 @@ class DerivativeAdder:
                 spread = Spread(
                     self.ticker,
                     self.exchange,
+                    series_payload=series_payload,
                     shortname=shortname,
                     parent_folder=destination,
 
@@ -500,7 +511,7 @@ class DerivativeAdder:
         while True:
             highlighted = {}
             # we need to reload compiled parent instrument here
-            some_contract.set_instrument(some_contract.instrument, self.series)
+            some_contract.set_instrument(some_contract.instrument, target)
             validated = some_contract.validate_instrument()
             if isinstance(validated, dict) and validated.get('validation_errors'):
                 for v in validated['validation_errors']:
