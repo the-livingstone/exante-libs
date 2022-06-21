@@ -557,23 +557,20 @@ class Option(Derivative):
             if x and (x.get('PUT') or x.get('CALL'))
         ), None) and not removed.get('not_updated'):
             target_folder.update_expirations.append(target_expiration)
-            result.update(
-                {
-                    'updated': target_expiration.get_expiration(),
-                    'added': added,
-                    'removed': removed,
-                    'preserved': preserved
-                }
-            )
         else:
-            result.update({
-                'updated': target_expiration.get_expiration()
-            })
             if not self.silent:
                 self.logger.info(
                     f"No strikes have been updated for "
-                    f"{target_folder.ticker}.{target_folder.exchange}: {expiration}"
+                    f"{target_expiration.get_expiration()[1]}"
                 )
+        result.update(
+            {
+                'updated': target_expiration.get_expiration(),
+                'added': added,
+                'removed': removed,
+                'preserved': preserved
+            }
+        )
         return result
     
     def set_underlying(self, symbol_id) -> bool:
@@ -1090,7 +1087,7 @@ class OptionExpiration(Instrument):
                 f"{self.ticker}.{self.exchange} {self.maturity}: "
                 "Provided list and existing strikes do not look similar enough, no strikes removed"
             )
-            return None, None
+            return None, {'not_updated': 'not_updated'}
         for side in ['PUT', 'CALL']:
             added[side] = strike_prices[side] - {x['strikePrice'] for x in self.instrument['strikePrices'][side]}
             disabled[side] = {
