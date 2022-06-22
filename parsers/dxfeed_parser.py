@@ -703,8 +703,6 @@ class Parser(DxFeed, ExchangeParser):
                 payload['ticker'] = overrides['symbolName']
             elif overrides.get('symbolIdentifier/identifier'):
                 payload['ticker'] = overrides['symbolIdentifier/identifier']
-            maturity_type = self.exchange_set[payload['exchange']]['maturity']
-            payload['maturity_type'] = maturity_type
             suffix = overrides['suffix'] if overrides.get('suffix') else \
                 self.exchange_set[payload['exchange']].get('suffix', [''])[0]
             payload['suffix'] = suffix
@@ -712,19 +710,23 @@ class Parser(DxFeed, ExchangeParser):
 
             if product == 'FUTURE':
                 if payload['exchange'] != 'EUREX':
-                    search_str = f"{prefix[product]}{payload['ticker']}???{col_suffix}"
+                    maturity_type = self.maturity_code['short']
                 else:
-                    search_str = f"{prefix[product]}{payload['ticker']}??????{col_suffix}"
+                    maturity_type = self.maturity_code['long']
+                search_str = f"{prefix[product]}{payload['ticker']}{maturity_type}{col_suffix}"
             elif payload['exchange'] == 'EUREX':
+                maturity_type = self.exchange_set[payload['exchange']]['maturity']
                 search_str = (
                     f".{payload['ticker']}{maturity_type}P*{col_suffix},"
                     f".{payload['ticker']}{maturity_type}C*{col_suffix}"
                 )
             else:
+                maturity_type = self.exchange_set[payload['exchange']]['maturity']
                 search_str = (
                     f"{prefix[product]}{payload['ticker']}{maturity_type}P*{col_suffix},"
                     f"{prefix[product]}{payload['ticker']}{maturity_type}C*{col_suffix}"
                 )
+            payload['maturity_type'] = maturity_type
         elif product == 'CALENDAR':
             payload = {
                 'ticker': re.match(re_cal_spread, series).group('ticker'),
