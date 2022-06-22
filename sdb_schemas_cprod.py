@@ -2814,7 +2814,7 @@ class OptionSchema(CommonSchema):
                 else:
                     udl_time = compiled['expiry']['time']
             else:
-                time_expiry = '00:00:00'
+                udl_time = '00:00:00'
             udl_expiry = dt.datetime.combine(
                 udl_date,
                 dt.time.fromisoformat(udl_time)
