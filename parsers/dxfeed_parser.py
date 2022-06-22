@@ -791,7 +791,7 @@ class Parser(DxFeed, ExchangeParser):
                 self.logger.debug(f'Search list: {pformat(search_list)}')
                 if product == 'FUTURE':
                     data = self.search_future([search_list['search_str']])
-                elif product == 'OPTION':
+                elif product in ['OPTION', 'OPTION ON FUTURE']:
                     data = self.search_option([search_list['search_str']])
                 elif product in ['PRODUCT', 'CALENDAR']:
                     data = self.search_spread([search_list['search_str']])
@@ -804,7 +804,7 @@ class Parser(DxFeed, ExchangeParser):
             self.logger.debug(f'Search list: {pformat(search_list)}')
             if product == 'FUTURE':
                 data = self.search_future([search_list['search_str']])
-            elif product == 'OPTION':
+            elif product in ['OPTION', 'OPTION ON FUTURE']:
                 data = self.search_option([search_list['search_str']])
             elif product in ['PRODUCT', 'CALENDAR']:
                 data = self.search_spread([search_list['search_str']])
