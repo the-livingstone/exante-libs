@@ -30,6 +30,11 @@ from pprint import pformat, pprint
 allowed_automation = {
     'OPTION': {
         'CBOE': ['Equity Options']
+    },
+    'OPTION ON FUTURE': {
+        "CBOT": [],
+        "COMEX": [],
+        "NYMEX": []
     }
 }
 
