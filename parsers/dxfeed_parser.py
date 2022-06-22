@@ -35,66 +35,66 @@ maturity_code = {
     'short': '???'
 }
 exchange_set = {
-        'CBOE': {
-            'suffix': [''],
-            'maturity': maturity_code['long'],
-            'underlying': [
-                'stock',
-                'index'
-            ]
-        },
-        'CBOT': {
-            'suffix': ['XCBT'],
-            'maturity': maturity_code['short'],
-            'underlying': ['future']
-        },
-        'CME': {
-            'suffix': ['XCME'],
-            'maturity': maturity_code['short'],
-            'underlying': ['future']
-        },
-        'COMEX': {
-            'suffix': ['XCEC'],
-            'maturity': maturity_code['short'],
-            'underlying': ['future']
-        },
-        'EUREX': {
-            'suffix': ['XEUR'],
-            'maturity': maturity_code['long'],
-            'underlying': ['future', 'index']
-        },
-        'NYMEX': {
-            'suffix': ['XNYM'],
-            'maturity': maturity_code['short'],
-            'underlying': ['future']
-        },
-        'ICE': {
-            'suffix': [
-                'IFEU', # Europe futures
-                'IFUS', # US futures
-                'ICEU', # ICE Europe
-                'IFLO', # LIFFE options
-                'IFLL', # LIFFE futures
-                'IFLX', # LIFFE commodities
-                'ICUS'
-            ],
-            'maturity': maturity_code['short'],
-            'underlying': ['future']
-        },
-        'LIFFE': {
-            'suffix': [
-                'IFEU', # Europe futures
-                'IFUS', # US futures
-                'ICEU', # ICE Europe
-                'IFLO', # LIFFE options
-                'IFLL', # LIFFE futures
-                'IFLX', # LIFFE commodities
-                'ICUS'
-            ],
-            'maturity': maturity_code['short'],
-            'underlying': ['future']
-        }
+    'CBOE': {
+        'suffix': [''],
+        'maturity': '??????',
+        'underlying': [
+            'stock',
+            'index'
+        ]
+    },
+    'CBOT': {
+        'suffix': ['XCBT'],
+        'maturity': '???',
+        'underlying': ['future']
+    },
+    'CME': {
+        'suffix': ['XCME'],
+        'maturity': '???',
+        'underlying': ['future']
+    },
+    'COMEX': {
+        'suffix': ['XCEC'],
+        'maturity': '???',
+        'underlying': ['future']
+    },
+    'EUREX': {
+        'suffix': ['XEUR'],
+        'maturity': '??????',
+        'underlying': ['future', 'index']
+    },
+    'NYMEX': {
+        'suffix': ['XNYM'],
+        'maturity': '???',
+        'underlying': ['future']
+    },
+    'ICE': {
+        'suffix': [
+            'IFEU', # Europe futures
+            'IFUS', # US futures
+            'ICEU', # ICE Europe
+            'IFLO', # LIFFE options
+            'IFLL', # LIFFE futures
+            'IFLX', # LIFFE commodities
+            'ICUS'
+        ],
+        'maturity': '???',
+        'underlying': ['future']
+    },
+    'LIFFE': {
+        'suffix': [
+            'IFEU', # Europe futures
+            'IFUS', # US futures
+            'ICEU', # ICE Europe
+            'IFLO', # LIFFE options
+            'IFLL', # LIFFE futures
+            'IFLX', # LIFFE commodities
+            'ICUS'
+        ],
+        'maturity': '???',
+        'underlying': ['future']
     }
+}
 
 def dxfeed_maturity_to_sdb(dxfeed: str): # w/o day
     short = re.compile(r'(?P<ticker>\w+)(?P<maturity>[FGHJKMNQUVXZ]\d{2})([CP]\d+\.?\d+)?(?P<suffix>\:\w{4})$')
@@ -712,9 +712,9 @@ class Parser(DxFeed, ExchangeParser):
 
             if product == 'FUTURE':
                 if payload['exchange'] != 'EUREX':
-                    maturity_type = maturity_code['short']
+                    maturity_type = '???'
                 else:
-                    maturity_type = maturity_code['long']
+                    maturity_type = '??????'
                 search_str = f"{prefix[product]}{payload['ticker']}{maturity_type}{col_suffix}"
             elif payload['exchange'] == 'EUREX':
                 maturity_type = exchange_set[payload['exchange']]['maturity']
