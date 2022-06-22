@@ -148,7 +148,7 @@ class SDBAdditional:
         collect_tasks = []
         for l in list(SdbLists.__members__)[:8]:
             collect_tasks.append(
-                self.__load_cache_iter(SdbLists[l], silent=True)
+                self.__load_cache(SdbLists[l], silent=True)
             )
         (
             self.sdb_exchs,
@@ -165,111 +165,132 @@ class SDBAdditional:
     def logger(self):
         return logging.getLogger(f"{self.__class__.__name__}")
 
-    # async def __load_cache(self, list_name: str, env=None, silent=False):
-    #     if list_name not in self.cache_conf:
-    #         raise RuntimeError(f'{list_name} is not in cache config')
-    #     if env is None:
-    #         env = self.env
-    #     try:
-    #         with open(self.cache_conf[list_name]['path'], 'r') as f:
-    #             cached = json.load(f)
-    #     except FileNotFoundError:
-    #         if not silent:
-    #             self.logger.warning(
-    #                 f"{self.cache_conf[list_name]['path']} cache file is not found, cache will be refreshed in runtime"
-    #             )
-    #         if not os.path.exists('cache'):
-    #             os.mkdir('cache')
-    #         return {env: {}}
-    #     except json.decoder.JSONDecodeError:
-    #         if not silent:
-    #             self.logger.warning(
-    #                 f"{self.cache_conf[list_name]['path']} cache file is malformed, cache will be refreshed in runtime"
-    #             )
-    #         self.nocache = True
-    #         return {env: {}}
-        
-    #     last_update = cached.get(env, {}).get('last_update', '1970-01-01T00:00:01.000')
-    #     if (dt.datetime.now() - dt.datetime.fromisoformat(last_update)) < self.cache_conf[list_name]['expiry']:
-    #         return cached
-    #     else:
-    #         if not silent:
-    #             self.logger.info(f"{list_name} cache file is out of date (last_update: {last_update}), loading from sdb (or BO)")
-    #         cached.update({env: {}})
-    #         return cached
+    def __check_file_path(self, file_path: list):
+        for i in range(2, 4):
+            if not os.path.exists('/'.join(file_path[:i])):
+                os.mkdir('/'.join(file_path[:i]))
 
-    async def __load_cache_iter(self, list_name: SdbLists, env=None, silent=False):
+
+    async def __load_cache_df(self, list_name: SdbLists, env=None, silent=False) -> pd.DataFrame:
+        if list_name not in SdbLists:
+            raise RuntimeError(f'{list_name.value} is not in cache config')
+        if env is None:
+            env = self.env
+        if env == 'demo' and list_name not in [SdbLists.USED_SYMBOLS, SdbLists.FEED_PERMISSIONS]:
+            env = 'prod'
+        file_path = [
+            self.current_dir,
+            'cache',
+            env,
+            f"{list_name.value}.csv"
+        ]
+        self.__check_file_path(file_path)
+        if not os.path.exists('/'.join(file_path)):
+            if not silent:
+                self.logger.warning(
+                    f"{'/'.join(file_path)} cache file is not found, "
+                    "cache will be refreshed in runtime"
+                )
+            return pd.DataFrame([])
+        last_update = dt.datetime.fromtimestamp(
+            os.path.getctime(
+                f"{'/'.join(file_path)}"
+            )
+        )
+        if (dt.datetime.now() - last_update) > self.cache_conf[list_name.value]['expiry']:
+            if not silent:
+                self.logger.info(f"{list_name.value} cache file is out of date ({last_update.isoformat()=}), loading from sdb (or BO)")
+            return pd.DataFrame([])
+        try:
+            cached_df = pd.read_csv(
+                f"{'/'.join(file_path)}",
+                index_col='uuid',
+                converters={'path': lambda x: x[2:-2].split("', '")}
+            ).replace({np.nan: None})
+            return cached_df
+        except Exception as e:
+            self.logger.warning(f"{e.__class__.__name__}: {list_name.value} cache is not loaded")
+            return pd.DataFrame([])
+
+
+    async def __load_cache(self, list_name: SdbLists, env=None, silent=False):
         cached = []
+
         if list_name not in SdbLists:
             raise RuntimeError(f'{list_name} is not in cache config')
         if env is None:
             env = self.env
         if env == 'demo' and list_name not in [SdbLists.USED_SYMBOLS, SdbLists.FEED_PERMISSIONS]:
             env = 'prod'
-        while True:
-            try:
-                with open(f"{self.current_dir}/cache/{env}/{list_name.value}.jsonl", 'r') as f:
-                    for line in f:
-                        cached.append(json.loads(line))
-                    break
-            except FileNotFoundError:
-                if not silent:
-                    self.logger.warning(
-                        f"{self.current_dir}/cache/{env}/{list_name.value}.jsonl cache file is not found, "
-                        "cache will be refreshed in runtime"
-                    )
-                if not os.path.exists(f"{self.current_dir}/cache"):
-                    os.mkdir(f"{self.current_dir}/cache")
-                if not os.path.exists(f"{self.current_dir}/cache/{env}"):
-                    os.mkdir(f"{self.current_dir}/cache/{env}")
-                if not os.path.exists(f"{self.current_dir}/cache/{env}/{list_name.value}.jsonl"):
-                    return []
-            except json.decoder.JSONDecodeError:
-                if not silent:
-                    self.logger.warning(
-                        f"{self.cache_conf[list_name.value]['path']} cache file is malformed, cache will be refreshed in runtime"
-                    )
-                return []
-
+        file_path = [
+            self.current_dir,
+            'cache',
+            env,
+            f"{list_name.value}.jsonl"
+        ]
+        for i in range(2, 4):
+            if not os.path.exists('/'.join(file_path[:i])):
+                os.mkdir('/'.join(file_path[:i]))
+        if not os.path.exists('/'.join(file_path)):
+            if not silent:
+                self.logger.warning(
+                    f"{'/'.join(file_path)} cache file is not found, "
+                    "cache will be refreshed in runtime"
+                )
+            return []
         last_update = dt.datetime.fromtimestamp(
             os.path.getctime(
-                f"{self.current_dir}/cache/{env}/{list_name.value}.jsonl"
+                f"{'/'.join(file_path)}"
             )
         )
-        if (dt.datetime.now() - last_update) < self.cache_conf[list_name.value]['expiry']:
-            return cached
-        else:
+        if (dt.datetime.now() - last_update) > self.cache_conf[list_name.value]['expiry']:
             if not silent:
                 self.logger.info(f"{list_name} cache file is out of date ({last_update.isoformat()=}), loading from sdb (or BO)")
             return []
+        try:
+            with open(f"{'/'.join(file_path)}", 'r') as f:
+                for line in f:
+                    cached.append(json.loads(line))
+            return cached
+        except json.decoder.JSONDecodeError:
+            if not silent:
+                self.logger.warning(
+                    f"{self.cache_conf[list_name.value]['path']} cache file is malformed, cache will be refreshed in runtime"
+                )
+            return []
 
-    # async def __write_cache(self, list_name, payload, env=None):
-    #     if not env:
-    #         env = self.env
-    #     cache = await self.__load_cache(list_name, env, silent=True)
-    #     if list_name == 'sdb_lists':
-    #         cache[env].update(payload)
-    #         cache[env].update({'last_update': dt.datetime.now().isoformat()})
-    #     else:
-    #         prepared = {
-    #             'last_update': dt.datetime.now().isoformat(),
-    #             list_name: payload
-    #             }
-    #         cache[env].update(prepared)
-    #     try:
-    #         with open(self.cache_conf[list_name]['path'], 'w') as c:
-    #             json.dump(cache, c, indent=4)
-    #     except Exception as e:
-    #         self.logger.warning(f"{e.__class__.__name__}: {list_name} cache is not updated")
-
-    async def __write_cache_iter(self, list_name: SdbLists, payload: list[dict], env=None):
+    async def __write_cache_df(self, list_name: SdbLists, payload: pd.DataFrame, env=None):
         if env is None:
             env = self.env
         if env == 'demo' and list_name not in [SdbLists.USED_SYMBOLS, SdbLists.FEED_PERMISSIONS]:
             env = 'prod'
-        await self.__load_cache_iter(list_name, env, silent=True)
+        file_path = [
+            self.current_dir,
+            'cache',
+            env,
+            f"{list_name.value}.csv"
+        ]
+        self.__check_file_path(file_path)
         try:
-            with open(f"{self.current_dir}/cache/{env}/{list_name.value}.jsonl", 'w') as f:
+            payload.to_csv('/'.join(file_path))
+        except Exception as e:
+            self.logger.warning(f"{e.__class__.__name__}: {list_name.value} cache is not updated")
+
+
+    async def __write_cache(self, list_name: SdbLists, payload: list[dict], env=None):
+        if env is None:
+            env = self.env
+        if env == 'demo' and list_name not in [SdbLists.USED_SYMBOLS, SdbLists.FEED_PERMISSIONS]:
+            env = 'prod'
+        file_path = [
+            self.current_dir,
+            'cache',
+            env,
+            f"{list_name.value}.jsonl"
+        ]
+        self.__check_file_path(file_path)
+        try:
+            with open(f"{'/'.join(file_path)}", 'w') as f:
                 for p in payload:
                     f.write(json.dumps(p))
                     f.write('\n')
@@ -956,7 +977,7 @@ class SDBAdditional:
                 SdbLists.CURRENCIES: self.sdb_currencies,
             }
             for uc in update_cache:
-                await self.__write_cache_iter(uc, sdb_lists[uc])
+                await self.__write_cache(uc, sdb_lists[uc])
         
         await check_cache()
         if list_name == SdbLists.CURRENCIES.value:
@@ -1074,7 +1095,7 @@ class SDBAdditional:
                 return True
 
         if not self.execution_to_route:
-            self.execution_to_route = await self.__load_cache_iter(SdbLists.EXECUTION_TO_ROUTE)
+            self.execution_to_route = await self.__load_cache(SdbLists.EXECUTION_TO_ROUTE)
         if all_conditions(self.execution_to_route):
             return self.execution_to_route
         tree = await self.load_tree(fields=['brokers'])
@@ -1121,7 +1142,7 @@ class SDBAdditional:
                                 if x[1] == acc['accountId']
                             )
                         })
-        await self.__write_cache_iter(SdbLists.EXECUTION_TO_ROUTE, self.execution_to_route)
+        await self.__write_cache(SdbLists.EXECUTION_TO_ROUTE, self.execution_to_route)
         return self.execution_to_route
 
     async def load_feed_permissions(self):
@@ -1138,11 +1159,11 @@ class SDBAdditional:
                 return True
 
         if not self.feed_perms:
-            self.feed_perms = await self.__load_cache_iter(SdbLists.FEED_PERMISSIONS)
+            self.feed_perms = await self.__load_cache(SdbLists.FEED_PERMISSIONS)
         if all_conditions(self.feed_perms):
             return self.feed_perms
         self.feed_perms = self.bo.feed_permissions_get()
-        await self.__write_cache_iter(SdbLists.FEED_PERMISSIONS, self.feed_perms)
+        await self.__write_cache(SdbLists.FEED_PERMISSIONS, self.feed_perms)
         return self.feed_perms
 
     async def load_stock_rics(self):
@@ -1158,7 +1179,7 @@ class SDBAdditional:
                 return True
 
         if not self.stock_rics:
-            self.stock_rics = await self.__load_cache_iter(SdbLists.STOCK_RICS)
+            self.stock_rics = await self.__load_cache(SdbLists.STOCK_RICS)
         if all_conditions(self.stock_rics):
             return self.stock_rics
         tree = await self.load_tree(fields=['exchangeId', 'expiry', 'identifiers', 'ticker'])
@@ -1219,7 +1240,7 @@ class SDBAdditional:
                 if x[1] > suffix_count[0][1] / 3
             ]
         self.stock_rics = exchanges
-        await self.__write_cache_iter(SdbLists.STOCK_RICS, self.stock_rics, env='prod')
+        await self.__write_cache(SdbLists.STOCK_RICS, self.stock_rics, env='prod')
         return self.stock_rics
 
     async def load_tree(self, fields: list = [], reload_cache: bool = False) -> list:
@@ -1240,42 +1261,26 @@ class SDBAdditional:
             # · tree is a list
             # · tree has at least 1000 members (if not then we are looking at the wrong place)
             # · tree members have all required fields (dunno how to not reload cache if fields==['all'])
-            if not isinstance(tree_in_question, list) \
-                or len(tree_in_question) < 1000 \
-                or next((x for x in fields if x not in tree_in_question[0].keys()), None):
+            if not isinstance(tree_in_question, pd.DataFrame) \
+                or tree_in_question.shape[0] < 1000 \
+                or next((x for x in fields if x not in tree_in_question.columns), None):
 
                 return False
             else:
                 return True
 
         # try to get from class
-        if all_conditions(self.tree, fields) and not reload_cache:
+        if all_conditions(self.tree_df, fields) and not reload_cache:
+            self.tree = self.tree_df.to_dict('records')
             return self.tree
         # try to load from cache
-        self.tree = await self.__load_cache_iter(SdbLists.TREE)
-        if all_conditions(self.tree, fields) and not reload_cache:
-            self.tree_df = pd.DataFrame(self.tree)
-            self.tree_df.set_index(
-                pd.Index(
-                    self.tree_df['_id'],
-                    name='uuid'
-                ),
-                drop=False,
-                inplace=True
-            )
+        tree_df = await self.__load_cache_df(SdbLists.TREE)
+        if all_conditions(tree_df, fields) and not reload_cache:
+            self.tree = tree_df.to_dict('records')
+            self.tree_df = tree_df
             return self.tree
         # if cache is not good, load from sdb
-        env_tree_df = pd.DataFrame(self.tree)
-        if not env_tree_df.empty:
-            env_tree_df.set_index(
-                pd.Index(
-                    env_tree_df['_id'],
-                    name='uuid'
-                ),
-                drop=False,
-                inplace=True
-            )
-
+        old_cache_tree_df = tree_df
         # slow, use only if necessary
         if 'symbolId' in fields:
             v2_fields = [fields.pop(fields.index('symbolId')), '_id']
@@ -1287,6 +1292,56 @@ class SDBAdditional:
             loaded_tree_raw = await self.sdb.get_tree(fields=fields)
             all_syms = []
         loaded_tree_df = pd.DataFrame(loaded_tree_raw)
+        # loaded_tree_df.set_index(
+        #     pd.Index(
+        #         loaded_tree_df['_id'],
+        #         name='uuid'
+        #     ),
+        #     drop=False,
+        #     inplace=True
+        # )
+        get_v2_df = pd.DataFrame(all_syms)
+        if not get_v2_df.empty:
+            # get_v2_df.set_index(
+            #     pd.Index(
+            #         get_v2_df['_id'],
+            #         name='uuid'
+            #     ),
+            #     drop=True,
+            #     inplace=True
+            # )
+            loaded_tree_df = loaded_tree_df.merge(
+                get_v2_df,
+                how='outer',
+                on='_id',
+                suffixes=(None, '_drop')
+            )
+            loaded_tree_df.drop(
+                columns=[
+                    x for x
+                    in loaded_tree_df.columns
+                    if '_drop' in x
+                ],
+                inplace=True
+            )
+        # that means we have cached tree but not all fields we are interested in are present
+        # let's update existing tree with new fields
+        if loaded_tree_df.shape[0] == old_cache_tree_df.shape[0]:
+            loaded_tree_df = loaded_tree_df.merge(
+                old_cache_tree_df,
+                how='outer',
+                on='_id',
+                suffixes=(None, '_drop')
+            )
+            loaded_tree_df.drop(
+                columns=[
+                    x for x
+                    in loaded_tree_df.columns
+                    if '_drop' in x
+                ],
+                inplace=True
+            )
+        loaded_tree_df = loaded_tree_df.replace({np.nan: None})
         loaded_tree_df.set_index(
             pd.Index(
                 loaded_tree_df['_id'],
@@ -1295,47 +1350,9 @@ class SDBAdditional:
             drop=False,
             inplace=True
         )
-        get_v2_df = pd.DataFrame(all_syms)
-        if not get_v2_df.empty:
-            get_v2_df.set_index(
-                '_id',
-                drop=True,
-                inplace=True
-            )
-            loaded_tree_df = pd.merge(
-                loaded_tree_df,
-                get_v2_df,
-                how='outer',
-                left_index=True,
-                right_index=True,
-                suffixes=(None, '_drop')
-            )
-
-            # that means we have cached tree but not all fields we are interested in are present
-            # let's update existing tree with new fields
-        if loaded_tree_df.shape[0] == env_tree_df.shape[0]:
-            env_tree_df = pd.merge(
-                env_tree_df,
-                loaded_tree_df,
-                how='outer',
-                left_index=True,
-                right_index=True,
-                suffixes=('_drop', None)
-            )
-            env_tree_df.drop(
-                columns=[
-                    x for x
-                    in env_tree_df.columns
-                    if '_drop' in x
-                ],
-                inplace=True
-        )
-        else:
-            env_tree_df = loaded_tree_df
-        env_tree_df = env_tree_df.replace({np.nan: None})
-        self.tree_df = env_tree_df
-        self.tree = env_tree_df.to_dict('records')
-        await self.__write_cache_iter(SdbLists.TREE, self.tree)
+        self.tree_df = loaded_tree_df
+        self.tree = loaded_tree_df.to_dict('records')
+        await self.__write_cache_df(SdbLists.TREE, self.tree_df)
         return self.tree
 
     async def load_used_symbols(self, reload_cache: bool = False, consider_demo = True) -> list:
@@ -1376,7 +1393,7 @@ class SDBAdditional:
             result.update(self.used_symbols)
         else:
         # try to get from cache
-            self.used_symbols = await self.__load_cache_iter(SdbLists.USED_SYMBOLS)
+            self.used_symbols = await self.__load_cache(SdbLists.USED_SYMBOLS)
             if all_conditions(self.used_symbols) and not reload_cache:
                 result.update(self.used_symbols)
             else:
@@ -1385,13 +1402,13 @@ class SDBAdditional:
                 result.update(self.used_symbols)
                 if not self.used_symbols:
                     raise RuntimeError(f'Cannot get used symbols for {self.env}!')
-        await self.__write_cache_iter(SdbLists.USED_SYMBOLS, self.used_symbols)
+        await self.__write_cache(SdbLists.USED_SYMBOLS, self.used_symbols)
         if consider_demo:
             if all_conditions(self.used_symbols_demo) and not reload_cache:
                 result.update(self.used_symbols_demo)
             else:
             # try to get from cache
-                self.used_symbols_demo = await self.__load_cache_iter(SdbLists.USED_SYMBOLS_DEMO)
+                self.used_symbols_demo = await self.__load_cache(SdbLists.USED_SYMBOLS_DEMO)
                 if all_conditions(self.used_symbols_demo) and not reload_cache:
                     result.update(self.used_symbols_demo)
                 else:
@@ -1400,7 +1417,7 @@ class SDBAdditional:
                     result.update(self.used_symbols_demo)
                     if not self.used_symbols_demo:
                         raise RuntimeError(f'Cannot get used symbols for demo!')
-            await self.__write_cache_iter(SdbLists.USED_SYMBOLS_DEMO, self.used_symbols_demo)
+            await self.__write_cache(SdbLists.USED_SYMBOLS_DEMO, self.used_symbols_demo)
 
         return tuple(result)
     
