@@ -203,7 +203,8 @@ class Option(Derivative):
         # prepare maturity as YYYY-MM
         maturity = format_maturity(maturity)
         # symbolic_maturity as Z2021
-        symbolic_maturity = self._date_to_symbolic(maturity)
+        
+        symbolic_maturity = self._date_to_symbolic(maturity) if maturity else None
         if isinstance(week_num, bool) and week_num is True and expiration_date:
             week_num = int((expiration_date.day - 1)/7) + 1
         if (week_num or isinstance(ticker, str)) and not self.week_number:
@@ -444,6 +445,7 @@ class Option(Derivative):
         target_folder = self._set_target_folder(week_num, weekly_ticker)
         existing_exp, series = self.find_expiration(
             exp_date,
+            maturity=maturity,
             week_num=week_num,
             ticker=weekly_ticker
         )
