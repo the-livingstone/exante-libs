@@ -821,16 +821,17 @@ class SDBAdditional:
 
         # Regexp '{}[^CPS]+' used to filter out options and VIX.CBOE.STRADDLE
         # instruments. All off there three letters are not used as month codes.
-        future_folder_id = next((
-            x['_id'] for x
-            in asyncio.run(self.load_tree())
-            if x['name'] == 'FUTURE' and len(x['path']) == 2
-        ), None)
+        if self.tree_df.empty:
+            asyncio.run(self.load_tree())
+        
+        future_named = self.tree_df.loc[self.tree_df['name'] == 'FUTURE']
+        future_folder_id = future_named[future_named.apply(lambda x: len(x['path']) == 2, axis=1)].iloc[0]['_id']
         futures = [
             x for x
             in asyncio.run(self.sdb.get_v2(
                 rf'{instrument}[^CPS]+$',
-                fields=['symbolId', 'expiryTime']
+                fields=['symbolId', 'expiryTime', 'path'],
+                is_expired=False
             ))
             if x['path'][1] == future_folder_id
         ]
@@ -842,7 +843,7 @@ class SDBAdditional:
         for future in futures:
             first.append({
                 'instrumentId': future['symbolId'],
-                'validUntil': future['symbol']['expiryTime']
+                'validUntil': future['expiryTime']
             })
         first.sort(key=lambda x: x['validUntil'])
 
