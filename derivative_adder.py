@@ -682,7 +682,7 @@ class DerivativeAdder:
             path = ['Root', self.derivative_type, self.exchange]
             path.extend(allowed_automation[self.derivative_type][self.exchange])
             new_folder_destination = (
-                allowed_automation[self.derivative_type][self.exchange][-1],
+                path[-1],
                 get_uuid_by_path(
                     path,
                     self.sdbadds.tree_df
