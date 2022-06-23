@@ -30,10 +30,6 @@ from pydantic import (
 )
 from typing import Optional, List, Union
 
-maturity_code = {
-    'long': '??????',
-    'short': '???'
-}
 exchange_set = {
     'CBOE': {
         'suffix': [''],
