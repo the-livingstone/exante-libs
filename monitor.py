@@ -161,9 +161,12 @@ class Monitor:
         """
         return self._get('/modules/{}/indicators/{}'.format(module, '|'.join(path)))
 
-    def module_info(self, module):
-        """method to get current module information"""
-        return self._get('/modules/{}'.format(module))
+    def module_info(self, module, fold=True):
+        """
+        method to get current module information
+        :param fold: grouping of indicators by path (may truncate info if too much indicators on same path)
+        """
+        return self._get(f"/modules/{module}{'?fold=false' if fold == False else ''}")
 
     def remove_module(self, module):
         """
