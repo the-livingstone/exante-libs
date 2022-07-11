@@ -272,6 +272,7 @@ class Parser(Datascope, ExchangeParser):
                                 'base'
                             ]
                         ) == ric_base
+                        and x.get('isTrading') is not False
                     ), None)
                     if underlying_futures_folder:
                         children = [
