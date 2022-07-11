@@ -16,48 +16,43 @@ flowchart TB
         underlying
         parent_folder
     "/]
-    --> opt_init[/"
+    --> opt_init_cs[/"
         Control switches:
         recreate=False
         silent=False
     "/]
-    --> super_init[["super().__init__"]]
-
-    super_init_args["
-        instrument={}
-        instrument_type='OPTION'
-
-        ticker
-        exchange
-        shortname
-        parent_folder
-        week_number
-        option_type
-        parent_tree
-        env
-
-        recreate
-        silent
-    "] -.-> |args| super_init
-    --> opt_type{"what option_type?"}
+    --> opt_init_ci[/"
+        class instances:
+        SymbolDB=None
+        SDBAdditional=None
+        BackOffice=None
+    "/]
+    --> super_init[["super().__init__(Option)"]]
 
     super_init -.-> |sets| super_set["
         self.instrument
         self.parent_folder
-        self.weekly_commons
         self.reference
-        self.contracts
     "]
 
-    opt_type --> |OPTION| set_udl[["self.set_underlying"]]
-    set_udl_args[self.underlying] -.->|args| set_udl
+    super_init --> set_contracts[["__set_contracts()"]]
+    set_contracts -.-> |sets| contrs_set["
+            self.contracts
+            self.weekly_commons
+        "]
+   set_contracts --> opt_type{"what option_type?"}
+
+
+
+
+    opt_type --> |OPTION| set_udl[["self.set_underlying(self.underlying)"]]
     set_udl -.-> |sets| set_udl_set["self.underlying_dict"]
-    opt_type --> |OPTION ON FUTURE| align_la_lt[["self._align_expiry_la_lt"]]
+    opt_type --> |OPTION ON FUTURE| align_la_lt[["
+        self._align_expiry_la_lt(
+            self.contracts
+            self.update_expirations)
+        "]]
     opt_type --> |Other| opt_runtime_error([RuntimeError])
-    align_la_lt_args["
-        self.contracts
-        self.update_expirations
-    "] -.-> |args| align_la_lt
     set_udl --> align_la_lt
     -.-> |sets| set_exp_la_lt["
         self.contracts[x].instrument['lastAvailable'] 
@@ -71,28 +66,9 @@ flowchart TB
 ## Option: super.\_\_init\_\_
 ```mermaid
 flowchart TB
-    instr(["Instrument.__init__"])
-    --> super_params_const[/"
-        const:
-        instrument={}
-        instrument_type='OPTION'
-    "/]
-    --> super_params_opt[/"
-        option specific:
-        ticker
-        exchange
-        shortname
-        parent_folder
-        week_number
-        option_type
-        parent_tree
-        env
-    "/]
-    --> super_params_switch[/"
-        control_switches:
-        recreate=False
-        silent=False
-
+    instr(["Derivative.__init__"])
+    --> series[/"
+        series: Option
     "/]
     --> load_tree("sdbadds.load_tree()")
     --> is_parent_folder{self.parent_folder?}
@@ -108,6 +84,10 @@ flowchart TB
         self.parent_folder_id
         = _find_parent_folder()
     "]]
+    --> get_pf("
+        self.parent_folder
+        = self.sdb.get(self.parent_folder_id)
+    ")
     --> set_pf["set self.parent_folder"]
     parent_str --> is_parent_sdb_get{"
         is self.parent_folder?
@@ -120,16 +100,103 @@ flowchart TB
     --> set_pf
     parent_dict --> set_pf
     is_parent_sdb_get --> |No| RuntimeError([RuntimeError])
-    set_pf --> find_series[["
+    set_pf --> super_init[["
+        super().__init__(
+        instrument_type='OPTION',
+        option_type=self.option_type,
+        week_number=self.week_number,
+        env=self.env,
+
+        sdb=self.sdb,
+        sdbadds=self.sdbadds,
+        parent_tree=self.parent_tree,
+        tree=self.tree,
+        
+        reload_cache=self.reload_cache,
+        silent=self.silent)
+    "]]
+    
+    
+    --> find_series[["
         self.instrument,
-        self.reference,
-        self.contracts,
-        self.weekly_commons
+        self.reference
         = self._find_series()
     "]]
     --> finish([End])
 
 
+```
+## Derivative: super.\_\_init\_\_
+```mermaid
+flowchart TB
+    instr(["Instrument.__init__"])
+    --> series[/"
+        series related:
+
+        instrument={}
+        instrument_type='OPTION'
+        option_type
+        week_number
+    "/]
+    --> env[/"
+        env:
+
+        sdb
+        sdbadds
+        parent_tree
+        tree
+        env        
+    "/]
+    --> controls[/"
+        control swithces:
+
+        reload_cache
+        silent
+    "/]
+    --> is_schema{schema?}
+    --> |yes| set_schema("self.schema=schema")
+    --> is_inst_type{instrument_type?}
+    --> |yes| set_inst_inst("
+            self.instrument_type =
+            set_instrument_type(
+                instrument_type=instrument_type
+            )
+        ")
+    is_inst_type --> |no| set_inst_schema("
+            self.instrument_type =
+            set_instrument_type(
+                schema=schema
+            )
+        ")
+    is_schema --> |no| is_inst_type_env{instrument_type and env?}
+    --> |yes| set_inst_inst_env("
+            self.instrument_type =
+            set_instrument_type(
+                instrument_type=instrument_type
+            )
+        ")
+    is_inst_type_env --> |No| RuntimeError([RuntimeError])
+    set_inst_inst_env --> is_inst_spread{self.instrument_type is SPREAD?}
+    --> |yes| is_spread_type{is spread_type?}
+    --> |yes| set_spread_schema("
+        self.schema=
+        set_schema[env][instrument_type][spread_type]
+    ")
+    is_spread_type --> |No| spreadRuntimeError([RuntimeError])
+    is_inst_spread --> |No| set_other_schema("
+        self.schema=
+        set_schema[env][instrument_type]
+    ")
+    --> set_navi("self.navi=set_schema[env]['navigation']")
+    set_spread_schema --> set_navi
+    set_inst_inst --> set_navi
+    set_inst_schema --> set_navi
+    --> set_instr[["set_instrument(instrument)"]]
+    -.-> |sets| set_exp_la_lt["
+        self.instrument
+        self.compiled_instrument
+    "]
+    set_instr --> finish([End])
 ```
 ## _find_parent_folder
 Parent folder is not the direct parent for option series, it's just root -> OPTION (or OPTION ON FUTURE) -> exchange folder  
