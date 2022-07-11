@@ -612,73 +612,71 @@ class ExchangeParser(ABC):
             contracts: list = None,
             product: str = 'FUTURE',
             spread_type: str = None
-        ):
-        if product in [
+        ) -> dict:
+        results = {
+            'series': {},
+            'contracts': []
+        }
+        if product not in [
             'FUTURE',
             'OPTION',
             'OPTION ON FUTURE',
             'SPREAD',
             'CALENDAR_SPREAD'
         ]:
-            series_folder = {}
-            if series_data:
+            return results
+        if series_data:
+            try:
+                if spread_type:
+                    series = self.to_sdb_schema[spread_type]['series'](**series_data)
+                else:
+                    series = self.to_sdb_schema[product]['series'](**series_data)
+            except ValidationError as valerr:
+                results.setdefault('validation_errors', []).append(valerr.errors())
+                self.logger.error(
+                    f"{series_data.get('ticker')}.{series_data.get('exchange')}: "
+                    "folder validation has failed"
+                )
+                self.logger.error(valerr.errors())
+            series_exclude = {
+                x for x
+                in series.__dir__()
+                if x[-1] == '_'
+                and x[0] != '_'
+            }
+            series_exclude.update({'strikePrice'})
+            results['series'] = series.dict(
+                exclude_none=True,
+                exclude=series_exclude
+            )
+        if contracts:
+            contracts = sorted(contracts, key=lambda d: d['expiry'])
+            for c in contracts:
                 try:
                     if spread_type:
-                        series = self.to_sdb_schema[spread_type]['series'](**series_data)
+                        expiration = self.to_sdb_schema[spread_type]['contract'](**c)
                     else:
-                        series = self.to_sdb_schema[product]['series'](**series_data)
-                except ValidationError as valerr:
-                    self.logger.error(
-                        f"{series_data.get('ticker')}.{series_data.get('exchange')}: "
-                        "folder validation has failed"
-                    )
-                    self.logger.error(valerr.errors())
-                    return {
-                        'validation_errors': valerr.errors()
+                        expiration = self.to_sdb_schema[product]['contract'](**c)
+                    expiration_exclude = {
+                        x for x
+                        in expiration.__dir__()
+                        if x[-1] == '_'
+                        and x[0] != '_'
                     }
-                series_exclude = {
-                    x for x
-                    in series.__dir__()
-                    if x[-1] == '_'
-                    and x[0] != '_'
-                }
-                series_exclude.update({'strikePrice'})
-                series_folder = series.dict(
-                    exclude_none=True,
-                    exclude=series_exclude
-                )
-            ready_to_add = []
-            if contracts:
-                contracts = sorted(contracts, key=lambda d: d['expiry'])
-                for c in contracts:
-                    try:
-                        if spread_type:
-                            expiration = self.to_sdb_schema[spread_type]['contract'](**c)
-                        else:
-                            expiration = self.to_sdb_schema[product]['contract'](**c)
-                        expiration_exclude = {
-                            x for x
-                            in expiration.__dir__()
-                            if x[-1] == '_'
-                            and x[0] != '_'
-                        }
-                        expiration_exclude.update({'maturity', 'exchange'})
-                        ready_to_add.append(
-                            expiration.dict(
-                                exclude_none=True,
-                                exclude=expiration_exclude
-                            )
+                    expiration_exclude.update({'maturity', 'exchange'})
+                    results['contracts'].append(
+                        expiration.dict(
+                            exclude_none=True,
+                            exclude=expiration_exclude
                         )
-                    except ValidationError as valerr:
-                        self.logger.warning(
-                            f"{c.get('ticker')}.{c.get('exchange')} {c.get('maturity')}: "
-                            "contract validation has failed"
-                        )
-                        self.logger.warning(valerr.errors())
-            return {
-                'series': series_folder,
-                'contracts': ready_to_add
-            }
+                    )
+                except ValidationError as valerr:
+                    self.logger.warning(
+                        f"{c.get('ticker')}.{c.get('exchange')} {c.get('maturity')}: "
+                        "contract validation has failed"
+                    )
+                    self.logger.warning(valerr.errors())
+        return results
 
     @abstractmethod
     def futures(
