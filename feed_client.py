@@ -63,7 +63,8 @@ class FeedClient:
             'auxData': data.get('auxData', True),
             'optionData': data.get('optionData', True),
             'oneshot': oneshot,
-            'bondData':data.get('bondData',True)
+            'bondData': data.get('bondData',True),
+            'enableSsl': data.get('enableSsl',True)
         }
         logging.info('feed-client payload is {}'.format(payload))
         return payload
@@ -210,8 +211,14 @@ class FeedClient:
         :param stdout: stream from data be written
         :return: parsed json
         """
-        json_output = json.loads(stdout.readline().decode('utf8'))
-        stdout.flush()
+        while True:
+            payload = stdout.readline().decode('utf8')
+            try:
+                json_output = json.loads(payload)
+                stdout.flush()
+                break
+            except json.decoder.JSONDecodeError:
+                print(payload)
         return json_output
 
     def __subscribe(self, _id, source, ignore_schedule, oneshot, stdin):
