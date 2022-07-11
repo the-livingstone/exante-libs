@@ -643,13 +643,13 @@ class EditInstrument:
                 )
                 if not new_underlying_name:
                     return old_value
-                found_in_tree = next((
-                    x for x in self.sdbadds.tree[self.env]['sdb_tree'] if x['_id'] == new_underlying_id
-                ), None)
-                if not found_in_tree:
+
+                found_in_tree = self.sdbadds.tree_df.loc[self.sdbadds.tree_df['_id'] == new_underlying_id]
+                if found_in_tree.empty:
                     input(f"Can't find {new_underlying_id} in tree :(")
                     continue
-                if found_in_tree['isAbstract'] or self.sdbadds.isexpired(found_in_tree) or found_in_tree.get('isTrading') is False:
+                found_in_tree = found_in_tree.iloc[0]
+                if found_in_tree['isAbstract'] or self.sdbadds.isexpired(found_in_tree.to_dict()) or found_in_tree['isTrading'] is False:
                     input('Underlying should be a tradable, not expired instrument! try again')
                     continue
                 break
