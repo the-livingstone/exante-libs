@@ -83,6 +83,7 @@ class DerivativeAdder:
         self.derivative_type = derivative
         self.allowed_expirations = allowed_expirations
         self.max_timedelta = max_timedelta
+        self.validation_errors = {}
         self.series = self.set_series(
             series_payload=series_payload,
             recreate=recreate,
@@ -543,6 +544,11 @@ class DerivativeAdder:
                     highlighted.pop(eiss)
                 if not highlighted:
                     break
+                self.validation_errors.setdefault(
+                    f"{target.ticker}.{target.exchange}",
+                    {}
+                ).setdefault('series', {})
+                self.validation_errors[f"{target.ticker}.{target.exchange}"]['series'] = highlighted
                 if self.croned:
                     self.logger.error(
                         f"{self.ticker}.{self.exchange}: Series validation has been failed on following fields:"
@@ -588,6 +594,12 @@ class DerivativeAdder:
                         highlighted.update({
                             f"{'/'.join([str(x) for x in v['loc']])}": v['msg']
                         })
+                    self.validation_errors.setdefault(
+                        f"{exp.ticker}.{exp.exchange}",
+                        {}
+                    ).setdefault(exp.expiration.isoformat(), {})
+                    self.validation_errors[f"{exp.ticker}.{exp.exchange}"][exp.expiration.isoformat()] = highlighted
+
                     if self.croned:
                         self.logger.error(
                             f"{symbolid}: Expiration validation has been failed on following fields:"
@@ -800,7 +812,7 @@ class DerivativeAdder:
                 product=self.derivative_type,
                 data=parsed_data
             )
-        if self.derivative_type == 'SPREAD':
+        elif self.derivative_type == 'SPREAD':
             parsed_series, parsed_contracts = parser.spreads(
                 f'{self.ticker}.{self.exchange}',
                 overrides=overrides.get(feed_provider),
