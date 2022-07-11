@@ -359,6 +359,7 @@ class ValidationLists:
         'Estonia': 'EE',
         'Eswatini': 'SZ',
         'Ethiopia': 'ET',
+        'European Union': 'EU',
         'Falkland Islands': 'FK',
         'Faroe Islands': 'FO',
         'Fiji': 'FJ',
