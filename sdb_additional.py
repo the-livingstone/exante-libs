@@ -841,10 +841,11 @@ class SDBAdditional:
                 SdbLists.CURRENCIES: self.sdb_currencies
             }
             
-            update_cache = []
-            for l in sdb_lists:
-                if not sdb_lists[l.value]:
-                    update_cache.append(l)
+            update_cache = [
+                l for l
+                in sdb_lists
+                if not sdb_lists[l]
+            ]
 
             self.sdb_exchs = self.sdb.get_exchanges() if not self.sdb_exchs else self.sdb_exchs
             self.sdb_execs = self.sdb.get_execution_schemes() if not self.sdb_execs else self.sdb_execs
