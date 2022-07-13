@@ -201,8 +201,10 @@ class DerivativeSchema(BaseModel):
             values['EXPIRATION_STYLE'] = True
         else:
             values['EXPIRATION_STYLE'] = False
-        if values.get('SETTLEMENT_STYLE'):
-            if isinstance(values['SETTLEMENT_STYLE'], bool):
+        if 'SETTLEMENT_STYLE' in values:
+            if not values.get('SETTLEMENT_STYLE'):
+                values.pop('SETTLEMENT_STYLE')
+            elif isinstance(values['SETTLEMENT_STYLE'], bool):
                 pass
             elif isinstance(values['SETTLEMENT_STYLE'], str):
                 if values['SETTLEMENT_STYLE'].lower() in ['physical', 'deliverable', 'close']:
