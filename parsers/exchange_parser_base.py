@@ -207,7 +207,7 @@ class FutureContract(BaseModel):
 class ParsedFutureSchema(BaseModel):
     ticker: str
     exchange: str
-    shortName: str
+    shortName: Optional[str]
     description: Optional[str]
     expiry: Optional[dict]
     feedMinPriceIncrement: Optional[float]
@@ -370,7 +370,7 @@ class ParsedSpreadSchema(BaseModel):
     ticker: str
     second_ticker_: Optional[str]
     exchange: str
-    shortName: str
+    shortName: Optional[str]
     description: Optional[str]
     feedMinPriceIncrement: Optional[float]
     orderMinPriceIncrement: Optional[float]
@@ -378,10 +378,7 @@ class ParsedSpreadSchema(BaseModel):
     currency: Optional[str]
     country: Optional[str]
     MIC: Optional[str]
-    isPhysicalDelivery: bool = Field(
-        False,
-        const=True
-    )
+    isPhysicalDelivery: Optional[bool]
     base_ric_: Optional[str]
     isAbstract: bool = Field(
         True,
@@ -458,7 +455,7 @@ class OptionContract(BaseModel):
 class ParsedOptionSchema(BaseModel):
     ticker: str
     exchange: str
-    shortName: str
+    shortName: Optional[str]
     description: Optional[str]
     feedMinPriceIncrement: Optional[float]
     orderMinPriceIncrement: Optional[float]

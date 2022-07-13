@@ -143,23 +143,23 @@ class DerivativeSchema(BaseModel):
     MIC: str = Field(
         alias='OPOL'
     )
-    currency: str = Field(
+    currency: Optional[str] = Field(
         alias='CURRENCY'
     )
     expiry: Union[dt.datetime, dt.date] = Field(
         alias='EXPIRATION'
     )
     expiry_time_: Optional[str]
-    contractMultiplier: float = Field(
+    contractMultiplier: Optional[float] = Field(
         alias='MULTIPLIER'
     )
     maturity: str = Field(
         alias='MMY'
     )
-    feedMinPriceIncrement: float = Field(
+    feedMinPriceIncrement: Optional[float] = Field(
         alias='PRICE_INCREMENTS'
     )
-    orderMinPriceIncrement: float = Field(
+    orderMinPriceIncrement: Optional[float] = Field(
         alias='PRICE_INCREMENTS'
     )
     CFI: Optional[str] = Field(
@@ -278,7 +278,7 @@ class StrikeSchema(DerivativeSchema):
         return values
 
 class FutureSchema(DerivativeSchema):
-    shortName: str = Field(
+    shortName: Optional[str] = Field(
         alias='DESCRIPTION'
     )
 
@@ -305,7 +305,7 @@ class SpreadSchema(DerivativeSchema):
     shortName: str
     legs: List[SpreadLeg]
     leg_gap: Optional[int]
-    isPhysicalDelivery: bool
+    isPhysicalDelivery: Optional[bool]
     spreadType: Optional[str]
 
     @root_validator(pre=True)
