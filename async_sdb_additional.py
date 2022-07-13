@@ -1226,14 +1226,15 @@ class SDBAdditional:
             return self.tree
         # try to load from cache
         tree_df: pd.DataFrame = await self.__load_cache(SdbLists.TREE, df=True)
-        tree_df.set_index(
-            pd.Index(
-                tree_df['_id'],
-                name='uuid'
-            ),
-            drop=False,
-            inplace=True
-        )
+        if not tree_df.empty:
+            tree_df.set_index(
+                pd.Index(
+                    tree_df['_id'],
+                    name='uuid'
+                ),
+                drop=False,
+                inplace=True
+            )
         if all_conditions(tree_df, fields) and not reload_cache:
             self.tree = tree_df.to_dict('records')
             self.tree_df = tree_df
