@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-
+import ast
 import asyncio
 from copy import copy, deepcopy
 import datetime as dt
@@ -22,7 +22,7 @@ from libs.terminal_tools import (
     ColorMode,
     StatusColor
 )
-from typing import Union
+from typing import Any, Union
 
 class Months(Enum):
     F = 1 # Jan
@@ -116,7 +116,7 @@ class SDBAdditional:
     used_symbols_demo =[]
     stock_rics = []
     execution_to_route = []
-    tree_df = pd.DataFrame([])
+    tree_df = pd.DataFrame()
 
     def __init__(self, env: str = 'prod', nocache: bool = False) -> None:
         self.env = env
@@ -171,50 +171,12 @@ class SDBAdditional:
                 os.mkdir('/'.join(file_path[:i]))
 
 
-    async def __load_cache_df(self, list_name: SdbLists, env=None, silent=False) -> pd.DataFrame:
-        if list_name not in SdbLists:
-            raise RuntimeError(f'{list_name.value} is not in cache config')
-        if env is None:
-            env = self.env
-        if env == 'demo' and list_name not in [SdbLists.USED_SYMBOLS, SdbLists.FEED_PERMISSIONS]:
-            env = 'prod'
-        file_path = [
-            self.current_dir,
-            'cache',
-            env,
-            f"{list_name.value}.csv"
-        ]
-        self.__check_file_path(file_path)
-        if not os.path.exists('/'.join(file_path)):
-            if not silent:
-                self.logger.warning(
-                    f"{'/'.join(file_path)} cache file is not found, "
-                    "cache will be refreshed in runtime"
-                )
-            return pd.DataFrame([])
-        last_update = dt.datetime.fromtimestamp(
-            os.path.getctime(
-                f"{'/'.join(file_path)}"
-            )
-        )
-        if (dt.datetime.now() - last_update) > self.cache_conf[list_name.value]['expiry']:
-            if not silent:
-                self.logger.info(f"{list_name.value} cache file is out of date ({last_update.isoformat()=}), loading from sdb (or BO)")
-            return pd.DataFrame([])
-        try:
-            cached_df = pd.read_csv(
-                f"{'/'.join(file_path)}",
-                index_col='uuid',
-                converters={'path': lambda x: x[2:-2].split("', '")}
-            ).replace({np.nan: None})
-            return cached_df
-        except Exception as e:
-            self.logger.warning(f"{e.__class__.__name__}: {list_name.value} cache is not loaded")
-            return pd.DataFrame([])
 
-
-    async def __load_cache(self, list_name: SdbLists, env=None, silent=False):
-        cached = []
+    async def __load_cache(self, list_name: SdbLists, env=None, silent=False, df=False):
+        if df:
+            cached = pd.DataFrame()
+        else:
+            cached = []
 
         if list_name not in SdbLists:
             raise RuntimeError(f'{list_name} is not in cache config')
@@ -228,16 +190,14 @@ class SDBAdditional:
             env,
             f"{list_name.value}.jsonl"
         ]
-        for i in range(2, 4):
-            if not os.path.exists('/'.join(file_path[:i])):
-                os.mkdir('/'.join(file_path[:i]))
+        self.__check_file_path(file_path)
         if not os.path.exists('/'.join(file_path)):
             if not silent:
                 self.logger.warning(
                     f"{'/'.join(file_path)} cache file is not found, "
                     "cache will be refreshed in runtime"
                 )
-            return []
+            return cached
         last_update = dt.datetime.fromtimestamp(
             os.path.getctime(
                 f"{'/'.join(file_path)}"
@@ -246,38 +206,32 @@ class SDBAdditional:
         if (dt.datetime.now() - last_update) > self.cache_conf[list_name.value]['expiry']:
             if not silent:
                 self.logger.info(f"{list_name} cache file is out of date ({last_update.isoformat()=}), loading from sdb (or BO)")
-            return []
-        try:
-            with open(f"{'/'.join(file_path)}", 'r') as f:
-                for line in f:
-                    cached.append(json.loads(line))
             return cached
-        except json.decoder.JSONDecodeError:
-            if not silent:
-                self.logger.warning(
-                    f"{self.cache_conf[list_name.value]['path']} cache file is malformed, cache will be refreshed in runtime"
-                )
-            return []
+        if df:
+            try:
+            # for i in 'a':
+                cached_df = pd.read_json(
+                    f"{'/'.join(file_path)}",
+                    lines=True
+                ).replace({np.nan: None})
+                return cached_df
+            except Exception as e:
+                self.logger.warning(f"{e.__class__.__name__}: {list_name.value} cache is not loaded")
+                return pd.DataFrame()
+        else:
+            try:
+                with open(f"{'/'.join(file_path)}", 'r') as f:
+                    for line in f:
+                        cached.append(json.loads(line))
+                return cached
+            except json.decoder.JSONDecodeError:
+                if not silent:
+                    self.logger.warning(
+                        f"{self.cache_conf[list_name.value]['path']} cache file is malformed, cache will be refreshed in runtime"
+                    )
+                return cached
 
-    async def __write_cache_df(self, list_name: SdbLists, payload: pd.DataFrame, env=None):
-        if env is None:
-            env = self.env
-        if env == 'demo' and list_name not in [SdbLists.USED_SYMBOLS, SdbLists.FEED_PERMISSIONS]:
-            env = 'prod'
-        file_path = [
-            self.current_dir,
-            'cache',
-            env,
-            f"{list_name.value}.csv"
-        ]
-        self.__check_file_path(file_path)
-        try:
-            payload.to_csv('/'.join(file_path))
-        except Exception as e:
-            self.logger.warning(f"{e.__class__.__name__}: {list_name.value} cache is not updated")
-
-
-    async def __write_cache(self, list_name: SdbLists, payload: list[dict], env=None):
+    async def __write_cache(self, list_name: SdbLists, payload: Union[list[dict], pd.DataFrame], env: str = None):
         if env is None:
             env = self.env
         if env == 'demo' and list_name not in [SdbLists.USED_SYMBOLS, SdbLists.FEED_PERMISSIONS]:
@@ -290,13 +244,15 @@ class SDBAdditional:
         ]
         self.__check_file_path(file_path)
         try:
-            with open(f"{'/'.join(file_path)}", 'w') as f:
-                for p in payload:
-                    f.write(json.dumps(p))
-                    f.write('\n')
+            if isinstance(payload, list):
+                with open(f"{'/'.join(file_path)}", 'w') as f:
+                    for p in payload:
+                        f.write(json.dumps(p))
+                        f.write('\n')
+            elif isinstance(payload, pd.DataFrame):
+                payload.to_json('/'.join(file_path), 'records', lines=True)
         except Exception as e:
             self.logger.warning(f"{e.__class__.__name__}: {list_name.value} cache is not updated")
-        pass
 
     def browse_folders(self, input_path: list = None, message: str = None, only_folders: bool = False, allowed: list = None) -> str:
         """
@@ -346,7 +302,7 @@ class SDBAdditional:
             allowed = []
         if not input_path:
             input_path = []
-        tree = asyncio.run(self.load_tree(fields=['expiryTime']))
+        tree = asyncio.run(self.load_tree(fields=['expiryTime', 'expiry']))
         parents.append(deepcopy(next(x for x in tree if len(x['path']) == 1)))
         parents[0].update({
             'prefix': ''
@@ -1096,7 +1052,7 @@ class SDBAdditional:
                 return True
 
         if not self.execution_to_route:
-            self.execution_to_route = await self.__load_cache(SdbLists.EXECUTION_TO_ROUTE)
+            self.execution_to_route: list = await self.__load_cache(SdbLists.EXECUTION_TO_ROUTE)
         if all_conditions(self.execution_to_route):
             return self.execution_to_route
         tree = await self.load_tree(fields=['brokers'])
@@ -1160,7 +1116,7 @@ class SDBAdditional:
                 return True
 
         if not self.feed_perms:
-            self.feed_perms = await self.__load_cache(SdbLists.FEED_PERMISSIONS)
+            self.feed_perms: list = await self.__load_cache(SdbLists.FEED_PERMISSIONS)
         if all_conditions(self.feed_perms):
             return self.feed_perms
         self.feed_perms = self.bo.feed_permissions_get()
@@ -1180,7 +1136,7 @@ class SDBAdditional:
                 return True
 
         if not self.stock_rics:
-            self.stock_rics = await self.__load_cache(SdbLists.STOCK_RICS)
+            self.stock_rics: list = await self.__load_cache(SdbLists.STOCK_RICS)
         if all_conditions(self.stock_rics):
             return self.stock_rics
         tree = await self.load_tree(fields=['exchangeId', 'expiry', 'identifiers', 'ticker'])
@@ -1244,7 +1200,7 @@ class SDBAdditional:
         await self.__write_cache(SdbLists.STOCK_RICS, self.stock_rics, env='prod')
         return self.stock_rics
 
-    async def load_tree(self, fields: list = [], reload_cache: bool = False) -> list:
+    async def load_tree(self, fields: list = [], reload_cache: bool = False, man=False) -> list:
         """
         method to load info for all instruments. Default minimum: name, path in sdb tree and uuid
         :param fields: load default fields plus given here 
@@ -1256,12 +1212,6 @@ class SDBAdditional:
 
 
         def all_conditions(tree_in_question, fields) -> bool:
-            # gather all test conditions in one func
-            # if we have last_update we are looking into cached tree
-            # check if:
-            # · tree is a list
-            # · tree has at least 1000 members (if not then we are looking at the wrong place)
-            # · tree members have all required fields (dunno how to not reload cache if fields==['all'])
             if not isinstance(tree_in_question, pd.DataFrame) \
                 or tree_in_question.shape[0] < 1000 \
                 or next((x for x in fields if x not in tree_in_question.columns), None):
@@ -1275,7 +1225,15 @@ class SDBAdditional:
             self.tree = self.tree_df.to_dict('records')
             return self.tree
         # try to load from cache
-        tree_df = await self.__load_cache_df(SdbLists.TREE)
+        tree_df: pd.DataFrame = await self.__load_cache(SdbLists.TREE, df=True)
+        tree_df.set_index(
+            pd.Index(
+                tree_df['_id'],
+                name='uuid'
+            ),
+            drop=False,
+            inplace=True
+        )
         if all_conditions(tree_df, fields) and not reload_cache:
             self.tree = tree_df.to_dict('records')
             self.tree_df = tree_df
@@ -1293,24 +1251,8 @@ class SDBAdditional:
             loaded_tree_raw = await self.sdb.get_tree(fields=fields)
             all_syms = []
         loaded_tree_df = pd.DataFrame(loaded_tree_raw)
-        # loaded_tree_df.set_index(
-        #     pd.Index(
-        #         loaded_tree_df['_id'],
-        #         name='uuid'
-        #     ),
-        #     drop=False,
-        #     inplace=True
-        # )
         get_v2_df = pd.DataFrame(all_syms)
         if not get_v2_df.empty:
-            # get_v2_df.set_index(
-            #     pd.Index(
-            #         get_v2_df['_id'],
-            #         name='uuid'
-            #     ),
-            #     drop=True,
-            #     inplace=True
-            # )
             loaded_tree_df = loaded_tree_df.merge(
                 get_v2_df,
                 how='outer',
@@ -1353,7 +1295,7 @@ class SDBAdditional:
         )
         self.tree_df = loaded_tree_df
         self.tree = loaded_tree_df.to_dict('records')
-        await self.__write_cache_df(SdbLists.TREE, self.tree_df)
+        await self.__write_cache(SdbLists.TREE, self.tree_df)
         return self.tree
 
     async def load_used_symbols(self, reload_cache: bool = False, consider_demo = True) -> list:
@@ -1394,7 +1336,7 @@ class SDBAdditional:
             result.update(self.used_symbols)
         else:
         # try to get from cache
-            self.used_symbols = await self.__load_cache(SdbLists.USED_SYMBOLS)
+            self.used_symbols: list = await self.__load_cache(SdbLists.USED_SYMBOLS)
             if all_conditions(self.used_symbols) and not reload_cache:
                 result.update(self.used_symbols)
             else:
@@ -1409,7 +1351,7 @@ class SDBAdditional:
                 result.update(self.used_symbols_demo)
             else:
             # try to get from cache
-                self.used_symbols_demo = await self.__load_cache(SdbLists.USED_SYMBOLS_DEMO)
+                self.used_symbols_demo: list = await self.__load_cache(SdbLists.USED_SYMBOLS_DEMO)
                 if all_conditions(self.used_symbols_demo) and not reload_cache:
                     result.update(self.used_symbols_demo)
                 else:
