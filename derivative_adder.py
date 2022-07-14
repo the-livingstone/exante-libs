@@ -28,6 +28,11 @@ from pprint import pformat, pprint
 
 
 allowed_automation = {
+    'FUTURE': {
+        'CBOE': [],
+        'COMEX': [],
+        'NYMEX': []
+    },
     'OPTION': {
         'CBOE': ['Equity Options']
     },
@@ -678,6 +683,7 @@ class DerivativeAdder:
         to set as destination for new ticker:
         '''
         # choose destination folder
+        new_folder_destination = None
         if not self.croned:
             if self.derivative_type == 'FUTURE':
                 suggested_path = ['FUTURE', self.exchange]
