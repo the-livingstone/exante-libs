@@ -1200,7 +1200,7 @@ class SDBAdditional:
         await self.__write_cache(SdbLists.STOCK_RICS, self.stock_rics, env='prod')
         return self.stock_rics
 
-    async def load_tree(self, fields: list = [], reload_cache: bool = False, man=False) -> list:
+    async def load_tree(self, fields: list = [], reload_cache: bool = False, return_dict=True) -> list:
         """
         method to load info for all instruments. Default minimum: name, path in sdb tree and uuid
         :param fields: load default fields plus given here 
@@ -1222,8 +1222,11 @@ class SDBAdditional:
 
         # try to get from class
         if all_conditions(self.tree_df, fields) and not reload_cache:
-            self.tree = self.tree_df.to_dict('records')
-            return self.tree
+            if return_dict:
+                self.tree = self.tree_df.to_dict('records')
+                return self.tree
+            else:
+                return None
         # try to load from cache
         tree_df: pd.DataFrame = await self.__load_cache(SdbLists.TREE, df=True)
         if not tree_df.empty:
@@ -1236,9 +1239,12 @@ class SDBAdditional:
                 inplace=True
             )
         if all_conditions(tree_df, fields) and not reload_cache:
-            self.tree = tree_df.to_dict('records')
             self.tree_df = tree_df
-            return self.tree
+            if return_dict:
+                self.tree = tree_df.to_dict('records')
+                return self.tree
+            else:
+                return None
         # if cache is not good, load from sdb
         old_cache_tree_df = tree_df
         # slow, use only if necessary
@@ -1295,9 +1301,12 @@ class SDBAdditional:
             inplace=True
         )
         self.tree_df = loaded_tree_df
-        self.tree = loaded_tree_df.to_dict('records')
         await self.__write_cache(SdbLists.TREE, self.tree_df)
-        return self.tree
+        if return_dict:
+            self.tree = loaded_tree_df.to_dict('records')
+            return self.tree
+        else:
+            return None
 
     async def load_used_symbols(self, reload_cache: bool = False, consider_demo = True) -> list:
         """
@@ -1440,21 +1449,7 @@ class SDBAdditional:
         """
         tree_reload = False
         while True:
-            tree = asyncio.run(self.load_tree(reload_cache=tree_reload))
-            if len(tree) != self.tree_df.shape[0]:
-                self.tree_df = pd.DataFrame([
-                    {
-                        key: val for key, val in x.items() if key in ['_id', 'name']
-                    } for x in tree
-                ])
-                self.tree_df.set_index(
-                    pd.Index(
-                        self.tree_df['_id'],
-                        name='uuid'
-                    ),
-                    drop=False,
-                    inplace=True
-                )
+            asyncio.run(self.load_tree(reload_cache=tree_reload, return_dict=False))
             try:
                 get_name = self.tree_df.at[uuid, 'name']
                 if not get_name:
