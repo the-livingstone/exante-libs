@@ -51,6 +51,7 @@ class SdbLists(Enum):
     GATEWAYS = 'gateways'
     SCHEDULES = 'schedules'
     CURRENCIES = 'currencies'
+    SECTIONS = 'sections'
 
     EXECUTION_TO_ROUTE = 'execution_to_route'
     FEED_PERMISSIONS = 'feed_permissions'
@@ -90,6 +91,9 @@ class SDBAdditional:
         },
         'currencies': {
             'expiry': dt.timedelta(days=3)
+        },
+        'sections': {
+            'expiry': dt.timedelta(minutes=120)
         },
         'tree': {
             'expiry': dt.timedelta(minutes=120)
@@ -146,7 +150,7 @@ class SDBAdditional:
         # smaller lists we download wtihout asking
         # bigger ones (like USED_SYMBOLS or TREE) we download on demand
         collect_tasks = []
-        for l in list(SdbLists.__members__)[:8]:
+        for l in list(SdbLists.__members__)[:9]:
             collect_tasks.append(
                 self.__load_cache(SdbLists[l], silent=True)
             )
@@ -157,6 +161,7 @@ class SDBAdditional:
             self.sdb_gws,
             self.sdb_scheds,
             self.sdb_currencies,
+            self.sdb_sections,
             self.execution_to_route,
             self.feed_perms
         ) = await asyncio.gather(*collect_tasks)
@@ -901,6 +906,7 @@ class SDBAdditional:
                 SdbLists.GATEWAYS: self.sdb_gws,
                 SdbLists.SCHEDULES: self.sdb_scheds,
                 SdbLists.CURRENCIES: self.sdb_currencies,
+                SdbLists.SECTIONS: self.sdb_sections
             }
             async def dummy(list_name: list):
                 return list_name
@@ -915,7 +921,8 @@ class SDBAdditional:
                 self.sdb.get_broker_accounts() if not self.sdb_accs else dummy(self.sdb_accs),
                 self.sdb.get_feed_gateways() if not self.sdb_gws else dummy(self.sdb_gws),
                 self.sdb.get_schedules() if not self.sdb_scheds else dummy(self.sdb_scheds),
-                self.sdb.get_currencies() if not self.sdb_currencies else dummy(self.sdb_currencies)
+                self.sdb.get_currencies() if not self.sdb_currencies else dummy(self.sdb_currencies),
+                self.sdb.get_sections() if not self.sdb_sections else dummy(self.sdb_sections)
             ]
             (
                 self.sdb_exchs,
@@ -923,7 +930,8 @@ class SDBAdditional:
                 self.sdb_accs,
                 self.sdb_gws,
                 self.sdb_scheds,
-                self.sdb_currencies
+                self.sdb_currencies,
+                self.sdb_sections
             ) = await asyncio.gather(*gather)
             sdb_lists = {
                 SdbLists.EXCHANGES: self.sdb_exchs,
@@ -932,6 +940,7 @@ class SDBAdditional:
                 SdbLists.GATEWAYS: self.sdb_gws,
                 SdbLists.SCHEDULES: self.sdb_scheds,
                 SdbLists.CURRENCIES: self.sdb_currencies,
+                SdbLists.SECTIONS: self.sdb_sections
             }
             for uc in update_cache:
                 await self.__write_cache(uc, sdb_lists[uc])
@@ -1014,6 +1023,11 @@ class SDBAdditional:
                 if br['providerId'] not in [x[1] for x in providers]:
                     providers.append((br['providerName'], br['providerId']))
             return providers
+        elif list_name == SdbLists.SECTIONS.value:
+            fields = ['name', '_id'] + additional_fields
+            sections = [tuple([x.get(field) for field in fields]) for x in self.sdb_sections]
+            return sections
+
         else:
             return None
 
