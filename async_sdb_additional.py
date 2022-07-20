@@ -914,7 +914,7 @@ class SDBAdditional:
                 self.sdb.get_execution_schemes() if not self.sdb_execs else dummy(self.sdb_execs),
                 self.sdb.get_broker_accounts() if not self.sdb_accs else dummy(self.sdb_accs),
                 self.sdb.get_feed_gateways() if not self.sdb_gws else dummy(self.sdb_gws),
-                self.sdb.get_schedule() if not self.sdb_scheds else dummy(self.sdb_scheds),
+                self.sdb.get_schedules() if not self.sdb_scheds else dummy(self.sdb_scheds),
                 self.sdb.get_currencies() if not self.sdb_currencies else dummy(self.sdb_currencies)
             ]
             (
