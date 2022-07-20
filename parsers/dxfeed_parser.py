@@ -356,11 +356,15 @@ class Parser(DxFeed, ExchangeParser):
                 ticker = series_data['ticker'][:-1] # in case of splits or other weird actions when option series start to get additional number to the ticker
             else:
                 ticker = series_data['ticker']
-            underlying_search = asyncio.run(self.sdb.get_v2(
-                rf"^{ticker}\.(NASDAQ|NYSE|AMEX|ARCA|BATS)",
-                is_expired=False,
-                fields=['symbolId']
-            ))
+            underlying_search = [
+                x for x in
+                asyncio.run(self.sdb.get_v2(
+                    rf"^{ticker}\.(NASDAQ|NYSE|AMEX|ARCA|BATS)$",
+                    is_expired=False,
+                    fields=['symbolId']
+                ))
+                if 'test' not in x['symbolId'].lower()
+            ]
             if underlying_search:
                 series_data['underlyingId'] = {
                     'type': 'symbolId',
