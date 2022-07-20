@@ -561,6 +561,9 @@ class ValidationLists:
     exec_schemes = asyncio.run(
         sdbadds.get_list_from_sdb(SdbLists.EXECSCHEMES.value)
     )
+    sections = asyncio.run(
+        sdbadds.get_list_from_sdb(SdbLists.SECTIONS.value, id_only=False)
+    )
     market_data_groups = [x['marketDataGroup'] for x in asyncio.run(sdbadds.load_feed_permissions())]
     schedules = asyncio.run(
         sdbadds.get_list_from_sdb(SdbLists.SCHEDULES.value)
@@ -2120,6 +2123,11 @@ class CommonSchema(BaseModel):
         alias='orderAutomation',
         title='orderAutomation'
     )
+    section_id: Field(
+        alias='exchangeId',
+        title='exchangeId',
+        opts_list=ValidationLists.sections
+    )
 
     @validator('market_data_group', allow_reuse=True)
     def check_market_data_group(cls, item):
@@ -2157,6 +2165,25 @@ class CommonSchema(BaseModel):
         if item not in [x[1] for x in ValidationLists.exchanges]:
             raise ValueError(f'{item} is invalid exchange id')
         return item
+
+    @root_validator(allow_reuse=True)
+    def check_section_id(cls, items: dict):
+        section_id = items.get('section_id')
+        if section_id not in [x[1] for x in ValidationLists.sections]:
+            raise ValueError(f'{section_id} is invalid section id')
+        section = next(x for x in ValidationLists.sections if x[1] == section_id)
+        if items.get('exchange_id') != section[2]:
+            raise ValueError(
+                f"Exchange id ({items.get('exchange_id')}) does not correspond "
+                f"to exchange id set in section ({section[2]}). Section: {section[0]}, {section[1]}"
+            )
+        if items.get('schedule_id') != section[3]:
+            raise ValueError(
+                f"Schedule id ({items.get('schedule_id')}) does not correspond "
+                f"to schedule id set in section ({section[3]}). Section: {section[0]}, {section[1]}"
+            )
+        return items
+    
 
 class Rating(BaseModel):
     snp: Optional[str]
