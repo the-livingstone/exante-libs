@@ -2123,9 +2123,9 @@ class CommonSchema(BaseModel):
         alias='orderAutomation',
         title='orderAutomation'
     )
-    section_id: Field(
-        alias='exchangeId',
-        title='exchangeId',
+    section_id: str = Field(
+        alias='sectionId',
+        title='sectionId',
         opts_list=ValidationLists.sections
     )
 
