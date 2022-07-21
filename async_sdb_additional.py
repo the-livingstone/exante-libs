@@ -1024,7 +1024,10 @@ class SDBAdditional:
                     providers.append((br['providerName'], br['providerId']))
             return providers
         elif list_name == SdbLists.SECTIONS.value:
-            fields = ['name', '_id'] + additional_fields
+            if id_only:
+                fields = ['name', '_id'] + additional_fields
+            else:
+                fields = ['name', '_id', 'exchangeId', 'scheduleId'] + additional_fields
             sections = [tuple([x.get(field) for field in fields]) for x in self.sdb_sections]
             return sections
 
