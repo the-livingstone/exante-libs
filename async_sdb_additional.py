@@ -313,7 +313,7 @@ class SDBAdditional:
             'prefix': ''
         })
         selected = None
-        if input_path and input_path[0] == '.':
+        if input_path and input_path[0] in ['.', 'Root']:
             input_path.pop(0)
         initial_path = deepcopy(input_path)
         while True:
