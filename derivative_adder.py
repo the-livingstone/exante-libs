@@ -741,6 +741,17 @@ class DerivativeAdder:
                     self.sdbadds.tree_df
                 )
             )
+            # follback to main folder if category folder does not exist
+            if new_folder_destination[1] is None and additional:
+                suggested_path.pop(-1)
+                new_folder_destination = (
+                    suggested_path[-1],
+                    get_uuid_by_path(
+                        suggested_path,
+                        self.sdbadds.tree_df
+                    )
+                )
+
             # check if there are ticker folders here
             heirs = asyncio.run(self.sdb.get_heirs(new_folder_destination[1], fields=['ticker']))
             if len([x for x in heirs if x.get('ticker')]) < len(heirs)/2:
