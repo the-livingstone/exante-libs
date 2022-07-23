@@ -1,0 +1,4656 @@
+{
+    "CBOT": {
+        "ZC": {
+            "category": "Agriculture",
+            "description": "Corn Futures"
+        },
+        "ZCT": {
+            "category": "Agriculture",
+            "description": "Corn TAS"
+        },
+        "XC": {
+            "category": "Agriculture",
+            "description": "Mini-sized Corn Futures"
+        },
+        "ZO": {
+            "category": "Agriculture",
+            "description": "Oats Futures"
+        },
+        "ZR": {
+            "category": "Agriculture",
+            "description": "Rough Rice Futures"
+        },
+        "ZS": {
+            "category": "Agriculture",
+            "description": "Soybean Futures"
+        },
+        "XK": {
+            "category": "Agriculture",
+            "description": "Mini-sized Soybean Futures"
+        },
+        "SBT": {
+            "category": "Agriculture",
+            "description": "Soybean TAS"
+        },
+        "ZM": {
+            "category": "Agriculture",
+            "description": "Soybean Meal Futures"
+        },
+        "ZMT": {
+            "category": "Agriculture",
+            "description": "Soybean Meal TAS"
+        },
+        "ZL": {
+            "category": "Agriculture",
+            "description": "Soybean Oil Futures"
+        },
+        "ZLT": {
+            "category": "Agriculture",
+            "description": "Soybean Oil TAS"
+        },
+        "ZW": {
+            "category": "Agriculture",
+            "description": "Wheat Futures"
+        },
+        "XW": {
+            "category": "Agriculture",
+            "description": "Mini-sized Wheat Futures"
+        },
+        "ZWT": {
+            "category": "Agriculture",
+            "description": "Chicago SRW Wheat TAS"
+        },
+        "KE": {
+            "category": "Agriculture",
+            "description": "KC Hard Red Winter (HRW) Wheat Futures"
+        },
+        "KET": {
+            "category": "Agriculture",
+            "description": "KC HRW Wheat TAS"
+        },
+        "MKC": {
+            "category": "Agriculture",
+            "description": "Mini-sized KC Hard Red Winter (HRW) Wheat Futures"
+        },
+        "AUW": {
+            "category": "Agriculture",
+            "description": "Australian Wheat FOB (Platts) Futures"
+        },
+        "BWF": {
+            "category": "Agriculture",
+            "description": "Black Sea Wheat FOB (Platts) Futures"
+        },
+        "SAS": {
+            "category": "Agriculture",
+            "description": "FOB Santos Soybeans Financially Settled (Platts) Futures"
+        },
+        "TRF": {
+            "category": "Agriculture",
+            "description": "Thailand Long Grain White Rice (Platts) Futures"
+        },
+        "BSF": {
+            "category": "Agriculture",
+            "description": "Black Sea Sunflower Oil Financially Settled (Platts) Futures"
+        },
+        "BCF": {
+            "category": "Agriculture",
+            "description": "Black Sea Corn FOB (Platts) Futures"
+        },
+        "AW": {
+            "category": "Agriculture",
+            "description": "Bloomberg Commodity Index Futures"
+        },
+        "AWT": {
+            "category": "Agriculture",
+            "description": "BTIC on Bloomberg Commodity Index Futures"
+        },
+        "DRS": {
+            "category": "Agriculture",
+            "description": "Bloomberg Roll Select Commodity Index Futures"
+        },
+        "DRT": {
+            "category": "Agriculture",
+            "description": "BTIC on Bloomberg Roll Select Commodity Index Futures"
+        },
+        "RX": {
+            "category": "Equities",
+            "description": "Dow Jones U.S. Real Estate Index Futures"
+        },
+        "DTT": {
+            "category": "Equities",
+            "description": "BTIC on Dow Jones Industrial Average Total Return Index Futures"
+        },
+        "ADT": {
+            "category": "Equities",
+            "description": "BTIC on Adjusted Interest Rate Dow Jones Industrial Average Index Total Return Futures"
+        },
+        "YM": {
+            "category": "Equities",
+            "description": "E-mini DJIA ($5) Futures"
+        },
+        "YMT": {
+            "category": "Equities",
+            "description": "BTIC on E-mini DJIA ($5) Futures"
+        },
+        "MYM": {
+            "category": "Equities",
+            "description": "Micro E-mini DJIA Index Futures"
+        },
+        "TPY": {
+            "category": "Equities",
+            "description": "Yen Denominated TOPIX Futures"
+        },
+        "TPB": {
+            "category": "Equities",
+            "description": "BTIC on Yen Denominated TOPIX Futures"
+        },
+        "FT1": {
+            "category": "Equities",
+            "description": "E-mini FTSE 100 Index Futures"
+        },
+        "FTT": {
+            "category": "Equities",
+            "description": "BTIC on E-mini FTSE 100 Index Futures"
+        },
+        "FTU": {
+            "category": "Equities",
+            "description": "E-mini USD Denominated FTSE 100 Index Futures"
+        },
+        "FTB": {
+            "category": "Equities",
+            "description": "BTIC on E-mini USD Denominated FTSE 100 Index Futures"
+        },
+        "FT5": {
+            "category": "Equities",
+            "description": "E-mini FTSE China 50 Index Futures"
+        },
+        "FTC": {
+            "category": "Equities",
+            "description": "BTIC on E-mini FTSE China 50 Index Futures"
+        },
+        "ENY": {
+            "category": "Equities",
+            "description": "E-mini Nikkei 225 (Yen) Futures"
+        },
+        "NKD": {
+            "category": "Equities",
+            "description": "Nikkei 225 (Dollar) Futures"
+        },
+        "NKT": {
+            "category": "Equities",
+            "description": "BTIC on Nikkei Stock Average Futures"
+        },
+        "NIY": {
+            "category": "Equities",
+            "description": "Nikkei 225 (Yen) Futures"
+        },
+        "NIT": {
+            "category": "Equities",
+            "description": "BTIC on Yen Denominated Nikkei Stock Average Futures"
+        },
+        "IBV": {
+            "category": "Equities",
+            "description": "USD-Denominated Ibovespa Futures"
+        },
+        "ZQ": {
+            "category": "Interest Rate",
+            "description": "30-Day Fed Funds Futures"
+        },
+        "ZT": {
+            "category": "Interest Rate",
+            "description": "2-Year U.S. Treasury Note Futures"
+        },
+        "ZTT": {
+            "category": "Interest Rate",
+            "description": "TAS on 2-Year Treasury Note Futures"
+        },
+        "Z3N": {
+            "category": "Interest Rate",
+            "description": "3-Year U.S. Treasury Note Futures"
+        },
+        "ZF": {
+            "category": "Interest Rate",
+            "description": "5-Year U.S. Treasury Note Futures"
+        },
+        "ZFT": {
+            "category": "Interest Rate",
+            "description": "TAS on 5-Year Treasury Note Futures"
+        },
+        "ZN": {
+            "category": "Interest Rate",
+            "description": "10-Year U.S. Treasury Note Futures"
+        },
+        "ZNS": {
+            "category": "Interest Rate",
+            "description": "TAS on 10-Year Treasury Note Futures"
+        },
+        "TN": {
+            "category": "Interest Rate",
+            "description": "Ultra 10-Year U.S. Treasury Note Futures"
+        },
+        "TNT": {
+            "category": "Interest Rate",
+            "description": "TAS on Ultra 10-Year Treasury Note Futures"
+        },
+        "TWE": {
+            "category": "Interest Rate",
+            "description": "20-Year U.S. Treasury Bond Futures"
+        },
+        "UB": {
+            "category": "Interest Rate",
+            "description": "Ultra T-Bond Futures"
+        },
+        "UBT": {
+            "category": "Interest Rate",
+            "description": "TAS on Ultra U.S. Treasury Bond Futures"
+        },
+        "ZB": {
+            "category": "Interest Rate",
+            "description": "U.S. Treasury Bond Futures"
+        },
+        "ZBT": {
+            "category": "Interest Rate",
+            "description": "TAS on U.S. Treasury Bond Futures"
+        },
+        "T1U": {
+            "category": "Interest Rate",
+            "description": "2-Year USD MAC Swap Futures "
+        },
+        "T1S": {
+            "category": "Interest Rate",
+            "description": "2-Year SOFR OIS MAC Swap Futures"
+        },
+        "F1U": {
+            "category": "Interest Rate",
+            "description": "5-Year USD MAC Swap Futures"
+        },
+        "F1S": {
+            "category": "Interest Rate",
+            "description": "5-Year SOFR OIS MAC Swap Futures"
+        },
+        "S1U": {
+            "category": "Interest Rate",
+            "description": "7-Year USD MAC Swap Futures"
+        },
+        "S1S": {
+            "category": "Interest Rate",
+            "description": "7-Year SOFR OIS MAC Swap Futures"
+        },
+        "N1U": {
+            "category": "Interest Rate",
+            "description": "10-Year USD MAC Swap Futures"
+        },
+        "N1S": {
+            "category": "Interest Rate",
+            "description": "10-Year SOFR OIS MAC Swap Futures"
+        },
+        "E1U": {
+            "category": "Interest Rate",
+            "description": "20-Year USD MAC Swap Futures"
+        },
+        "E1S": {
+            "category": "Interest Rate",
+            "description": "20-Year SOFR OIS MAC Swap Futures"
+        },
+        "B1U": {
+            "category": "Interest Rate",
+            "description": "30-Year USD MAC Swap Futures"
+        },
+        "B1S": {
+            "category": "Interest Rate",
+            "description": "30-Year SOFR OIS MAC Swap Futures"
+        },
+        "2YY": {
+            "category": "Interest Rate",
+            "description": "Micro 2-Year Yield Futures"
+        },
+        "5YY": {
+            "category": "Interest Rate",
+            "description": "Micro 5-Year Yield Futures"
+        },
+        "10Y": {
+            "category": "Interest Rate",
+            "description": "Micro 10-Year Yield Futures"
+        },
+        "30Y": {
+            "category": "Interest Rate",
+            "description": "Micro 30-Year Yield Futures"
+        },
+        "YIA": {
+            "category": "Interest Rate",
+            "description": "1-Year Eris SOFR OIS Swap Futures"
+        },
+        "KXA": {
+            "category": "Interest Rate",
+            "description": "1-Year Eris BSBY Swap Futures"
+        },
+        "LIT": {
+            "category": "Interest Rate",
+            "description": "2-Year Eris Swap Futures"
+        },
+        "YIT": {
+            "category": "Interest Rate",
+            "description": "2-Year Eris SOFR OIS Swap Futures"
+        },
+        "KXT": {
+            "category": "Interest Rate",
+            "description": "2-Year Eris BSBY Swap Futures"
+        },
+        "LIC": {
+            "category": "Interest Rate",
+            "description": "3-Year Eris Swap Futures "
+        },
+        "YIC": {
+            "category": "Interest Rate",
+            "description": "3-Year Eris SOFR OIS Swap Futures"
+        },
+        "KXC": {
+            "category": "Interest Rate",
+            "description": "3-Year Eris BSBY Swap Futures"
+        },
+        "LID": {
+            "category": "Interest Rate",
+            "description": "4-Year Eris Swap Futures"
+        },
+        "YID": {
+            "category": "Interest Rate",
+            "description": "4-Year Eris SOFR OIS Swap Futures"
+        },
+        "KXD": {
+            "category": "Interest Rate",
+            "description": "4-Year Eris BSBY Swap Futures"
+        },
+        "LIW": {
+            "category": "Interest Rate",
+            "description": "5-Year Eris Swap Futures"
+        },
+        "YIW": {
+            "category": "Interest Rate",
+            "description": "5-Year Eris SOFR OIS Swap Futures"
+        },
+        "KXW": {
+            "category": "Interest Rate",
+            "description": "5-Year Eris BSBY Swap Futures"
+        },
+        "LIB": {
+            "category": "Interest Rate",
+            "description": "7-Year Eris Swap Futures"
+        },
+        "YIB": {
+            "category": "Interest Rate",
+            "description": "7-Year Eris SOFR OIS Swap Futures"
+        },
+        "KXB": {
+            "category": "Interest Rate",
+            "description": "7-Year Eris BSBY Swap Futures"
+        },
+        "LIY": {
+            "category": "Interest Rate",
+            "description": "10-Year Eris Swap Futures"
+        },
+        "YIY": {
+            "category": "Interest Rate",
+            "description": "10-Year Eris SOFR OIS Swap Futures"
+        },
+        "KXY": {
+            "category": "Interest Rate",
+            "description": "10-Year Eris BSBY Swap Futures"
+        },
+        "LII": {
+            "category": "Interest Rate",
+            "description": "12-Year Eris Swap Futures"
+        },
+        "YII": {
+            "category": "Interest Rate",
+            "description": "12-Year Eris SOFR OIS Swap Futures"
+        },
+        "LIL": {
+            "category": "Interest Rate",
+            "description": "15-Year Eris Swap Futures"
+        },
+        "YIL": {
+            "category": "Interest Rate",
+            "description": "15-Year Eris SOFR OIS Swap Futures"
+        },
+        "LIO": {
+            "category": "Interest Rate",
+            "description": "20-Year Eris Swap Futures"
+        },
+        "YIO": {
+            "category": "Interest Rate",
+            "description": "20-Year Eris SOFR OIS Swap Futures"
+        },
+        "LIE": {
+            "category": "Interest Rate",
+            "description": "30-Year Eris Swap Futures"
+        },
+        "YIE": {
+            "category": "Interest Rate",
+            "description": "30-Year Eris SOFR OIS Swap Futures"
+        }
+    },
+    "CME": {
+        "GF": {
+            "category": "Agriculture",
+            "description": "Feeder Cattle Futures"
+        },
+        "GFT": {
+            "category": "Agriculture",
+            "description": "Feeder Cattle TAS"
+        },
+        "HE": {
+            "category": "Agriculture",
+            "description": "Lean Hog Futures"
+        },
+        "HET": {
+            "category": "Agriculture",
+            "description": "Lean Hogs TAS"
+        },
+        "LE": {
+            "category": "Agriculture",
+            "description": "Live Cattle Futures"
+        },
+        "LET": {
+            "category": "Agriculture",
+            "description": "Live Cattle TAS"
+        },
+        "PRK": {
+            "category": "Agriculture",
+            "description": "Pork Cutout Futures"
+        },
+        "BLK": {
+            "category": "Agriculture",
+            "description": "Block Cheese Futures"
+        },
+        "CB": {
+            "category": "Agriculture",
+            "description": "Cash-Settled Butter Futures"
+        },
+        "CSC": {
+            "category": "Agriculture",
+            "description": "Cash-Settled Cheese Futures"
+        },
+        "DC": {
+            "category": "Agriculture",
+            "description": "Class III Milk Futures"
+        },
+        "GDK": {
+            "category": "Agriculture",
+            "description": "Class IV Milk Futures "
+        },
+        "DY": {
+            "category": "Agriculture",
+            "description": "Dry Whey Futures"
+        },
+        "GNF": {
+            "category": "Agriculture",
+            "description": "Non-fat Dry Milk Futures"
+        },
+        "LBS": {
+            "category": "Agriculture",
+            "description": "Random Length Lumber Futures"
+        },
+        "GIE": {
+            "category": "Agriculture",
+            "description": "S&P-GSCI\u2122 Excess Return Index Futures"
+        },
+        "GIT": {
+            "category": "Agriculture",
+            "description": "BTIC on S&P-GSCI\u2122 Excess Return Index Futures"
+        },
+        "GD": {
+            "category": "Agriculture",
+            "description": "S&P-GSCI\u2122 Commodity Index Futures"
+        },
+        "GDT": {
+            "category": "Agriculture",
+            "description": "BTIC on S&P-GSCI\u2122 Commodity Index Futures"
+        },
+        "BTC": {
+            "category": "Alternative Investments",
+            "description": "Bitcoin Futures"
+        },
+        "MBT": {
+            "category": "Alternative Investments",
+            "description": "Micro Bitcoin Futures"
+        },
+        "ETH": {
+            "category": "Alternative Investments",
+            "description": "Ether Futures"
+        },
+        "MET": {
+            "category": "Alternative Investments",
+            "description": "Micro Ether Futures"
+        },
+        "H2O": {
+            "category": "Alternative Investments",
+            "description": "Nasdaq Veles California Water Index Futures"
+        },
+        "IPO": {
+            "category": "Equities",
+            "description": "E-mini IPOX US Index Futures"
+        },
+        "IPT": {
+            "category": "Equities",
+            "description": "BTIC on E-mini IPOX US Index Futures"
+        },
+        "BIO": {
+            "category": "Equities",
+            "description": "E-mini NASDAQ Biotechnology Futures"
+        },
+        "REX": {
+            "category": "Equities",
+            "description": "BTIC on E-mini NASDAQ Biotechnology Index Futrues"
+        },
+        "QCN": {
+            "category": "Equities",
+            "description": "E-mini NASDAQ Composite Futures"
+        },
+        "NQ": {
+            "category": "Equities",
+            "description": "E-mini NASDAQ-100 Futures"
+        },
+        "VLQ": {
+            "category": "Equities",
+            "description": "Nasdaq-100 Volatility Index Futures"
+        },
+        "NDA": {
+            "category": "Equities",
+            "description": "Nasdaq-100 Annual Dividend Index Futures"
+        },
+        "NQT": {
+            "category": "Equities",
+            "description": "BTIC on E-mini NASDAQ-100 Futures"
+        },
+        "AQT": {
+            "category": "Equities",
+            "description": "BTIC on Adjusted Interest Rate Nasdaq-100 Total Return Index Futures"
+        },
+        "NQQ": {
+            "category": "Equities",
+            "description": "TACO on E-mini NASDAQ-100 Futures"
+        },
+        "MNQ": {
+            "category": "Equities",
+            "description": "Micro E-mini NASDAQ-100 Futures"
+        },
+        "N1T": {
+            "category": "Equities",
+            "description": "BTIC on NASDAQ-100 Total Return Index Futures"
+        },
+        "RS1": {
+            "category": "Equities",
+            "description": "E-mini Russell 1000 Index Futures"
+        },
+        "R1B": {
+            "category": "Equities",
+            "description": "BTIC on Adjusted Interest Rate Russell 1000 Total Return Index Futures"
+        },
+        "ART": {
+            "category": "Equities",
+            "description": "BTIC on Russell 1000 Total Return Index Futures"
+        },
+        "R1T": {
+            "category": "Equities",
+            "description": "BTIC on E-mini Russell 1000 Index Futures"
+        },
+        "RSG": {
+            "category": "Equities",
+            "description": "E-mini Russell 1000 Growth Index Futures"
+        },
+        "RGT": {
+            "category": "Equities",
+            "description": "BTIC on E-mini Russell 1000 Growth Index Futures"
+        },
+        "RSV": {
+            "category": "Equities",
+            "description": "E-mini Russell 1000 Value Index Futures"
+        },
+        "RVT": {
+            "category": "Equities",
+            "description": "BTIC on E-mini Russell 1000 Value Index Futures"
+        },
+        "RTY": {
+            "category": "Equities",
+            "description": "E-mini Russell 2000 Index Futures"
+        },
+        "RLT": {
+            "category": "Equities",
+            "description": "BTIC on E-mini Russell 2000 Index Futures"
+        },
+        "A2T": {
+            "category": "Equities",
+            "description": "BTIC on Adjusted Interest Rate Russell 2000 Total Return Index Futures"
+        },
+        "RTQ": {
+            "category": "Equities",
+            "description": "TACO on E-mini Russell 2000 Index Futures"
+        },
+        "M2K": {
+            "category": "Equities",
+            "description": "Micro E-mini Russell 2000 Index Futures"
+        },
+        "R2T": {
+            "category": "Equities",
+            "description": "BTIC on Russell 2000 Total Return Index Futures"
+        },
+        "R2G": {
+            "category": "Equities",
+            "description": "E-mini Russell 2000 Growth Index Futures"
+        },
+        "RDA": {
+            "category": "Equities",
+            "description": "Russell 2000 Annual Dividend Index Futures"
+        },
+        "2GT": {
+            "category": "Equities",
+            "description": "BTIC on E-mini Russell 2000 Growth Index Futures"
+        },
+        "R2V": {
+            "category": "Equities",
+            "description": "E-mini Russell 2000 Value Index Futures"
+        },
+        "2VT": {
+            "category": "Equities",
+            "description": "BTIC on E-mini Russell 2000 Value Index Futures"
+        },
+        "ES": {
+            "category": "Equities",
+            "description": "E-mini S&P 500 Futures"
+        },
+        "EST": {
+            "category": "Equities",
+            "description": "BTIC on E-mini S&P 500 Futures"
+        },
+        "ESG": {
+            "category": "Equities",
+            "description": "E-mini S&P 500 ESG Index Futures"
+        },
+        "EGT": {
+            "category": "Equities",
+            "description": "BTIC on E-mini S&P 500 ESG Index Futures"
+        },
+        "ES1": {
+            "category": "Equities",
+            "description": "Nearby BTIC+ Futures on E-mini Standard & Poor\u2019s 500 Stock Price Index Futures"
+        },
+        "ES2": {
+            "category": "Equities",
+            "description": "Deferred BTIC+ Futures on E-mini Standard & Poor\u2019s 500 Stock Price Index Futures"
+        },
+        "EQ1": {
+            "category": "Equities",
+            "description": "TACO+ Futures on E-mini Standard & Poor\u2019s 500 Stock Price Index Futures"
+        },
+        "ESQ": {
+            "category": "Equities",
+            "description": "TACO on E-mini S&P 500 Futures"
+        },
+        "MES": {
+            "category": "Equities",
+            "description": "Micro E-mini S&P 500 Futures"
+        },
+        "EMD": {
+            "category": "Equities",
+            "description": "E-mini S&P MidCap 400 Futures"
+        },
+        "EMT": {
+            "category": "Equities",
+            "description": "BTIC on E-mini S&P MidCap 400 Futures"
+        },
+        "SMC": {
+            "category": "Equities",
+            "description": "E-mini S&P SmallCap 600 Futures"
+        },
+        "SG": {
+            "category": "Equities",
+            "description": "S&P 500 Growth Futures"
+        },
+        "E3G": {
+            "category": "Equities",
+            "description": "E-MINI S&P EUROPE 350 ESG INDEX FUTURES"
+        },
+        "E3T": {
+            "category": "Equities",
+            "description": "BTIC on E-mini S&P Europe 350 ESG Index Futures"
+        },
+        "SU": {
+            "category": "Equities",
+            "description": "S&P 500 Value Futures"
+        },
+        "SDA": {
+            "category": "Equities",
+            "description": "S&P 500 Annual Dividend Index Futures"
+        },
+        "SDI": {
+            "category": "Equities",
+            "description": "S&P Quarterly Dividend Index Futures"
+        },
+        "TRB": {
+            "category": "Equities",
+            "description": "BTIC on S&P 500 Total Return Futures"
+        },
+        "AST": {
+            "category": "Equities",
+            "description": "BTIC on Adjusted Interest Rate S&P 500 Total Return Futures"
+        },
+        "CTB": {
+            "category": "Equities",
+            "description": "BTIC on S&P 500 Carry-Adjusted Total Return Futures"
+        },
+        "XAZ": {
+            "category": "Equities",
+            "description": "E-mini Communication Services Select Sector Index Futures"
+        },
+        "XZT": {
+            "category": "Equities",
+            "description": "BTIC on E-mini Communication Services Select Sector Index Futures"
+        },
+        "XAY": {
+            "category": "Equities",
+            "description": "Consumer Discretionary Sector Index Futures"
+        },
+        "XYT": {
+            "category": "Equities",
+            "description": "BTIC on E-mini\u00ae Consumer Discretionary Select Sector Futures"
+        },
+        "XAP": {
+            "category": "Equities",
+            "description": "Consumer Staples Sector Index Futures"
+        },
+        "XPT": {
+            "category": "Equities",
+            "description": "BTIC on E-mini Consumer Staples Select Sector Futures"
+        },
+        "XAE": {
+            "category": "Equities",
+            "description": "Energy Sector Index Futures"
+        },
+        "XET": {
+            "category": "Equities",
+            "description": "BTIC on E-mini Energy Select Sector Futures"
+        },
+        "XAF": {
+            "category": "Equities",
+            "description": "Financial Sector Index Futures"
+        },
+        "XFT": {
+            "category": "Equities",
+            "description": "BTIC on E-mini Financial Select Sector Futures"
+        },
+        "XAV": {
+            "category": "Equities",
+            "description": "Health Care Sector Index Futures"
+        },
+        "XVT": {
+            "category": "Equities",
+            "description": "BTIC on E-mini Health Care Select Sector Futures"
+        },
+        "XAI": {
+            "category": "Equities",
+            "description": "Industrial Sector Index Futures"
+        },
+        "XIT": {
+            "category": "Equities",
+            "description": "BTIC on E-mini Industrial Select Sector Futures"
+        },
+        "XAB": {
+            "category": "Equities",
+            "description": "Materials Sector Index Futures"
+        },
+        "XBT": {
+            "category": "Equities",
+            "description": "BTIC on E-mini Material Select Sector Futures"
+        },
+        "XAR": {
+            "category": "Equities",
+            "description": "E-mini S&P Real Estate Select Sector Index Futures"
+        },
+        "XRT": {
+            "category": "Equities",
+            "description": "BTIC on E-mini Real Estate Select Sector Futures"
+        },
+        "XAK": {
+            "category": "Equities",
+            "description": "Technology Sector Index Futures"
+        },
+        "XKT": {
+            "category": "Equities",
+            "description": "BTIC on E-mini Technology Select Sector Futures"
+        },
+        "XAU": {
+            "category": "Equities",
+            "description": "Utilities Sector Index Futures"
+        },
+        "XUT": {
+            "category": "Equities",
+            "description": "BTIC on E-mini Utilities Select Sector Futures"
+        },
+        "EI": {
+            "category": "Equities",
+            "description": "E-mini FTSE Emerging Index Futures"
+        },
+        "EIT": {
+            "category": "Equities",
+            "description": "BTIC on E-mini FTSE Emerging Index Futures"
+        },
+        "DVE": {
+            "category": "Equities",
+            "description": "E-mini FTSE Developed Europe Index Futures"
+        },
+        "DVT": {
+            "category": "Equities",
+            "description": "BTIC on E-mini FTSE Developed Europe Index Futures"
+        },
+        "6A": {
+            "category": "FX",
+            "description": "AUD/USD Futures (Australian Dollar)"
+        },
+        "ACD": {
+            "category": "FX",
+            "description": "AUD/CAD Futures (Australian Dollar/Canadian Dollar)"
+        },
+        "AJY": {
+            "category": "FX",
+            "description": "AUD/JPY Futures (Australian Dollar/Japanese Yen)"
+        },
+        "ANE": {
+            "category": "FX",
+            "description": "AUD/NZD Futures (Australian Dollar/New Zealand Dollar)"
+        },
+        "6C": {
+            "category": "FX",
+            "description": "CAD/USD Futures (Canadian Dollar)"
+        },
+        "CJY": {
+            "category": "FX",
+            "description": "CAD/JPY Futures (Canadian Dollar/Japanese Yen)"
+        },
+        "6S": {
+            "category": "FX",
+            "description": "CHF/USD Futures (Swiss Franc)"
+        },
+        "SJY": {
+            "category": "FX",
+            "description": "CHF/JPY Futures (Swiss Franc/Japanese Yen)"
+        },
+        "6E": {
+            "category": "FX",
+            "description": "EUR/USD Futures (Euro FX)"
+        },
+        "E7": {
+            "category": "FX",
+            "description": "E-mini EUR/USD Futures (E-mini Euro FX)"
+        },
+        "EAD": {
+            "category": "FX",
+            "description": "EUR/AUD Futures (Euro/Australian Dollar)"
+        },
+        "RP": {
+            "category": "FX",
+            "description": "EUR/GBP Futures (Euro/British Pound)"
+        },
+        "ECD": {
+            "category": "FX",
+            "description": "EUR/CAD Futures (Euro/Canadian Dollar)"
+        },
+        "RF": {
+            "category": "FX",
+            "description": "EUR/CHF Futures (Euro/Swiss Franc)"
+        },
+        "RY": {
+            "category": "FX",
+            "description": "EUR/JPY Futures (Euro/Japanese Yen)"
+        },
+        "ENK": {
+            "category": "FX",
+            "description": "EUR/NOK Futures (Euro/Norwegian Krone)"
+        },
+        "ESK": {
+            "category": "FX",
+            "description": "EUR/SEK Futures (Euro/Swedish Krona)"
+        },
+        "6B": {
+            "category": "FX",
+            "description": "GBP/USD Futures (British Pound)"
+        },
+        "PJY": {
+            "category": "FX",
+            "description": "GBP/JPY Futures (British Pound/Japanese Yen)"
+        },
+        "PSF": {
+            "category": "FX",
+            "description": "GBP/CHF Futures (British Pound/Swiss Franc)"
+        },
+        "6J": {
+            "category": "FX",
+            "description": "JPY/USD Futures (Japanese Yen)"
+        },
+        "J7": {
+            "category": "FX",
+            "description": "E-mini JPY/USD Futures (E-mini Japanese Yen)"
+        },
+        "NOK": {
+            "category": "FX",
+            "description": "NOK/USD Futures (Norwegian Krone)"
+        },
+        "6N": {
+            "category": "FX",
+            "description": "NZD/USD Futures (New Zealand Dollar)"
+        },
+        "SEK": {
+            "category": "FX",
+            "description": "SEK/USD Futures (Swedish Krona)"
+        },
+        "M6A": {
+            "category": "FX",
+            "description": "Micro AUD/USD Futures"
+        },
+        "MCD": {
+            "category": "FX",
+            "description": "Micro CAD/USD Futures"
+        },
+        "MSF": {
+            "category": "FX",
+            "description": "Micro CHF/USD Futures"
+        },
+        "M6E": {
+            "category": "FX",
+            "description": "Micro EUR/USD Futures"
+        },
+        "M6B": {
+            "category": "FX",
+            "description": "Micro GBP/USD Futures"
+        },
+        "MIR": {
+            "category": "FX",
+            "description": "Micro INR/USD Futures"
+        },
+        "MNH": {
+            "category": "FX",
+            "description": "Micro USD/CNH Futures"
+        },
+        "6L": {
+            "category": "FX",
+            "description": "BRL/USD Futures (Brazilian Real)"
+        },
+        "CHP": {
+            "category": "FX",
+            "description": "CLP/USD Futures (Chilean Peso)"
+        },
+        "CZK": {
+            "category": "FX",
+            "description": "CZK/USD Futures (Czech Koruna)"
+        },
+        "ECK": {
+            "category": "FX",
+            "description": "CZK/EUR Futures (Czech Koruna/Euro)"
+        },
+        "EHF": {
+            "category": "FX",
+            "description": "HUF/EUR Futures (Hungarian Forint/Euro)"
+        },
+        "HUF": {
+            "category": "FX",
+            "description": "HUF/USD Futures (Hungarian Forint)"
+        },
+        "ILS": {
+            "category": "FX",
+            "description": "ILS/USD Futures (Israeli Shekel)"
+        },
+        "SIR": {
+            "category": "FX",
+            "description": "INR/USD Futures (Indian Rupee)"
+        },
+        "KRW": {
+            "category": "FX",
+            "description": "KRW/USD Futures (Korean Won)"
+        },
+        "6M": {
+            "category": "FX",
+            "description": "MXN/USD Futures (Mexican Peso)"
+        },
+        "PLN": {
+            "category": "FX",
+            "description": "PLN/USD Futures (Polish Zloty)"
+        },
+        "EPZ": {
+            "category": "FX",
+            "description": "PLN/EUR Futures (Polish Zloty/Euro)"
+        },
+        "RMB": {
+            "category": "FX",
+            "description": "RMB/USD Futures (Chinese Renminbi)"
+        },
+        "CHL": {
+            "category": "FX",
+            "description": "USD/CLP Futures (US Dollar/Chilean Peso)"
+        },
+        "CNH": {
+            "category": "FX",
+            "description": "USD/Offshore RMB (CNH) Futures"
+        },
+        "RME": {
+            "category": "FX",
+            "description": "RMB/EUR Futures (Chinese Renminbi/Euro)"
+        },
+        "6R": {
+            "category": "FX",
+            "description": "RUB/USD Futures (Russian Ruble)"
+        },
+        "ZAR": {
+            "category": "FX",
+            "description": "USD/ZAR Futures (US Dollar/South African Rand)"
+        },
+        "6Z": {
+            "category": "FX",
+            "description": "ZAR/USD Futures (South African Rand)"
+        },
+        "TRL": {
+            "category": "FX",
+            "description": "Physically-Delivered Turkish Lira/U.S. Dollar (TRY/USD) Futures"
+        },
+        "GLB": {
+            "category": "Interest Rate",
+            "description": "1-Month Eurodollar Futures"
+        },
+        "GE": {
+            "category": "Interest Rate",
+            "description": "Eurodollar Futures"
+        },
+        "SR3": {
+            "category": "Interest Rate",
+            "description": "3-Month SOFR Futures"
+        },
+        "SR1": {
+            "category": "Interest Rate",
+            "description": "1-Month SOFR Futures"
+        },
+        "BSB": {
+            "category": "Interest Rate",
+            "description": "3-Month BSBY Futures"
+        },
+        "SON": {
+            "category": "Interest Rate",
+            "description": "Quarterly IMM Sonia Futures"
+        },
+        "MPC": {
+            "category": "Interest Rate",
+            "description": "MPC SONIA Futures"
+        },
+        "TIE": {
+            "category": "Interest Rate",
+            "description": "Mexican Funding TIIE (Monthly Contracts) Futures"
+        }
+    },
+    "NYMEX": {
+        "CJ": {
+            "category": "Agriculture",
+            "description": "Cocoa Futures"
+        },
+        "KT": {
+            "category": "Agriculture",
+            "description": "Coffee Futures"
+        },
+        "TT": {
+            "category": "Agriculture",
+            "description": "Cotton Futures"
+        },
+        "YO": {
+            "category": "Agriculture",
+            "description": "Sugar #11 Futures"
+        },
+        "FZE": {
+            "category": "Energy",
+            "description": "CBOT Denatured Fuel Ethanol Forward Month Futures"
+        },
+        "EH": {
+            "category": "Energy",
+            "description": "CBOT Denatured Fuel Ethanol Futures"
+        },
+        "CU": {
+            "category": "Energy",
+            "description": "Chicago Ethanol (Platts) Futures"
+        },
+        "FBD": {
+            "category": "Energy",
+            "description": "FAME 0 (Argus) Biodiesel fob Rdam (RED Compliant) Futures"
+        },
+        "FBT": {
+            "category": "Energy",
+            "description": "FAME 0 Biodiesel FOB Rdam (Argus) (RED Compliant) vs. Low Sulphur Gasoil Futures"
+        },
+        "UCR": {
+            "category": "Energy",
+            "description": "UCOME Biodiesel (RED Compliant) FOB ARA (Argus) Futures"
+        },
+        "UCS": {
+            "category": "Energy",
+            "description": "UCOME Biodiesel (RED Compliant) FOB ARA (Argus) vs Low Sulphur Gasoil Futures"
+        },
+        "UCE": {
+            "category": "Energy",
+            "description": "UCO T1 CIF ARA Excluding Duty (PRIMA) Futures"
+        },
+        "USG": {
+            "category": "Energy",
+            "description": "UCO T1 CIF ARA Excluding Duty (PRIMA) vs Low Sulphur Gasoil Futures"
+        },
+        "AZ1": {
+            "category": "Energy",
+            "description": "Ethanol T2 FOB Rdam Including Duty (Platts) Futures"
+        },
+        "Z1B": {
+            "category": "Energy",
+            "description": "Ethanol T2 FOB Rdam Including Duty (Platts) BALMO Futures"
+        },
+        "AEZ": {
+            "category": "Energy",
+            "description": "NY Ethanol (Platts) Futures"
+        },
+        "RBF": {
+            "category": "Energy",
+            "description": "RME Biodiesel (Argus) fob Rdam (RED Compliant) Futures"
+        },
+        "BFR": {
+            "category": "Energy",
+            "description": "RME Biodiesel FOB Rdam (Argus) (RED Compliant) vs. Low Sulphur Gasoil Futures"
+        },
+        "ACM": {
+            "category": "Energy",
+            "description": "Coal (API 5) fob Newcastle (Argus/McCloskey) Futures"
+        },
+        "M5F": {
+            "category": "Energy",
+            "description": "Micro Coal (API 5) fob Newcastle (Argus/McCloskey) Futures"
+        },
+        "MTF": {
+            "category": "Energy",
+            "description": "Coal (API2) CIF ARA (ARGUS\u2010McCloskey) Futures"
+        },
+        "MFF": {
+            "category": "Energy",
+            "description": "Coal (API4) FOB Richards Bay (ARGUS\u2010 McCloskey) Futures"
+        },
+        "ICI": {
+            "category": "Energy",
+            "description": "Coal (ICI 4) Indonesian Coal Index(Argus/Coalindo) Futures"
+        },
+        "QXB": {
+            "category": "Energy",
+            "description": "CSX Coal (Platts OTC Broker Index) Futures"
+        },
+        "QP": {
+            "category": "Energy",
+            "description": "Powder River Basin Coal (Platts OTC Broker Index) Futures"
+        },
+        "AA4": {
+            "category": "Energy",
+            "description": "Argus LLS Trade Month Futures"
+        },
+        "AE5": {
+            "category": "Energy",
+            "description": "Argus LLS vs. WTI (Argus) Trade Month Futures"
+        },
+        "37": {
+            "category": "Energy",
+            "description": "Argus Sour Crude Index (\"ASCI\") Calendar Month Futures"
+        },
+        "29": {
+            "category": "Energy",
+            "description": "Argus Sour Crude Index (\"ASCI\") Trade Month Futures"
+        },
+        "38": {
+            "category": "Energy",
+            "description": "Argus Sour Crude Index (\"ASCI\") vs. WTI Diff Spread Calendar Month Futures"
+        },
+        "36": {
+            "category": "Energy",
+            "description": "Argus Sour Crude Index (\"ASCI\") vs. WTI Diff Spread Trade Month Futures"
+        },
+        "39": {
+            "category": "Energy",
+            "description": "Argus WTI Formula Basis Calendar Month Futures"
+        },
+        "ANT": {
+            "category": "Energy",
+            "description": "Argus WTI Diff NYMEX vs. NYMEX Trade Month Futures"
+        },
+        "ANC": {
+            "category": "Energy",
+            "description": "Argus WTI Diff NYMEX vs. NYMEX Calendar Month Futures"
+        },
+        "V7": {
+            "category": "Energy",
+            "description": "Argus WTI Trade Month Futures"
+        },
+        "CY": {
+            "category": "Energy",
+            "description": "Brent Financial Futures"
+        },
+        "IBE": {
+            "category": "Energy",
+            "description": "Brent (Euro Denominated) Financial Futures"
+        },
+        "IBS": {
+            "category": "Energy",
+            "description": "Brent (Singapore Marker) Futures"
+        },
+        "A6W": {
+            "category": "Energy",
+            "description": "Dated Brent (Platts) vs. Brent First Month (BFOE) (Platts) Daily CFD Futures"
+        },
+        "CFB": {
+            "category": "Energy",
+            "description": "Dated Brent (Platts) vs. Brent First Month (BFOE) (Platts) Weekly Futures"
+        },
+        "A59": {
+            "category": "Energy",
+            "description": "Dated Brent (Platts) vs. Brent Second Month (BFOE) (Platts) Daily CFD Futures"
+        },
+        "CFC": {
+            "category": "Energy",
+            "description": "Dated Brent (Platts) vs. Brent Second Month (BFOE) (Platts) Weekly Futures"
+        },
+        "AJ9": {
+            "category": "Energy",
+            "description": "Brent Crude Oil BALMO Futures"
+        },
+        "BZ": {
+            "category": "Energy",
+            "description": "Brent Crude Oil Last Day Financial Futures"
+        },
+        "BZT": {
+            "category": "Energy",
+            "description": "Brent Crude Oil Last Day Financial Futures TAS"
+        },
+        "BZL": {
+            "category": "Energy",
+            "description": "Brent Crude Oil Last Day Financial Futures Trading At Marker (TAM) - London"
+        },
+        "BZS": {
+            "category": "Energy",
+            "description": "Brent Crude Oil Last Day Financial Futures Trading At Marker (TAM) - Singapore"
+        },
+        "BB": {
+            "category": "Energy",
+            "description": "Brent Crude Oil Penultimate Financial Futures"
+        },
+        "BBT": {
+            "category": "Energy",
+            "description": "Brent Crude Oil Penultimate Financial Futures TAS"
+        },
+        "ADB": {
+            "category": "Energy",
+            "description": "Brent Crude Oil vs. Dubai Crude Oil (Platts) Futures"
+        },
+        "BDB": {
+            "category": "Energy",
+            "description": "Brent Crude Oil vs. Dubai Crude Oil (Platts) BALMO Futures"
+        },
+        "CC5": {
+            "category": "Energy",
+            "description": "Edmonton C5+ Condensate (NE2) Monthly Index Futures"
+        },
+        "CSW": {
+            "category": "Energy",
+            "description": "Clearbrook Bakken Sweet (NE2) Monthly Index Futures"
+        },
+        "CPD": {
+            "category": "Energy",
+            "description": "CPC Blend CIF Med Cargoes (Platts) vs. Dated Brent (Platts) Futures"
+        },
+        "CCM": {
+            "category": "Energy",
+            "description": "CPC Blend CIF Med Cargoes (Platts) vs. Dated Brent (Platts) BALMO Futures"
+        },
+        "WS": {
+            "category": "Energy",
+            "description": "Crude Oil Financial Futures"
+        },
+        "26": {
+            "category": "Energy",
+            "description": "Crude Oil Last Day Financial Futures"
+        },
+        "DCL": {
+            "category": "Energy",
+            "description": "Daily WTI Financial Futures"
+        },
+        "DAB": {
+            "category": "Energy",
+            "description": "Dakota Access Bakken (NE2) Monthly Index Futures"
+        },
+        "DBB": {
+            "category": "Energy",
+            "description": "Dated Brent (Platts) BALMO Futures"
+        },
+        "A7G": {
+            "category": "Energy",
+            "description": "Dated Brent (Platts) Daily Futures"
+        },
+        "AUB": {
+            "category": "Energy",
+            "description": "Dated Brent (Platts) Financial Futures"
+        },
+        "AFE": {
+            "category": "Energy",
+            "description": "Dated Brent (Platts) to Frontline Brent BALMO Futures"
+        },
+        "AFY": {
+            "category": "Energy",
+            "description": "Dated Brent (Platts) to Frontline Brent Futures"
+        },
+        "ABI": {
+            "category": "Energy",
+            "description": "Dubai Crude Oil (Platts) BALMO Futures"
+        },
+        "DCB": {
+            "category": "Energy",
+            "description": "Dubai Crude Oil (Platts) Futures"
+        },
+        "QM": {
+            "category": "Energy",
+            "description": "E-mini Crude Oil Futures"
+        },
+        "GSW": {
+            "category": "Energy",
+            "description": "Guernsey Light Sweet (NE2) Monthly Index Futures"
+        },
+        "JCC": {
+            "category": "Energy",
+            "description": "Japan Crude Cocktail (Detailed) Futures"
+        },
+        "JCY": {
+            "category": "Energy",
+            "description": "Japan Crude Cocktail (Detailed) Yen Denominated Futures"
+        },
+        "CL": {
+            "category": "Energy",
+            "description": "Light Sweet Crude Oil Futures"
+        },
+        "MCL": {
+            "category": "Energy",
+            "description": "Micro WTI Crude Oil Futures"
+        },
+        "CLT": {
+            "category": "Energy",
+            "description": "Light Sweet Crude Oil Futures TAS"
+        },
+        "CLL": {
+            "category": "Energy",
+            "description": "Light Sweet Crude Oil Futures Trading At Marker (TAM) - London"
+        },
+        "CLS": {
+            "category": "Energy",
+            "description": "Light Sweet Crude Oil Futures Trading At Marker (TAM) - Singapore"
+        },
+        "LSW": {
+            "category": "Energy",
+            "description": "Edmonton Light Sweet (NE2) Monthly Index Futures"
+        },
+        "WNT": {
+            "category": "Energy",
+            "description": "WCS Cushing (Argus) vs. WTI Trade Month Futures"
+        },
+        "WNC": {
+            "category": "Energy",
+            "description": "WCS Cushing (Argus) vs. WTI Calendar Month Futures"
+        },
+        "DCW": {
+            "category": "Energy",
+            "description": "WTI vs. Dubai Crude Oil (Platts)Futures"
+        },
+        "HCL": {
+            "category": "Energy",
+            "description": "WTI Houston Crude Oil Futures"
+        },
+        "TCS": {
+            "category": "Energy",
+            "description": "WTI Trade Month Futures"
+        },
+        "CLD": {
+            "category": "Energy",
+            "description": "WTI vs. Dated Brent (Platts) Calendar Month Futures"
+        },
+        "AXA": {
+            "category": "Energy",
+            "description": "LLS (Argus) Financial Futures"
+        },
+        "LBB": {
+            "category": "Energy",
+            "description": "LLS (Argus) vs. Brent Balmo Futures"
+        },
+        "LLR": {
+            "category": "Energy",
+            "description": "LLS (Argus) vs. Brent Crude Oil Financial Futures"
+        },
+        "LWB": {
+            "category": "Energy",
+            "description": "LLS (Argus) vs. WTI Balmo Futures"
+        },
+        "AWJ": {
+            "category": "Energy",
+            "description": "LLS (Argus) vs. WTI Financial Futures"
+        },
+        "LPS": {
+            "category": "Energy",
+            "description": "LOOP Crude Oil Storage Futures"
+        },
+        "MB": {
+            "category": "Energy",
+            "description": "LOOP Gulf Coast Sour Crude Oil Futures"
+        },
+        "MX": {
+            "category": "Energy",
+            "description": "Mars (Argus) Financial Futures"
+        },
+        "MO": {
+            "category": "Energy",
+            "description": "Mars (Argus) Trade Month Futures"
+        },
+        "AYX": {
+            "category": "Energy",
+            "description": "Mars (Argus) vs. WTI Financial Futures"
+        },
+        "AYV": {
+            "category": "Energy",
+            "description": "Mars (Argus) vs. WTI Trade Month Futures"
+        },
+        "MBC": {
+            "category": "Energy",
+            "description": "Mini Brent Financial Futures"
+        },
+        "MDB": {
+            "category": "Energy",
+            "description": "Mini Dated Brent (Platts) Financial Futures"
+        },
+        "DBT": {
+            "category": "Energy",
+            "description": "Mini Dubai Crude Oil (Platts) BALMO Futures"
+        },
+        "DBL": {
+            "category": "Energy",
+            "description": "Mini Dubai Crude Oil (Platts) Futures"
+        },
+        "SSW": {
+            "category": "Energy",
+            "description": "Edmonton Synthetic Sweet (NE2) Monthly Index Futures"
+        },
+        "UMD": {
+            "category": "Energy",
+            "description": "Urals Med (Platts) vs. Dated Brent (Platts) CFD Futures"
+        },
+        "UMB": {
+            "category": "Energy",
+            "description": "Urals Med (Platts) vs. Dated Brent (Platts) CFD BALMO Futures"
+        },
+        "UNS": {
+            "category": "Energy",
+            "description": "Urals North (Platts) vs. Dated Brent (Platts) CFD Futures"
+        },
+        "UNB": {
+            "category": "Energy",
+            "description": "Urals North (Platts) vs. Dated Brent (Platts) CFD BALMO Futures"
+        },
+        "WCE": {
+            "category": "Energy",
+            "description": "Western Canadian Select (WCS) Crude Oil"
+        },
+        "WCW": {
+            "category": "Energy",
+            "description": "Hardisty Western Canadian Select (NE2) Monthly Index Futures"
+        },
+        "A42": {
+            "category": "Energy",
+            "description": "WTI BALMO Futures"
+        },
+        "CSX": {
+            "category": "Energy",
+            "description": "WTI Financial Futures"
+        },
+        "BK": {
+            "category": "Energy",
+            "description": "WTI\u2010Brent Financial Futures"
+        },
+        "ABY": {
+            "category": "Energy",
+            "description": "WTI-Brent Bullet Futures"
+        },
+        "HTT": {
+            "category": "Energy",
+            "description": "WTI Houston (Argus) vs. WTI Trade Month Futures"
+        },
+        "HTA": {
+            "category": "Energy",
+            "description": "WTI Houston (Argus) Trade Month Futures"
+        },
+        "HIL": {
+            "category": "Energy",
+            "description": "WTI Houston (Argus) vs. WTI Financial Futures"
+        },
+        "HIA": {
+            "category": "Energy",
+            "description": "WTI Houston (Argus) Financial Futures"
+        },
+        "HTB": {
+            "category": "Energy",
+            "description": "WTI Houston (Argus) vs. WTI Trade Month BALMO Futures"
+        },
+        "HIB": {
+            "category": "Energy",
+            "description": "WTI Houston (Argus) vs. WTI BALMO Futures"
+        },
+        "AFF": {
+            "category": "Energy",
+            "description": "WTI Midland (Argus) vs. WTI Financial Futures"
+        },
+        "WHD": {
+            "category": "Energy",
+            "description": "WTI Houston (Argus) vs. Dubai (Platts) Trade Month Futures"
+        },
+        "WDB": {
+            "category": "Energy",
+            "description": "WTI Houston (Argus) vs. Dubai (Platts) Calendar Month Futures"
+        },
+        "WHB": {
+            "category": "Energy",
+            "description": "WTI Houston (Argus) vs. Brent Trade Month Futures"
+        },
+        "WBR": {
+            "category": "Energy",
+            "description": "WTI Houston (Argus) vs. Brent Calendar Month Futures"
+        },
+        "WMB": {
+            "category": "Energy",
+            "description": "WTI Midland (Argus) vs. Brent Trade Month Futures"
+        },
+        "WMR": {
+            "category": "Energy",
+            "description": "WTI Midland (Argus) vs. Brent Calendar Month Futures"
+        },
+        "WMD": {
+            "category": "Energy",
+            "description": "WTI Midland (Argus) vs. Dubai (Platts) Trade Month Futures"
+        },
+        "WTD": {
+            "category": "Energy",
+            "description": "WTI Midland (Argus) vs. Dubai (Platts) Calendar Month Futures"
+        },
+        "MBM": {
+            "category": "Energy",
+            "description": "Mars (Argus) vs. Dubai (Platts) Calendar Month Futures"
+        },
+        "MAB": {
+            "category": "Energy",
+            "description": "Mars (Argus) vs. Brent Trade Month Futures"
+        },
+        "WTT": {
+            "category": "Energy",
+            "description": "WTI Midland (Argus) vs. WTI Trade Month Futures"
+        },
+        "WTI": {
+            "category": "Energy",
+            "description": "WTI Midland (Argus) Trade Month Futures"
+        },
+        "WTS": {
+            "category": "Energy",
+            "description": "WTS (Argus) Financial Futures"
+        },
+        "AY": {
+            "category": "Energy",
+            "description": "WTS (Argus) Trade Month Futures"
+        },
+        "WTA": {
+            "category": "Energy",
+            "description": "WTS (Argus) vs. WTI Financial Futures"
+        },
+        "AFH": {
+            "category": "Energy",
+            "description": "WTS (Argus) vs. WTI Trade Month Futures"
+        },
+        "AXB": {
+            "category": "Energy",
+            "description": "WTS Midland (Argus) Financial Futures"
+        },
+        "OAD": {
+            "category": "Energy",
+            "description": "Alberta Power Pool Calendar Day Futures"
+        },
+        "AQK": {
+            "category": "Energy",
+            "description": "Alberta Power Pool Calendar Month Futures"
+        },
+        "PFP": {
+            "category": "Energy",
+            "description": "Alberta Power Pool Extended Off-Peak Calendar Day Futures"
+        },
+        "FEF": {
+            "category": "Energy",
+            "description": "Alberta Power Pool Extended Off-Peak Calendar Month Futures"
+        },
+        "XPP": {
+            "category": "Energy",
+            "description": "Alberta Power Pool Extended Peak Calendar Day Futures"
+        },
+        "PEX": {
+            "category": "Energy",
+            "description": "Alberta Power Pool Extended Peak Calendar Month Futures"
+        },
+        "LAF": {
+            "category": "Energy",
+            "description": "Alberta Power Pool Off-Peak Calendar Day Futures"
+        },
+        "PHF": {
+            "category": "Energy",
+            "description": "Alberta Power Pool Off-Peak Calendar Month Futures"
+        },
+        "LAP": {
+            "category": "Energy",
+            "description": "Alberta Power Pool Peak Calendar Day Futures"
+        },
+        "APA": {
+            "category": "Energy",
+            "description": "Alberta Power Pool Peak Calendar Month Futures"
+        },
+        "C4Z": {
+            "category": "Energy",
+            "description": "CAISO SP15 EZ Gen Hub 5 MW Off-Peak Calendar-Day Day-Ahead LMP Futures"
+        },
+        "B2K": {
+            "category": "Energy",
+            "description": "CAISO SP15 EZ Gen Hub 5 MW Off-Peak Calendar-Day Real-Time LMP Futures"
+        },
+        "DAX": {
+            "category": "Energy",
+            "description": "CAISO SP15 EZ Gen Hub 5 MW Off-Peak Calendar-Month Day-Ahead LMP Futures"
+        },
+        "C2E": {
+            "category": "Energy",
+            "description": "CAISO SP15 EZ Gen Hub 5 MW Off-Peak Calendar-Month Real-Time LMP Futures"
+        },
+        "DAZ": {
+            "category": "Energy",
+            "description": "CAISO SP15 EZ Gen Hub 5 MW Peak Calendar-Day Day-Ahead LMP Futures"
+        },
+        "DHA": {
+            "category": "Energy",
+            "description": "CAISO SP15 EZ Gen Hub 5 MW Peak Calendar-Day Real-Time LMP Futures"
+        },
+        "E9X": {
+            "category": "Energy",
+            "description": "CAISO SP15 EZ Gen Hub 5 MW Peak Calendar-Month Day-Ahead LMP Futures"
+        },
+        "1ZA": {
+            "category": "Energy",
+            "description": "CAISO SP15 EZ Gen Hub 5 MW Peak Calendar-Month Real-Time LMP Futures"
+        },
+        "2ZW": {
+            "category": "Energy",
+            "description": "CAISO NP15 EZ Gen Hub 5 MW Off-Peak Calendar-Day Day-Ahead LMP Futures"
+        },
+        "2JW": {
+            "category": "Energy",
+            "description": "CAISO NP15 EZ Gen Hub 5 MW Off-Peak Calendar-Day Real-Time LMP Futures"
+        },
+        "3XW": {
+            "category": "Energy",
+            "description": "CAISO NP15 EZ Gen Hub 5 MW Off-Peak Calendar-Month Day-Ahead LMP Futures"
+        },
+        "2D": {
+            "category": "Energy",
+            "description": "CAISO NP15 EZ Gen Hub 5 MW Off-Peak Calendar-Month Real-Time LMP Futures"
+        },
+        "3ZW": {
+            "category": "Energy",
+            "description": "CAISO NP15 EZ Gen Hub 5 MW Peak Calendar-Day Day-Ahead LMP Futures"
+        },
+        "2FW": {
+            "category": "Energy",
+            "description": "CAISO NP15 EZ Gen Hub 5 MW Peak Calendar-Day Real-Time LMP Futures"
+        },
+        "4XW": {
+            "category": "Energy",
+            "description": "CAISO NP15 EZ Gen Hub 5 MW Peak Calendar-Month Day-Ahead LMP Futures"
+        },
+        "1Y": {
+            "category": "Energy",
+            "description": "CAISO NP15 EZ Gen Hub 5 MW Peak Calendar-Month Real-Time LMP Futures"
+        },
+        "EMC": {
+            "category": "Energy",
+            "description": "ERCOT Daily Load Forecast Futures"
+        },
+        "AI4": {
+            "category": "Energy",
+            "description": "ERCOT Houston 345 kV Hub 5 MW Off-Peak Calendar-Day Futures"
+        },
+        "AI2": {
+            "category": "Energy",
+            "description": "ERCOT Houston 345 kV Hub 5 MW Off-Peak Futures"
+        },
+        "AI3": {
+            "category": "Energy",
+            "description": "ERCOT Houston 345 kV Hub 5 MW Peak Calendar-Day Futures"
+        },
+        "AI1": {
+            "category": "Energy",
+            "description": "ERCOT Houston 345 kV Hub 5 MW Peak Futures"
+        },
+        "EAA": {
+            "category": "Energy",
+            "description": "ERCOT Houston 345 kV Hub Day-Ahead 5 MW Off-Peak Futures"
+        },
+        "EAE": {
+            "category": "Energy",
+            "description": "ERCOT Houston 345 kV Hub Day-Ahead 5 MW Off-Peak Calendar-Day Futures"
+        },
+        "YHE": {
+            "category": "Energy",
+            "description": "ERCOT Houston 345 kV Hub Day-Ahead 5 MW Peak Futures"
+        },
+        "YHF": {
+            "category": "Energy",
+            "description": "ERCOT Houston 345 kV Hub Day-Ahead 5 MW Peak Calendar-Day Futures"
+        },
+        "AP1": {
+            "category": "Energy",
+            "description": "ERCOT North 345 kV Hub 5 MW Off-Peak Calendar-Day Futures"
+        },
+        "AI6": {
+            "category": "Energy",
+            "description": "ERCOT North 345 kV Hub 5 MW Off-Peak Futures"
+        },
+        "AI7": {
+            "category": "Energy",
+            "description": "ERCOT North 345 kV Hub 5 MW Peak Calendar-Day Futures"
+        },
+        "AI5": {
+            "category": "Energy",
+            "description": "ERCOT North 345 kV Hub 5 MW Peak Futures"
+        },
+        "ERL": {
+            "category": "Energy",
+            "description": "ERCOT North 345 kV Hub Day-Ahead 5 MW Off-Peak Futures"
+        },
+        "YRP": {
+            "category": "Energy",
+            "description": "ERCOT North 345 kV Hub Day-Ahead 5 MW Off-Peak Calendar-Day Futures"
+        },
+        "EAC": {
+            "category": "Energy",
+            "description": "ERCOT North 345 kV Hub Day-Ahead 5 MW Peak Futures"
+        },
+        "YRW": {
+            "category": "Energy",
+            "description": "ERCOT North 345 kV Hub Day-Ahead 5 MW Peak Calendar-Day Futures"
+        },
+        "AJ1": {
+            "category": "Energy",
+            "description": "ERCOT South 345 kV Hub 5 MW Off-Peak Futures"
+        },
+        "AM1": {
+            "category": "Energy",
+            "description": "ERCOT South 345 kV Hub 5 MW Off-Peak Calendar-Day Futures"
+        },
+        "AK1": {
+            "category": "Energy",
+            "description": "ERCOT South 345 kV Hub 5 MW Peak Calendar-Day Futures"
+        },
+        "AI9": {
+            "category": "Energy",
+            "description": "ERCOT South 345 kV Hub 5 MW Peak Futures"
+        },
+        "EAB": {
+            "category": "Energy",
+            "description": "ERCOT South 345 kV Hub Day-Ahead 5 MW Off-Peak Futures"
+        },
+        "ENP": {
+            "category": "Energy",
+            "description": "ERCOT South 345 kV Hub Day-Ahead 5 MW Off-Peak Calendar-Day Futures"
+        },
+        "YUE": {
+            "category": "Energy",
+            "description": "ERCOT South 345 kV Hub Day-Ahead 5 MW Peak Futures"
+        },
+        "EUB": {
+            "category": "Energy",
+            "description": "ERCOT South 345 kV Hub Day-Ahead 5 MW Peak Calendar-Day Futures"
+        },
+        "AR4": {
+            "category": "Energy",
+            "description": "ERCOT West 345 kV Hub 5 MW Off-Peak Calendar-Day Futures"
+        },
+        "AO1": {
+            "category": "Energy",
+            "description": "ERCOT West 345 kV Hub 5 MW Off-Peak Futures"
+        },
+        "AR1": {
+            "category": "Energy",
+            "description": "ERCOT West 345 kV Hub 5 MW Peak Calendar-Day Futures"
+        },
+        "AN1": {
+            "category": "Energy",
+            "description": "ERCOT West 345 kV Hub 5 MW Peak Futures"
+        },
+        "YWK": {
+            "category": "Energy",
+            "description": "ERCOT West 345 kV Hub Day-Ahead 5 MW Off-Peak Futures"
+        },
+        "YWF": {
+            "category": "Energy",
+            "description": "ERCOT West 345 kV Hub Day-Ahead 5 MW Off-Peak Calendar-Day Futures"
+        },
+        "YWE": {
+            "category": "Energy",
+            "description": "ERCOT West 345 kV Hub Day-Ahead 5 MW Peak Futures"
+        },
+        "EAW": {
+            "category": "Energy",
+            "description": "ERCOT West 345 kV Hub Day-Ahead 5 MW Peak Calendar-Day Futures"
+        },
+        "NCO": {
+            "category": "Energy",
+            "description": "ISO New England Connecticut Zone Off-Peak Calendar-Day 5 MW Day-Ahead LMP Futures (DAILY POWER FUTURES)"
+        },
+        "NMO": {
+            "category": "Energy",
+            "description": "ISO New England Maine Zone Off-Peak Calendar-Day 5 MW Day-Ahead LMP Futures (DAILY POWER FUTURES)"
+        },
+        "NHO": {
+            "category": "Energy",
+            "description": "ISO New England New Hampshire Zone Off-Peak Calendar-Day 5 MW Day-Ahead LMP Futures (DAILY POWER FUTURES)"
+        },
+        "NEO": {
+            "category": "Energy",
+            "description": "ISO New England North East Massachusetts Zone Off-Peak Calendar-Day 5 MW Day-Ahead LMP Futures (DAILY POWER FUTURES)"
+        },
+        "NRO": {
+            "category": "Energy",
+            "description": "ISO New England Rhode Island Zone Off-Peak Calendar-Day 5 MW Day-Ahead LMP Futures (DAILY POWER FUTURES)"
+        },
+        "NSO": {
+            "category": "Energy",
+            "description": "ISO New England South East Massachusetts Zone Off-Peak Calendar-Day 5 MW Day-Ahead LMP Futures (DAILY POWER FUTURES)"
+        },
+        "NWO": {
+            "category": "Energy",
+            "description": "ISO New England West Central Massachusetts Zone Off-Peak Calendar-Day 5 MW Day-Ahead LMP Futures (DAILY POWER FUTURES)"
+        },
+        "NTP": {
+            "category": "Energy",
+            "description": "ISO New England Connecticut Zone Peak Calendar-Day 5 MW Day-Ahead LMP Futures (DAILY POWER FUTURES)"
+        },
+        "NMP": {
+            "category": "Energy",
+            "description": "ISO New England Maine Zone Peak Calendar-Day 5 MW Day-Ahead LMP Futures (DAILY POWER FUTURES)"
+        },
+        "NHP": {
+            "category": "Energy",
+            "description": "ISO New England New Hampshire Zone Peak Calendar-Day 5 MW Day-Ahead LMP Futures (DAILY POWER FUTURES)"
+        },
+        "NNP": {
+            "category": "Energy",
+            "description": "ISO New England North East Massachusetts Zone Peak Calendar-Day 5 MW Day-Ahead LMP Futures (DAILY POWER FUTURES)"
+        },
+        "NRP": {
+            "category": "Energy",
+            "description": "ISO New England Rhode Island Zone Peak Calendar-Day 5 MW Day-Ahead LMP Futures (DAILY POWER FUTURES)"
+        },
+        "NSP": {
+            "category": "Energy",
+            "description": "ISO New England South East Massachusetts Zone Peak Calendar-Day 5 MW Day-Ahead LMP Futures (DAILY POWER FUTURES)"
+        },
+        "NWP": {
+            "category": "Energy",
+            "description": "ISO New England West Central Massachusetts Zone Peak Calendar-Day 5 MW Day-Ahead LMP Futures (DAILY POWER FUTURES)"
+        },
+        "AP3": {
+            "category": "Energy",
+            "description": "ISO New England Connecticut Zone 5 MW Off-Peak Calendar-Month Day-Ahead LMP Futures"
+        },
+        "AP2": {
+            "category": "Energy",
+            "description": "ISO New England Connecticut Zone 5 MW Peak Calendar-Month Day-Ahead LMP Futures"
+        },
+        "H2L": {
+            "category": "Energy",
+            "description": "ISO New England Mass Hub Day-Ahead Off-Peak Calendar-Month 5 MW Futures"
+        },
+        "AW2": {
+            "category": "Energy",
+            "description": "ISO New England Maine Zone 5 MW Off-Peak Calendar-Month Day-Ahead LMP Futures"
+        },
+        "AP9": {
+            "category": "Energy",
+            "description": "ISO New England Maine Zone 5 MW Peak Calendar-Month Day-Ahead LMP Futures"
+        },
+        "AU6": {
+            "category": "Energy",
+            "description": "ISO New England Mass Hub 5 MW Peak Calendar-Month Day-Ahead LMP Futures"
+        },
+        "IDL": {
+            "category": "Energy",
+            "description": "ISO New England Mass Hub Day-Ahead Off-Peak Calendar-Day 5 MW Futures"
+        },
+        "COL": {
+            "category": "Energy",
+            "description": "ISO New England Mass Hub Day-Ahead Peak Calendar-Day 5 MW Futures"
+        },
+        "AU3": {
+            "category": "Energy",
+            "description": "ISO New England New Hampshire Zone 5 MW Off-Peak Calendar-Month Day-Ahead LMP Futures"
+        },
+        "AU2": {
+            "category": "Energy",
+            "description": "ISO New England New Hampshire Zone 5 MW Peak Calendar-Month Day-Ahead LMP Futures"
+        },
+        "AP8": {
+            "category": "Energy",
+            "description": "ISO New England North East Massachusetts Zone 5 MW Off-Peak Calendar-Month Day-Ahead LMP Futures"
+        },
+        "AP7": {
+            "category": "Energy",
+            "description": "ISO New England North East Massachusetts Zone 5 MW Peak Calendar-Month Day-Ahead LMP Futures"
+        },
+        "AU5": {
+            "category": "Energy",
+            "description": "ISO New England Rhode Island Zone 5 MW Off-Peak Calendar-Month Day-Ahead LMP Futures"
+        },
+        "AU4": {
+            "category": "Energy",
+            "description": "ISO New England Rhode Island Zone 5 MW Peak Calendar-Month Day-Ahead LMP Futures"
+        },
+        "AP5": {
+            "category": "Energy",
+            "description": "ISO New England South East Massachusetts Zone 5 MW Off-Peak Calendar-Month Day-Ahead LMP Futures"
+        },
+        "AP4": {
+            "category": "Energy",
+            "description": "ISO New England South East Massachusetts Zone 5 MW Peak Calendar-Month Day-Ahead LMP Futures"
+        },
+        "AL9": {
+            "category": "Energy",
+            "description": "ISO New England West Central Massachusetts Zone 5 MW Off-Peak Calendar-Month Day Ahead LMP Futures"
+        },
+        "AR6": {
+            "category": "Energy",
+            "description": "ISO New England West Central Massachusetts Zone 5 MW Peak Calendar-Month Day-Ahead LMP Futures"
+        },
+        "E4L": {
+            "category": "Energy",
+            "description": "PJM Western Hub Day-Ahead Off-Peak Calendar-Month 5 MW Futures"
+        },
+        "SRT": {
+            "category": "Energy",
+            "description": "PJM Western Hub Real-Time Peak Average Price Monthly Futures 5 MW"
+        },
+        "SDD": {
+            "category": "Energy",
+            "description": "PJM Western Hub Day-Ahead Peak Average Price Monthly Futures 5 MW"
+        },
+        "MDL": {
+            "category": "Energy",
+            "description": "Mid-Columbia Day-Ahead Peak Calendar-Month 5 MW Futures"
+        },
+        "MLD": {
+            "category": "Energy",
+            "description": "Mid-Columbia Day-Ahead Peak Calendar-Day 5 MW Futures"
+        },
+        "OML": {
+            "category": "Energy",
+            "description": "Mid-Columbia Day-Ahead Off-Peak Calendar-Month 5 MW Futures"
+        },
+        "MXL": {
+            "category": "Energy",
+            "description": "Mid-Columbia Day-Ahead Off-Peak Calendar-Day 5 MW Futures"
+        },
+        "K2L": {
+            "category": "Energy",
+            "description": "Midwest ISO Indiana Hub (formerly Cinergy Hub) Day-Ahead Off-Peak Calendar-Month 5 MW Futures"
+        },
+        "H5L": {
+            "category": "Energy",
+            "description": "Midwest ISO Indiana Hub (formerly Cinergy Hub) Day-Ahead Peak Calendar-Month 5 MW Futures"
+        },
+        "FAL": {
+            "category": "Energy",
+            "description": "Midwest ISO Indiana Hub 5 MW Off-Peak Calendar-Day Day-Ahead Futures"
+        },
+        "FTL": {
+            "category": "Energy",
+            "description": "Midwest ISO Indiana Hub Real-Time Off-Peak Calendar-Day 5 MW Futures"
+        },
+        "PDL": {
+            "category": "Energy",
+            "description": "Midwest ISO Indiana Hub 5 MW Peak Calendar-Day Day-Ahead Futures"
+        },
+        "PTL": {
+            "category": "Energy",
+            "description": "Midwest ISO Indiana Hub Real-Time Peak Calendar-Day 5 MW Futures"
+        },
+        "EJL": {
+            "category": "Energy",
+            "description": "Midwest ISO Indiana Hub (formerly Cinergy Hub) Real-Time Off-Peak Calendar-Month 5 MW Futures"
+        },
+        "HOA": {
+            "category": "Energy",
+            "description": "Midwest ISO Michigan Hub 5 MW Off-Peak Calendar-Month Day-Ahead Futures"
+        },
+        "HWA": {
+            "category": "Energy",
+            "description": "Midwest ISO Michigan Hub 5 MW Peak Calendar-Month Day-Ahead Futures"
+        },
+        "AJJ": {
+            "category": "Energy",
+            "description": "Midwest ISO Minnesota Hub Off-Peak Calendar-Month LMP Futures"
+        },
+        "ALM": {
+            "category": "Energy",
+            "description": "Midwest ISO Minnesota Hub Peak Calendar-Month LMP Futures"
+        },
+        "A4R": {
+            "category": "Energy",
+            "description": "MISO Illinois Hub 5 MW Off-Peak Calendar-Month Day-Ahead Futures"
+        },
+        "A4Q": {
+            "category": "Energy",
+            "description": "MISO Illinois Hub 5 MW Peak Calendar-Month Day-Ahead Futures"
+        },
+        "AOJ": {
+            "category": "Energy",
+            "description": "MISO Illinois Hub Off-Peak Calendar-Month LMP Futures"
+        },
+        "AOH": {
+            "category": "Energy",
+            "description": "MISO Illinois Hub Peak Calendar-Month LMP Futures"
+        },
+        "AH3": {
+            "category": "Energy",
+            "description": "MISO Indiana Hub 5 Month Peak Calendar-Month Real-Time Futures"
+        },
+        "AHJ": {
+            "category": "Energy",
+            "description": "MISO Michigan Hub Off-Peak Calendar-Month LMP Futures"
+        },
+        "AHM": {
+            "category": "Energy",
+            "description": "MISO Michigan Hub Peak Calendar-Month LMP Futures"
+        },
+        "LHV": {
+            "category": "Energy",
+            "description": "NYISO Lower Hudson Valley Capacity Calendar-Month Futures"
+        },
+        "NHH": {
+            "category": "Energy",
+            "description": "NYISO NYC In-City Capacity Calendar-Month Futures"
+        },
+        "NRR": {
+            "category": "Energy",
+            "description": "NYISO Rest of the State Capacity Calendar-Month Futures"
+        },
+        "NCD": {
+            "category": "Energy",
+            "description": "NYISO Zone C Off-Peak Calendar-Day 5 MW Day-Ahead LBMP Futures (Daily Power Futures)"
+        },
+        "NOD": {
+            "category": "Energy",
+            "description": "NYISO Zone E Off-Peak Calendar-Day 5 MW Day-Ahead LBMP Futures (Daily Power Futures)"
+        },
+        "NFO": {
+            "category": "Energy",
+            "description": "NYISO Zone F Off-Peak Calendar-Day 5 MW Day-Ahead LBMP Futures (Daily Power Futures)"
+        },
+        "MOI": {
+            "category": "Energy",
+            "description": "MISO Illinois Hub Off-Peak Calendar-Day 5 MW Day-Ahead LMP Futures (Daily Power Futures)"
+        },
+        "MMO": {
+            "category": "Energy",
+            "description": "MISO Michigan Hub Off-Peak Calendar-Day 5 MW Day-Ahead LMP Futures (Daily Power Futures)"
+        },
+        "MRI": {
+            "category": "Energy",
+            "description": "MISO Illinois Hub Off-Peak Calendar-Day 5 MW Real-Time LMP Futures (Daily Power Futures)"
+        },
+        "MMR": {
+            "category": "Energy",
+            "description": "MISO Minnesota Hub Off-Peak Calendar-Day 5 MW Real-Time LMP Futures (Daily Power Futures)"
+        },
+        "MRT": {
+            "category": "Energy",
+            "description": "MISO Michigan Hub Off-Peak Calendar-Day 5 MW Real-Time LMP Futures (Daily Power Futures)"
+        },
+        "N3P": {
+            "category": "Energy",
+            "description": "NYISO Zone C Peak Calendar-Day 5 MW Day-Ahead LBMP Futures (Daily Power Futures)"
+        },
+        "NEP": {
+            "category": "Energy",
+            "description": "NYISO Zone E Peak Calendar-Day 5 MW Day-Ahead LBMP Futures (Daily Power Futures)"
+        },
+        "NFD": {
+            "category": "Energy",
+            "description": "NYISO Zone F Peak Calendar-Day 5 MW Day-Ahead LBMP Futures (Daily Power Futures)"
+        },
+        "MIP": {
+            "category": "Energy",
+            "description": "MISO Illinois Hub Peak Calendar-Day 5 MW Day-Ahead LMP Futures (Daily Power Futures)"
+        },
+        "MMP": {
+            "category": "Energy",
+            "description": "MISO Michigan Hub Peak Calendar-Day 5 MW Day-Ahead LMP Futures (Daily Power Futures)"
+        },
+        "MTI": {
+            "category": "Energy",
+            "description": "MISO Illinois Hub Peak Calendar-Day 5 MW Real-Time LMP Futures (Daily Power Futures)"
+        },
+        "MNT": {
+            "category": "Energy",
+            "description": "MISO Minnesota Hub Peak Calendar-Day 5 MW Real-Time LMP Futures (Daily Power Futures)"
+        },
+        "MCT": {
+            "category": "Energy",
+            "description": "MISO Michigan Hub Peak Calendar-Day 5 MW Real-Time LMP Futures (Daily Power Futures)"
+        },
+        "K4L": {
+            "category": "Energy",
+            "description": "NYISO Zone A Day-Ahead Off-Peak Calendar-Month 5 MW Futures"
+        },
+        "K3L": {
+            "category": "Energy",
+            "description": "NYISO Zone A Day-Ahead Peak Calendar-Month 5 MW Futures"
+        },
+        "ANL": {
+            "category": "Energy",
+            "description": "NYISO Zone A Day-Ahead Peak Calendar-Day 5 MW Futures"
+        },
+        "ZAL": {
+            "category": "Energy",
+            "description": "NYISO Zone A Day-Ahead Off-Peak Calendar-Day 5 MW Futures"
+        },
+        "AA3": {
+            "category": "Energy",
+            "description": "NYISO Zone C 5 MW Off-Peak Calendar-Month Day-Ahead LBMP Futures"
+        },
+        "AQ5": {
+            "category": "Energy",
+            "description": "NYISO Zone C 5 MW Peak Calendar-Month Day-Ahead LBMP Futures"
+        },
+        "A58": {
+            "category": "Energy",
+            "description": "NYISO Zone E 5 MW Off-Peak Calendar-Month Day-Ahead LBMP Futures"
+        },
+        "A55": {
+            "category": "Energy",
+            "description": "NYISO Zone E 5 MW Peak Calendar-Month Day-Ahead LBMP Futures"
+        },
+        "A4M": {
+            "category": "Energy",
+            "description": "NYISO Zone F 5 MW Off-Peak Calendar-Month Day-Ahead LBMP Futures"
+        },
+        "A4L": {
+            "category": "Energy",
+            "description": "NYISO Zone F 5 MW Peak Calendar-Month Day-Ahead LBMP Futures"
+        },
+        "D2L": {
+            "category": "Energy",
+            "description": "NYISO Zone G Day-Ahead Off-Peak Calendar-Month 5 MW Futures"
+        },
+        "T3L": {
+            "category": "Energy",
+            "description": "NYISO Zone G Day-Ahead Peak Calendar-Month 5 MW Futures"
+        },
+        "GNL": {
+            "category": "Energy",
+            "description": "NYISO Zone G Day-Ahead Peak Calendar-Day 5 MW Futures"
+        },
+        "ZGL": {
+            "category": "Energy",
+            "description": "NYISO Zone G Day-Ahead Off-Peak Calendar-Day 5 MW Futures"
+        },
+        "D4L": {
+            "category": "Energy",
+            "description": "NYISO Zone J Day-Ahead Off-Peak Calendar-Month 5 MW Futures"
+        },
+        "D3L": {
+            "category": "Energy",
+            "description": "NYISO Zone J Day-Ahead Peak Calendar-Month 5 MW Futures"
+        },
+        "JNL": {
+            "category": "Energy",
+            "description": "NYISO Zone J Day-Ahead Peak Calendar-Day 5 MW Futures"
+        },
+        "ZJL": {
+            "category": "Energy",
+            "description": "NYISO Zone J Day-Ahead Off-Peak Calendar-Day 5 MW Futures"
+        },
+        "OOD": {
+            "category": "Energy",
+            "description": "Ontario Off-Peak Calendar-Day Futures"
+        },
+        "OFF": {
+            "category": "Energy",
+            "description": "Ontario Off-Peak Calendar-Month Futures"
+        },
+        "OPO": {
+            "category": "Energy",
+            "description": "Ontario Peak Calendar-Day Futures"
+        },
+        "OMM": {
+            "category": "Energy",
+            "description": "Ontario Peak Calendar-Month Futures"
+        },
+        "PVL": {
+            "category": "Energy",
+            "description": "Palo Verde Day-Ahead Peak Calendar-Month 5 MW Futures"
+        },
+        "VLD": {
+            "category": "Energy",
+            "description": "Palo Verde Day-Ahead Peak Calendar-Day 5 MW Futures"
+        },
+        "OVL": {
+            "category": "Energy",
+            "description": "Palo Verde Day-Ahead Off-Peak Calendar-Month 5 MW Futures"
+        },
+        "QVL": {
+            "category": "Energy",
+            "description": "Palo Verde Day-Ahead Off-Peak Calendar-Day 5 MW Futures"
+        },
+        "PFO": {
+            "category": "Energy",
+            "description": "PJM AECO Zone Off-Peak Calendar-Day 5 MW Day-Ahead LMP Futures"
+        },
+        "PZO": {
+            "category": "Energy",
+            "description": "PJM APS Zone Off-Peak Calendar-Day 5 MW Day-Ahead LMP Futures"
+        },
+        "PHO": {
+            "category": "Energy",
+            "description": "PJM ATSI Zone Off-Peak Calendar-Day 5 MW Day-Ahead LMP Futures"
+        },
+        "PBO": {
+            "category": "Energy",
+            "description": "PJM BGE Zone Off-Peak Calendar-Day 5 MW Day-Ahead LMP Futures"
+        },
+        "PCO": {
+            "category": "Energy",
+            "description": "PJM ComEd Zone Off-Peak Calendar-Day 5 MW Day-Ahead LMP Futures"
+        },
+        "PUO": {
+            "category": "Energy",
+            "description": "PJM DPL Zone Off-Peak Calendar-Day 5 MW Day-Ahead LMP Futures"
+        },
+        "PQO": {
+            "category": "Energy",
+            "description": "PJM Duquesne Zone Off-Peak Calendar-Day 5 MW Day-Ahead LMP Futures"
+        },
+        "PYO": {
+            "category": "Energy",
+            "description": "PJM Eastern Hub Off-Peak Calendar-Day 5 MW Day-Ahead LMP Futures"
+        },
+        "PTO": {
+            "category": "Energy",
+            "description": "PJM JCPL Zone Off-Peak Calendar-Day 5 MW Day-Ahead LMP Futures"
+        },
+        "PMO": {
+            "category": "Energy",
+            "description": "PJM METED Zone Off-Peak Calendar-Day 5 MW Day-Ahead LMP Futures"
+        },
+        "PVO": {
+            "category": "Energy",
+            "description": "PJM PECO Zone Off-Peak Calendar-Day 5 MW Day-Ahead LMP Futures"
+        },
+        "POC": {
+            "category": "Energy",
+            "description": "PJM PENELEC Zone Off-Peak Calendar-Day 5 MW Day-Ahead LMP Futures"
+        },
+        "PXO": {
+            "category": "Energy",
+            "description": "PJM PEPCO Zone Off-Peak Calendar-Day 5 MW Day-Ahead LMP Futures"
+        },
+        "PLO": {
+            "category": "Energy",
+            "description": "PJM PPL Zone Off-Peak Calendar-Day 5 MW Day-Ahead LMP Futures"
+        },
+        "PSO": {
+            "category": "Energy",
+            "description": "PJM PSEG Zone Off-Peak Calendar-Day 5 MW Day-Ahead LMP Futures"
+        },
+        "PRO": {
+            "category": "Energy",
+            "description": "PJM ATSI Zone Off-Peak Calendar-Day 5 MW Real-Time LMP Futures"
+        },
+        "\u2020JPP": {
+            "category": "Energy",
+            "description": "PJM AECO Zone Peak Calendar-Day 5 MW Day-Ahead LMP Futures"
+        },
+        "PZP": {
+            "category": "Energy",
+            "description": "PJM APS Zone Peak Calendar-Day 5 MW Day-Ahead LMP Futures"
+        },
+        "PHP": {
+            "category": "Energy",
+            "description": "PJM ATSI Zone Peak Calendar-Day 5 MW Day-Ahead LMP Futures"
+        },
+        "PBP": {
+            "category": "Energy",
+            "description": "PJM BGE Zone Peak Calendar-Day 5 MW Day-Ahead LMP Futures"
+        },
+        "PCP": {
+            "category": "Energy",
+            "description": "PJM ComEd Zone Peak Calendar-Day 5 MW Day-Ahead LMP Futures"
+        },
+        "PUP": {
+            "category": "Energy",
+            "description": "PJM DPL Zone Peak Calendar-Day 5 MW Day-Ahead LMP Futures"
+        },
+        "PQP": {
+            "category": "Energy",
+            "description": "PJM Duquesne Zone Peak Calendar-Day 5 MW Day-Ahead LMP Futures"
+        },
+        "PYP": {
+            "category": "Energy",
+            "description": "PJM Eastern Hub Peak Calendar-Day 5 MW Day-Ahead LMP Futures"
+        },
+        "PPL": {
+            "category": "Energy",
+            "description": "PJM JCPL Zone Peak Calendar-Day 5 MW Day-Ahead LMP Futures"
+        },
+        "PMP": {
+            "category": "Energy",
+            "description": "PJM METED Zone Peak Calendar-Day 5 MW Day-Ahead LMP Futures"
+        },
+        "PVP": {
+            "category": "Energy",
+            "description": "PJM PECO Zone Peak Calendar-Day 5 MW Day-Ahead LMP Futures"
+        },
+        "PKP": {
+            "category": "Energy",
+            "description": "PJM PENELEC Zone Peak Calendar-Day 5 MW Day-Ahead LMP Futures"
+        },
+        "PXP": {
+            "category": "Energy",
+            "description": "PJM PEPCO Zone Peak Calendar-Day 5 MW Day-Ahead LMP 5 MW Futures"
+        },
+        "PLP": {
+            "category": "Energy",
+            "description": "PJM PPL Zone Peak Calendar-Day 5 MW Day-Ahead LMP Futures"
+        },
+        "PSP": {
+            "category": "Energy",
+            "description": "PJM PSEG Zone Peak Calendar-Day 5 MW Day-Ahead LMP Futures"
+        },
+        "PRP": {
+            "category": "Energy",
+            "description": "PJM ATSI Zone Peak Calendar-Day 5 MW Real-Time LMP Futures"
+        },
+        "AX1": {
+            "category": "Energy",
+            "description": "PJM AECO Zone Off-Peak Calendar-Month Day-Ahead LMP Futures"
+        },
+        "AY1": {
+            "category": "Energy",
+            "description": "PJM AECO Zone Peak Calendar-Month Day-Ahead LMP Futures"
+        },
+        "V3L": {
+            "category": "Energy",
+            "description": "PJM AEP Dayton Hub Real-Time Off-Peak Calendar-Month 5 MW Futures"
+        },
+        "AZ9": {
+            "category": "Energy",
+            "description": "PJM AEP Dayton Hub 5MW Peak Calendar-Month Real-Time LMP Futures"
+        },
+        "VDL": {
+            "category": "Energy",
+            "description": "PJM AEP Dayton Hub Real-Time Peak Calendar-Day 5 MW Futures"
+        },
+        "PEL": {
+            "category": "Energy",
+            "description": "PJM AEP Dayton Hub Day-Ahead Off-Peak Calendar-Day 5 MW Futures"
+        },
+        "PAL": {
+            "category": "Energy",
+            "description": "PJM AEP Dayton Hub Day-Ahead Peak Calendar-Day 5 MW Futures"
+        },
+        "R7L": {
+            "category": "Energy",
+            "description": "PJM AEP Dayton Hub Day-Ahead Off-Peak Calendar-Month 5 MW Futures"
+        },
+        "D7L": {
+            "category": "Energy",
+            "description": "PJM AEP Dayton Hub Day-Ahead LMP Peak Calendar-Month 5 MW Futures"
+        },
+        "AOL": {
+            "category": "Energy",
+            "description": "PJM AEP Dayton Hub Real-Time Off-Peak Calendar-Day 5 MW Futures"
+        },
+        "AW4": {
+            "category": "Energy",
+            "description": "PJM APS Zone Off-Peak Calendar-Month Day-Ahead LMP Futures"
+        },
+        "AS4": {
+            "category": "Energy",
+            "description": "PJM APS Zone Peak Calendar-Month Day-Ahead LMP Futures"
+        },
+        "MDD": {
+            "category": "Energy",
+            "description": "PJM ATSI Zone 5 MW Off-Peak Calendar-Month Day-Ahead Futures"
+        },
+        "MOA": {
+            "category": "Energy",
+            "description": "PJM ATSI Zone 5 MW Off-Peak Calendar-Month Real-Time Futures"
+        },
+        "MPP": {
+            "category": "Energy",
+            "description": "PJM ATSI Zone 5 MW Peak Calendar-Month Day-Ahead Futures"
+        },
+        "MPA": {
+            "category": "Energy",
+            "description": "PJM ATSI Zone 5 MW Peak Calendar-Month Real-Time Futures"
+        },
+        "AR3": {
+            "category": "Energy",
+            "description": "PJM BGE Zone Off-Peak Calendar-Month Day-Ahead LMP Futures"
+        },
+        "AE3": {
+            "category": "Energy",
+            "description": "PJM BGE Zone Peak Calendar-Month Day-Ahead LMP Futures"
+        },
+        "AD9": {
+            "category": "Energy",
+            "description": "PJM ComEd Zone 5 MW Off-Peak Calendar-Month Day-Ahead LMP Futures"
+        },
+        "AD8": {
+            "category": "Energy",
+            "description": "PJM ComEd Zone 5 MW Peak Calendar-Month Day-Ahead LMP Futures"
+        },
+        "PDJ": {
+            "category": "Energy",
+            "description": "PJM Daily Load Forecast Futures"
+        },
+        "AE8": {
+            "category": "Energy",
+            "description": "PJM DPL Zone Off-Peak Calendar-Month Day-Ahead LMP Futures"
+        },
+        "AL8": {
+            "category": "Energy",
+            "description": "PJM DPL Zone Peak Calendar-Month Day-Ahead LMP Futures"
+        },
+        "AD6": {
+            "category": "Energy",
+            "description": "PJM Duquesne Zone 5 MW Off-Peak Calendar-Month Day-Ahead LMP Futures"
+        },
+        "AD5": {
+            "category": "Energy",
+            "description": "PJM Duquesne Zone 5 MW Peak Calendar-Month Day-Ahead LMP Futures"
+        },
+        "AF4": {
+            "category": "Energy",
+            "description": "PJM Eastern Hub Off-Peak Calendar-Month Day-Ahead LMP Futures"
+        },
+        "AE9": {
+            "category": "Energy",
+            "description": "PJM Eastern Hub Peak Calendar-Month Day-Ahead LMP Futures"
+        },
+        "AF2": {
+            "category": "Energy",
+            "description": "PJM JCPL Zone Off-Peak Calendar-Month Day-Ahead LMP Futures"
+        },
+        "AJ2": {
+            "category": "Energy",
+            "description": "PJM JCPL Zone Peak Calendar-Month Day-Ahead LMP Futures"
+        },
+        "A46": {
+            "category": "Energy",
+            "description": "PJM METED Zone Off-Peak Calendar-Month Day-Ahead LMP Futures"
+        },
+        "A47": {
+            "category": "Energy",
+            "description": "PJM METED Zone Peak Calendar-Month Day-Ahead LMP Futures"
+        },
+        "B6L": {
+            "category": "Energy",
+            "description": "PJM Northern Illinois Hub Real-Time Off-Peak Calendar-Month 5 MW Futures"
+        },
+        "AB3": {
+            "category": "Energy",
+            "description": "PJM Northern Illinois Hub 5 MW Peak Calendar-Month Real-Time LMP Futures"
+        },
+        "UDL": {
+            "category": "Energy",
+            "description": "PJM Northern Illinois Hub Calendar-Day Peak LMP Futures"
+        },
+        "PNL": {
+            "category": "Energy",
+            "description": "PJM Northern Illinois Hub Day-Ahead Peak Calendar-Day 5 MW Futures"
+        },
+        "L3L": {
+            "category": "Energy",
+            "description": "PJM Northern Illinois Hub Day-Ahead Off-Peak Calendar-Month 5 MW Futures"
+        },
+        "N3L": {
+            "category": "Energy",
+            "description": "PJM Northern Illinois Hub Day-Ahead LMP Peak Calendar-Month 5 MW Futures"
+        },
+        "NOI": {
+            "category": "Energy",
+            "description": "PJM Northern Illinois Hub Real-Time Off-Peak Calendar-Day 5 MW Futures"
+        },
+        "POL": {
+            "category": "Energy",
+            "description": "PJM Northern Illinois Hub Day-Ahead Off-Peak Calendar-Day 5 MW Futures"
+        },
+        "JDL": {
+            "category": "Energy",
+            "description": "PJM Western Hub Real-Time Peak Calendar-Day 5 MW Futures"
+        },
+        "A4P": {
+            "category": "Energy",
+            "description": "PJM PECO Zone 5 MW Off-Peak Calendar-Month Day-Ahead LMP Futures"
+        },
+        "A4N": {
+            "category": "Energy",
+            "description": "PJM PECO Zone 5 MW Peak Calendar-Month Day-Ahead LMP Futures"
+        },
+        "A50": {
+            "category": "Energy",
+            "description": "PJM PENELEC Zone Off-Peak Calendar-Month Day-Ahead LMP Futures"
+        },
+        "A49": {
+            "category": "Energy",
+            "description": "PJM PENELEC Zone Peak Calendar-Month Day-Ahead LMP Futures"
+        },
+        "AQ8": {
+            "category": "Energy",
+            "description": "PJM PEPCO Zone Off-Peak Calendar-Month Day-Ahead LMP Futures"
+        },
+        "AR8": {
+            "category": "Energy",
+            "description": "PJM PEPCO Zone Peak Calendar-Month Day-Ahead LMP 5 MW Futures"
+        },
+        "AF5": {
+            "category": "Energy",
+            "description": "PJM PPL Zone Off-Peak Calendar-Month Day-Ahead LMP Futures"
+        },
+        "AL5": {
+            "category": "Energy",
+            "description": "PJM PPL Zone Peak Calendar-Month Day-Ahead LMP Futures"
+        },
+        "AW6": {
+            "category": "Energy",
+            "description": "PJM PSEG Zone Off-Peak Calendar-Month Day-Ahead LMP Futures"
+        },
+        "AL6": {
+            "category": "Energy",
+            "description": "PJM PSEG Zone Peak Calendar-Month Day-Ahead LMP 5 MW Futures"
+        },
+        "WPL": {
+            "category": "Energy",
+            "description": "PJM Western Hub Day-Ahead Peak Calendar-Day 5 MW Futures"
+        },
+        "N9L": {
+            "category": "Energy",
+            "description": "PJM Western Hub Real-Time Off-Peak Calendar-Month 5 MW Futures"
+        },
+        "J4L": {
+            "category": "Energy",
+            "description": "PJM Western Hub Day-Ahead Peak Calendar-Month 5 MW Futures"
+        },
+        "AL1": {
+            "category": "Energy",
+            "description": "PJM Western Hub Peak Calendar-Month Real-Time LMP Futures"
+        },
+        "WOL": {
+            "category": "Energy",
+            "description": "PJM Western Hub Real-Time Off-Peak Calendar-Day 5 MW Futures"
+        },
+        "PWL": {
+            "category": "Energy",
+            "description": "PJM Western Hub Day-Ahead Off-Peak Calendar-Day 5 MW Futures"
+        },
+        "DEB": {
+            "category": "Energy",
+            "description": "German Power Baseload Calendar Month Futures"
+        },
+        "DEP": {
+            "category": "Energy",
+            "description": "German Power Peakload Calendar Month Futures"
+        },
+        "ITB": {
+            "category": "Energy",
+            "description": "Italian Power Baseload (GME) Calendar Month Futures"
+        },
+        "ITP": {
+            "category": "Energy",
+            "description": "Italian Power Peakload (GME) Calendar Month Futures"
+        },
+        "JBT": {
+            "category": "Energy",
+            "description": "Japanese Power (Day-Ahead) Tokyo Base-Load Futures"
+        },
+        "JPT": {
+            "category": "Energy",
+            "description": "Japanese Power (Day-Ahead) Tokyo Peak-Load Futures"
+        },
+        "JBK": {
+            "category": "Energy",
+            "description": "Japanese Power (Day-Ahead) Kansai Base-Load Futures"
+        },
+        "JPK": {
+            "category": "Energy",
+            "description": "Japanese Power (Day-Ahead) Kansai Peak-Load Futures"
+        },
+        "EAF": {
+            "category": "Energy",
+            "description": "In Delivery Month European Union Allowance (EUA) Futures"
+        },
+        "RGI": {
+            "category": "Energy",
+            "description": "Regional Greenhouse Gas Initiative (RGGI) Futures CO2 Allowance Futures"
+        },
+        "C7C": {
+            "category": "Energy",
+            "description": "CBL California Carbon Allowance Vintage-Specific 2017 Futures"
+        },
+        "C8C": {
+            "category": "Energy",
+            "description": "CBL California Carbon Allowance Vintage-Specific 2018 Futures"
+        },
+        "C9C": {
+            "category": "Energy",
+            "description": "CBL California Carbon Allowance Vintage-Specific 2019 Futures"
+        },
+        "CC0": {
+            "category": "Energy",
+            "description": "CBL California Carbon Allowance Vintage-Specific 2020 Futures"
+        },
+        "GEO": {
+            "category": "Energy",
+            "description": "CBL Global Emissions Offset Futures"
+        },
+        "NGO": {
+            "category": "Energy",
+            "description": "CBL Nature-Based Global Emissions Offset"
+        },
+        "CGO": {
+            "category": "Energy",
+            "description": "CBL Core Global Emissions Offset (C-GEO) Futures"
+        },
+        "LCF": {
+            "category": "Energy",
+            "description": "California Low Carbon Fuel Standard (PRIMA) Futures"
+        },
+        "UME": {
+            "category": "Energy",
+            "description": "Urea (Granular) FOB Middle East Futures"
+        },
+        "UFV": {
+            "category": "Energy",
+            "description": "Urea (Granular) FOB US Gulf Futures"
+        },
+        "UFE": {
+            "category": "Energy",
+            "description": "Urea (Granular) FOB Eqypt Futures"
+        },
+        "UFB": {
+            "category": "Energy",
+            "description": "Urea (Granular) CFR Brazil Futures"
+        },
+        "DFN": {
+            "category": "Energy",
+            "description": "DAP FOB NOLA Futures"
+        },
+        "UNO": {
+            "category": "Energy",
+            "description": "UAN FOB NOLA Futures"
+        },
+        "MFC": {
+            "category": "Energy",
+            "description": "MAP CFR Brazil Futures"
+        },
+        "FLP": {
+            "category": "Energy",
+            "description": "Freight Route Liquid Petroleum Gas (BLPG1) (Baltic) Futures"
+        },
+        "FLB": {
+            "category": "Energy",
+            "description": "Freight Route Liquid Petroleum Gas (BLPG1) (Baltic) BALMO Futures"
+        },
+        "FLJ": {
+            "category": "Energy",
+            "description": "Freight Route Liquid Petroleum Gas (BLPG3) (Baltic) Futures"
+        },
+        "TM": {
+            "category": "Energy",
+            "description": "Freight Route TC2 (Baltic) Futures"
+        },
+        "TMB": {
+            "category": "Energy",
+            "description": "Freight Route TC2 (Baltic) BALMO Futures"
+        },
+        "TMD": {
+            "category": "Energy",
+            "description": "Mini Freight Route TC2 (Baltic) Daily Futures"
+        },
+        "TH": {
+            "category": "Energy",
+            "description": "Freight Route TC5 (Platts) Futures"
+        },
+        "TC6": {
+            "category": "Energy",
+            "description": "Freight Route TC6 (Baltic) Futures"
+        },
+        "TC7": {
+            "category": "Energy",
+            "description": "Freight Route TC7 (Baltic) Futures"
+        },
+        "T6B": {
+            "category": "Energy",
+            "description": "Freight Route TC6 (Baltic) BALMO Futures"
+        },
+        "TC9": {
+            "category": "Energy",
+            "description": "Freight Route TC9 (Baltic) Futures"
+        },
+        "T9B": {
+            "category": "Energy",
+            "description": "Freight Route TC9 (Baltic) BALMO Futures"
+        },
+        "FRS": {
+            "category": "Energy",
+            "description": "Freight Route TC12 (Baltic) Futures"
+        },
+        "TB2": {
+            "category": "Energy",
+            "description": "Freight Route TC12 (Baltic) BALMO Futures"
+        },
+        "FRC": {
+            "category": "Energy",
+            "description": "Freight Route TC14 (Baltic) Futures"
+        },
+        "T4B": {
+            "category": "Energy",
+            "description": "Freight Route TC14 (Baltic) BALMO Futures"
+        },
+        "T4D": {
+            "category": "Energy",
+            "description": "Mini Freight Route TC14 (Baltic) Daily Futures"
+        },
+        "T5C": {
+            "category": "Energy",
+            "description": "Freight Route TC15 (Baltic) Futures"
+        },
+        "T5B": {
+            "category": "Energy",
+            "description": "Freight Route TC15 (Baltic) BALMO Futures"
+        },
+        "T8C": {
+            "category": "Energy",
+            "description": "Freight Route TC18 (Baltic) Futures"
+        },
+        "TL": {
+            "category": "Energy",
+            "description": "Freight Route TD3C (Baltic) Futures"
+        },
+        "TLB": {
+            "category": "Energy",
+            "description": "Freight Route TD3C (Baltic) BALMO Futures"
+        },
+        "TD3": {
+            "category": "Energy",
+            "description": "Freight Route TD3C (Platts) Futures"
+        },
+        "TLD": {
+            "category": "Energy",
+            "description": "Mini Freight Route TD3C (Baltic) Daily Futures"
+        },
+        "TK": {
+            "category": "Energy",
+            "description": "Freight Route TD7 (Baltic) Futures"
+        },
+        "TKB": {
+            "category": "Energy",
+            "description": "Freight Route TD7 (Baltic) BALMO Futures"
+        },
+        "TD8": {
+            "category": "Energy",
+            "description": "Freight Route TD8 (Baltic) Futures"
+        },
+        "T8B": {
+            "category": "Energy",
+            "description": "Freight Route TD8 (Baltic) BALMO Futures"
+        },
+        "TDM": {
+            "category": "Energy",
+            "description": "Freight Route TD19 (Baltic) Futures"
+        },
+        "T2D": {
+            "category": "Energy",
+            "description": "Freight Route TD20 (Baltic) Futures"
+        },
+        "T2B": {
+            "category": "Energy",
+            "description": "Freight Route TD20 (Baltic) BALMO Futures"
+        },
+        "T2M": {
+            "category": "Energy",
+            "description": "Mini Freight Route TD20 (Baltic) Daily Futures"
+        },
+        "XUK": {
+            "category": "Energy",
+            "description": "Cross North Sea Dirty Freight 80kt (Platts) Futures"
+        },
+        "XUB": {
+            "category": "Energy",
+            "description": "Cross North Sea Dirty Freight 80kt (Platts) BALMO Futures"
+        },
+        "ACB": {
+            "category": "Energy",
+            "description": "Freight Route TD22 (Baltic) Futures"
+        },
+        "AEB": {
+            "category": "Energy",
+            "description": "Freight Route TD25 (Baltic) Futures"
+        },
+        "USE": {
+            "category": "Energy",
+            "description": "USGC to UK Continent (Platts) Dirty Freight Futures"
+        },
+        "CS1": {
+            "category": "Energy",
+            "description": "Container Freight (China/East Asia to US West Coast) (FBX01) (Baltic) Futures"
+        },
+        "CS2": {
+            "category": "Energy",
+            "description": "Container Freight (US West Coast to China/East Asia) (FBX02) (Baltic) Futures"
+        },
+        "CS3": {
+            "category": "Energy",
+            "description": "Container Freight (China/East Asia to US East Coast) (FBX03) (Baltic) Futures"
+        },
+        "CS4": {
+            "category": "Energy",
+            "description": "Container Freight (China/East Asia to North Europe) (FBX11) (Baltic) Futures"
+        },
+        "CS5": {
+            "category": "Energy",
+            "description": "Container Freight (North Europe to China/East Asia) (FBX12) (Baltic) Futures"
+        },
+        "CS6": {
+            "category": "Energy",
+            "description": "Container Freight (China/East Asia to Mediterranean) (FBX13) (Baltic) Futures"
+        },
+        "R5F": {
+            "category": "Energy",
+            "description": "European FOB Rdam Marine Fuel 0.5% Barges (Platts) Futures"
+        },
+        "R5B": {
+            "category": "Energy",
+            "description": "European FOB Rdam Marine Fuel 0.5% Barges (Platts) BALMO Futures"
+        },
+        "R53": {
+            "category": "Energy",
+            "description": "European FOB Rdam Marine Fuel 0.5% (Platts) vs. European 3.5% FOB Barges (Platts) Futures"
+        },
+        "R5E": {
+            "category": "Energy",
+            "description": "European FOB Rdam Marine Fuel 0.5% (Platts) vs. European 3.5% FOB Barges (Platts) BALMO Futures"
+        },
+        "R5O": {
+            "category": "Energy",
+            "description": "Micro European FOB Rdam Marine Fuel 0.5% Barges (Platts) Futures"
+        },
+        "S5O": {
+            "category": "Energy",
+            "description": "Micro Singapore FOB Marine Fuel 0.5% (Platts) Futures"
+        },
+        "R5M": {
+            "category": "Energy",
+            "description": "Mini European FOB Rdam Marine Fuel 0.5% Barges (Platts) Futures"
+        },
+        "RBM": {
+            "category": "Energy",
+            "description": "Mini European FOB Rdam Marine Fuel 0.5% Barges (Platts) BALMO Futures"
+        },
+        "S5M": {
+            "category": "Energy",
+            "description": "Mini Singapore FOB Marine Fuel 0.5% (Platts) Futures"
+        },
+        "SBM": {
+            "category": "Energy",
+            "description": "Mini Singapore FOB Marine Fuel 0.5% (Platts) BALMO Futures"
+        },
+        "S5F": {
+            "category": "Energy",
+            "description": "Singapore FOB Marine Fuel 0.5% (Platts) Futures"
+        },
+        "S5B": {
+            "category": "Energy",
+            "description": "Singapore FOB Marine Fuel 0.5% (Platts) BALMO Futures"
+        },
+        "SR5": {
+            "category": "Energy",
+            "description": "Singapore FOB Marine Fuel 0.5% (Platts) vs. European FOB Rdam Marine Fuel 0.5% Barges (Platts) Futures"
+        },
+        "SRB": {
+            "category": "Energy",
+            "description": "Singapore FOB Marine Fuel 0.5% (Platts) vs. European FOB Rdam Marine Fuel 0.5% Barges (Platts) BALMO Futures"
+        },
+        "S53": {
+            "category": "Energy",
+            "description": "Singapore FOB Marine Fuel 0.5% (Platts) vs. Singapore 380 CST Fuel Oil (Platts) Futures"
+        },
+        "H5F": {
+            "category": "Energy",
+            "description": "USGC Marine Fuel 0.5% Barges (Platts) Futures"
+        },
+        "H5B": {
+            "category": "Energy",
+            "description": "USGC Marine Fuel 0.5% Barges (Platts) BALMO Futures"
+        },
+        "H5G": {
+            "category": "Energy",
+            "description": "USGC Marine Fuel 0.5% Barges (Platts) vs. Gulf Coast HSFO (Platts) Futures"
+        },
+        "HGB": {
+            "category": "Energy",
+            "description": "USGC Marine Fuel 0.5% Barges (Platts) vs. Gulf Coast HSFO (Platts) BALMO Futures"
+        },
+        "UP5": {
+            "category": "Energy",
+            "description": "USGC Marine Fuel 0.5% Barges (Platts) (mt) Futures"
+        },
+        "UPB": {
+            "category": "Energy",
+            "description": "USGC Marine Fuel 0.5% Barges (Platts) (mt) BALMO Futures"
+        },
+        "UPM": {
+            "category": "Energy",
+            "description": "USGC Marine Fuel 0.5% Barges (Platts) (mt) vs. European FOB Rdam Marine Fuel 0.5% Barges (Platts) Futures"
+        },
+        "BPU": {
+            "category": "Energy",
+            "description": "USGC Marine Fuel 0.5% Barges (Platts) (mt) vs. European FOB Rdam Marine Fuel 0.5% Barges (Platts) BALMO Futures"
+        },
+        "CIN": {
+            "category": "Energy",
+            "description": "CIG Rockies Natural Gas (Platts IFERC) Basis Futures"
+        },
+        "PE": {
+            "category": "Energy",
+            "description": "Demarc Natural Gas (Platts IFERC) Basis Futures"
+        },
+        "PGN": {
+            "category": "Energy",
+            "description": "Dominion South Point Natural Gas (Platts IFERC) Basis Futures"
+        },
+        "QG": {
+            "category": "Energy",
+            "description": "E-mini Natural Gas Futures"
+        },
+        "PW": {
+            "category": "Energy",
+            "description": "Enable Natural Gas (Platts IFERC) Basis Futures"
+        },
+        "NG": {
+            "category": "Energy",
+            "description": "Henry Hub Natural Gas Futures"
+        },
+        "NGT": {
+            "category": "Energy",
+            "description": "Henry Hub Natural Gas Futures TAS"
+        },
+        "NN": {
+            "category": "Energy",
+            "description": "Henry Hub Natural Gas Last Day Financial Futures"
+        },
+        "NNT": {
+            "category": "Energy",
+            "description": "Henry Hub Natural Gas Last Day Financial Futures TAS"
+        },
+        "NNE": {
+            "category": "Energy",
+            "description": "Henry Hub Natural Gas Last Day Financial Futures in Units per Month"
+        },
+        "HH": {
+            "category": "Energy",
+            "description": "Henry Hub Natural Gas Look-Alike Last Day Financial Futures"
+        },
+        "HHT": {
+            "category": "Energy",
+            "description": "Henry Hub Natural Gas Last-day Financial Futures TAS"
+        },
+        "HP": {
+            "category": "Energy",
+            "description": "Henry Hub Natural Gas Look-Alike Penultimate Financial Futures"
+        },
+        "NPG": {
+            "category": "Energy",
+            "description": "Henry Hub Natural Gas Penultimate Financial Futures"
+        },
+        "NBP": {
+            "category": "Energy",
+            "description": "UK NBP Natural Gas (USD/MMBtu) (ICIS Heren) Front Month Futures"
+        },
+        "TTE": {
+            "category": "Energy",
+            "description": "Dutch TTF Natural Gas (USD/MMBtu)(ICIS Heren) Front Month Futures"
+        },
+        "NYP": {
+            "category": "Energy",
+            "description": "Henry Hub NBP (ICIS Heren) Natural Gas Spread Futures"
+        },
+        "THD": {
+            "category": "Energy",
+            "description": "NYMEX Henry Hub TTF (ICIS Heren) Natural Gas Spread Futures"
+        },
+        "UKG": {
+            "category": "Energy",
+            "description": "UK NBP Natural Gas Calendar Month Futures"
+        },
+        "NBD": {
+            "category": "Energy",
+            "description": "UK NBP Natural Gas Daily Futures"
+        },
+        "TTF": {
+            "category": "Energy",
+            "description": "Dutch TTF Natural Gas Calendar Month Futures"
+        },
+        "TTD": {
+            "category": "Energy",
+            "description": "Dutch TTF Natural Gas Daily Futures"
+        },
+        "NHN": {
+            "category": "Energy",
+            "description": "Houston Ship Channel Natural Gas (Platts IFERC) Basis Futures"
+        },
+        "JNG": {
+            "category": "Energy",
+            "description": "LNG DES Japan (RIM) Futures"
+        },
+        "JKM": {
+            "category": "Energy",
+            "description": "LNG Japan/Korea Marker (Platts) Futures"
+        },
+        "JKY": {
+            "category": "Energy",
+            "description": "LNG Japan/Korea Marker (Platts) Yen Denominated Futures"
+        },
+        "MT2": {
+            "category": "Energy",
+            "description": "Methanol T2 FOB Rdam (ICIS) Futures"
+        },
+        "MTH": {
+            "category": "Energy",
+            "description": "Methanol FOB Houston (Argus) Futures"
+        },
+        "PD": {
+            "category": "Energy",
+            "description": "NGPL TexOk Natural Gas (Platts IFERC) Basis Futures"
+        },
+        "8XN": {
+            "category": "Energy",
+            "description": "OneOk Oklahoma Natural Gas (Platts IFERC) Basis Futures"
+        },
+        "PH": {
+            "category": "Energy",
+            "description": "Panhandle Natural Gas (Platts IFERC) Basis Futures"
+        },
+        "XH": {
+            "category": "Energy",
+            "description": "Panhandle Natural Gas (Platts IFERC) Fixed Price Futures"
+        },
+        "TEL": {
+            "category": "Energy",
+            "description": "TETCO ELA Natural Gas (Platts IFERC) Basis Futures"
+        },
+        "NX": {
+            "category": "Energy",
+            "description": "Texas Eastern Zone M-3 Natural Gas (Platts IFERC) Basis Futures"
+        },
+        "TZ6": {
+            "category": "Energy",
+            "description": "Transco Zone 6 Non-N.Y Natural Gas (Platts IFERC) Basis Futures"
+        },
+        "M7": {
+            "category": "Energy",
+            "description": "Trunkline ELA Natural Gas (Platts Gas Daily/Platts IFERC) Index Futures"
+        },
+        "TK7": {
+            "category": "Energy",
+            "description": "Trunkline ELA Natural Gas (Platts Gas Daily) Swing Futures"
+        },
+        "LNG": {
+            "category": "Energy",
+            "description": "U.S. LNG Export Futures"
+        },
+        "PF": {
+            "category": "Energy",
+            "description": "Ventura Natural Gas (Platts IFERC) Basis Futures"
+        },
+        "CPO": {
+            "category": "Energy",
+            "description": "Malaysian Crude Palm Oil Calendar Futures"
+        },
+        "OPF": {
+            "category": "Energy",
+            "description": "Malaysian Palm Olein Calendar Futures"
+        },
+        "POG": {
+            "category": "Energy",
+            "description": "Malaysian Palm Oil - GasOil Spread Futures"
+        },
+        "A9N": {
+            "category": "Energy",
+            "description": "Argus Propane (Saudi Aramco) Futures"
+        },
+        "A7E": {
+            "category": "Energy",
+            "description": "Argus Propane Far East Index Futures"
+        },
+        "22": {
+            "category": "Energy",
+            "description": "Argus Propane Far East Index BALMO Futures"
+        },
+        "A91": {
+            "category": "Energy",
+            "description": "Argus Propane Far East Index vs. European Propane CIF ARA (Argus) Futures (91)"
+        },
+        "3NA": {
+            "category": "Energy",
+            "description": "Argus Propane Far East Index vs. Japan C&F Naphtha (Platts) Futures"
+        },
+        "3NB": {
+            "category": "Energy",
+            "description": "Argus Propane Far East Index vs. Japan C&F Naphtha (Platts) BALMO Futures"
+        },
+        "CGB": {
+            "category": "Energy",
+            "description": "Conway Natural Gasoline (OPIS) BALMO Futures"
+        },
+        "A8L": {
+            "category": "Energy",
+            "description": "Conway Natural Gasoline (OPIS) Futures"
+        },
+        "CBB": {
+            "category": "Energy",
+            "description": "Conway Normal Butane (OPIS) BALMO Futures"
+        },
+        "A8M": {
+            "category": "Energy",
+            "description": "Conway Normal Butane (OPIS) Futures"
+        },
+        "CPP": {
+            "category": "Energy",
+            "description": "Conway Physical Propane In-Well (OPIS) Futures"
+        },
+        "CPB": {
+            "category": "Energy",
+            "description": "Conway Propane (OPIS) BALMO Futures"
+        },
+        "A8K": {
+            "category": "Energy",
+            "description": "Conway Propane (OPIS) Futures"
+        },
+        "C3D": {
+            "category": "Energy",
+            "description": "Daily Mont Belvieu LDH Propane (OPIS) Futures"
+        },
+        "C5D": {
+            "category": "Energy",
+            "description": "Daily Mont Belvieu Natural Gasoline (Non-LDH) (OPIS) Futures"
+        },
+        "C4D": {
+            "category": "Energy",
+            "description": "Daily Mont Belvieu Normal Butane (Non-LDH) (OPIS) Futures"
+        },
+        "A32": {
+            "category": "Energy",
+            "description": "European Propane CIF ARA (Argus) BALMO Futures"
+        },
+        "APS": {
+            "category": "Energy",
+            "description": "European Propane CIF ARA (Argus) Futures"
+        },
+        "HPD": {
+            "category": "Energy",
+            "description": "HDPE High Density Polyethylene (PCW) BALMO Futures"
+        },
+        "HPE": {
+            "category": "Energy",
+            "description": "HDPE High Density Polyethylene (PCW) Financial Futures (HPE)"
+        },
+        "LEL": {
+            "category": "Energy",
+            "description": "LLDPE Linear Low Density Polyethylene (PCW) BALMO Futures"
+        },
+        "LPE": {
+            "category": "Energy",
+            "description": "LLDPE Linear Low Density Polyethylene (PCW) Calendar Futures"
+        },
+        "MAS": {
+            "category": "Energy",
+            "description": "Mini Argus Propane (Saudi Aramco) Futures"
+        },
+        "MAE": {
+            "category": "Energy",
+            "description": "Mini Argus Propane Far East Index Futures"
+        },
+        "MAA": {
+            "category": "Energy",
+            "description": "Mini-Argus Butane (Saudi Aramco) Futures"
+        },
+        "MPS": {
+            "category": "Energy",
+            "description": "Mini European Propane CIF ARA (Argus) Futures"
+        },
+        "A8C": {
+            "category": "Energy",
+            "description": "Mont Belvieu Ethane (OPIS) BALMO Futures"
+        },
+        "AC0": {
+            "category": "Energy",
+            "description": "Mont Belvieu Ethane (OPIS) Futures"
+        },
+        "MBB": {
+            "category": "Energy",
+            "description": "Mont Belvieu Ethylene (PCW) BALMO Futures"
+        },
+        "MBR": {
+            "category": "Energy",
+            "description": "Mont Belvieu Ethylene (PCW) Financial Futures"
+        },
+        "A8I": {
+            "category": "Energy",
+            "description": "Mont Belvieu Iso-Butane (OPIS) Futures"
+        },
+        "MBL": {
+            "category": "Energy",
+            "description": "Mont Belvieu LDH Iso-Butane (OPIS) Futures"
+        },
+        "A8O": {
+            "category": "Energy",
+            "description": "Mont Belvieu LDH Propane (OPIS) BALMO Futures"
+        },
+        "B0": {
+            "category": "Energy",
+            "description": "Mont Belvieu LDH Propane (OPIS) Futures"
+        },
+        "51": {
+            "category": "Energy",
+            "description": "Mont Belvieu LDH Propane (OPIS) vs. European Propane CIF ARA (Argus) Futures"
+        },
+        "PMF": {
+            "category": "Energy",
+            "description": "Mont Belvieu LDH Propane (OPIS) vs. Argus Propane Far East Index Futures"
+        },
+        "PNF": {
+            "category": "Energy",
+            "description": "Mont Belvieu Non-LDH Propane (OPIS) vs. Argus Propane Far East Index Futures"
+        },
+        "A81": {
+            "category": "Energy",
+            "description": "Mont Belvieu Mini LDH Propane (OPIS) Futures"
+        },
+        "AR0": {
+            "category": "Energy",
+            "description": "Mont Belvieu Natural Gasoline (OPIS) BALMO Futures"
+        },
+        "A7Q": {
+            "category": "Energy",
+            "description": "Mont Belvieu Natural Gasoline (OPIS) Futures"
+        },
+        "A8J": {
+            "category": "Energy",
+            "description": "Mont Belvieu Normal Butane (OPIS) BALMO Futures"
+        },
+        "AD0": {
+            "category": "Energy",
+            "description": "Mont Belvieu Normal Butane (OPIS) Futures"
+        },
+        "MNB": {
+            "category": "Energy",
+            "description": "Mont Belvieu Normal Butane LDH (OPIS) Futures"
+        },
+        "A3Q": {
+            "category": "Energy",
+            "description": "Mont Belvieu Physical Ethane (OPIS) Futures"
+        },
+        "3L": {
+            "category": "Energy",
+            "description": "Mont Belvieu Physical Iso-Butane (OPIS) Futures"
+        },
+        "A3N": {
+            "category": "Energy",
+            "description": "Mont Belvieu Physical LDH Propane (OPIS) Futures"
+        },
+        "A3R": {
+            "category": "Energy",
+            "description": "Mont Belvieu Physical Natural Gasoline (OPIS) Futures"
+        },
+        "3P": {
+            "category": "Energy",
+            "description": "Mont Belvieu Physical Non-LDH Propane (OPIS) Futures"
+        },
+        "A3M": {
+            "category": "Energy",
+            "description": "Mont Belvieu Physical Normal Butane (OPIS) Futures"
+        },
+        "MBE": {
+            "category": "Energy",
+            "description": "Mont Belvieu Spot Ethylene In-Well (PCW) Futures"
+        },
+        "PGG": {
+            "category": "Energy",
+            "description": "PGP Polymer Grade Propylene (PCW) Financial Futures"
+        },
+        "PPW": {
+            "category": "Energy",
+            "description": "PP Polypropylene (PCW) BALMO Futures"
+        },
+        "PPP": {
+            "category": "Energy",
+            "description": "PP Polypropylene (PCW) Calendar Futures"
+        },
+        "1S": {
+            "category": "Energy",
+            "description": "Propane Non-LDH Mont Belvieu (OPIS) BALMO Futures"
+        },
+        "A1R": {
+            "category": "Energy",
+            "description": "Propane Non-LDH Mont Belvieu (OPIS) Futures"
+        },
+        "AOB": {
+            "category": "Energy",
+            "description": "1% Fuel Oil (Platts) Cargoes CIF MED BALMO Futures"
+        },
+        "FOM": {
+            "category": "Energy",
+            "description": "1% Fuel Oil (Platts) Cargoes FOB MED BALMO Futures"
+        },
+        "88": {
+            "category": "Energy",
+            "description": "1% Fuel Oil Cargoes FOB NWE (Platts) vs. 3.5% Fuel Oil Barges FOB Rdam (Platts) BALMO Futures"
+        },
+        "EBE": {
+            "category": "Energy",
+            "description": "1% Fuel Oil Barges FOB Rdam (Platts) vs. 1% Fuel Oil Cargoes FOB NWE (Platts) BALMO Futures"
+        },
+        "A1W": {
+            "category": "Energy",
+            "description": "1% Fuel Oil Cargoes CIF MED (Platts) Futures"
+        },
+        "A1X": {
+            "category": "Energy",
+            "description": "1% Fuel Oil Cargoes CIF NWE (Platts) Futures"
+        },
+        "AFI": {
+            "category": "Energy",
+            "description": "1% Fuel Oil Cargoes FOB NWE (Platts) Crack Spread Futures"
+        },
+        "A33": {
+            "category": "Energy",
+            "description": "1% Fuel Oil Rdam (Platts) vs. 1% Fuel Oil NWE (Platts) Futures"
+        },
+        "FVB": {
+            "category": "Energy",
+            "description": "1.0% Fuel Oil Cargoes FOB NWE (Platts) Crack Spread (1000mt) Futures"
+        },
+        "FCB": {
+            "category": "Energy",
+            "description": "3.5% Fuel Oil (Platts) Barges FOB Rdam Crack Spread BALMO Futures"
+        },
+        "FO": {
+            "category": "Energy",
+            "description": "3.5% Fuel Oil (Platts) Barges FOB Rdam Crack Spread Futures"
+        },
+        "7D": {
+            "category": "Energy",
+            "description": "3.5% Fuel Oil (Platts) CIF MED Futures"
+        },
+        "8D": {
+            "category": "Energy",
+            "description": "3.5% Fuel Oil (Platts) CIF MED BALMO Futures"
+        },
+        "FL": {
+            "category": "Energy",
+            "description": "3.5% Fuel Oil (Platts) FOB MED Crack Spread Futures"
+        },
+        "CMF": {
+            "category": "Energy",
+            "description": "3.5% Fuel Oil CIF Med (Platts) vs. 3.5% Fuel Oil FOB Med (Platts) Futures"
+        },
+        "CMB": {
+            "category": "Energy",
+            "description": "3.5% Fuel Oil CIF Med (Platts) vs. 3.5% Fuel Oil FOB Med (Platts) BALMO Futures"
+        },
+        "FOA": {
+            "category": "Energy",
+            "description": "3.5% Fuel Oil (Platts) FOB MED Crack Spread BALMO Futures"
+        },
+        "BOO": {
+            "category": "Energy",
+            "description": "3.5% Fuel Oil Barges FOB Rdam (Platts) Crack Spread (1000mt) Futures"
+        },
+        "AFK": {
+            "category": "Energy",
+            "description": "3.5% Fuel Oil Cargoes FOB MED (Platts) vs. 3.5% Fuel Oil Barges FOB Rdam (Platts) Futures"
+        },
+        "AFK-AFK": {
+            "category": "Energy",
+            "description": "3.5% Fuel Oil Cargoes FOB MED (Platts) vs. 3.5% Fuel Oil Barges FOB Rdam (Platts) Futures"
+        },
+        "AFK:SA": {
+            "category": "Energy",
+            "description": "3.5% Fuel Oil Cargoes FOB MED (Platts) vs. 3.5% Fuel Oil Barges FOB Rdam (Platts) Futures"
+        },
+        "AFK:SB": {
+            "category": "Energy",
+            "description": "3.5% Fuel Oil Cargoes FOB MED (Platts) vs. 3.5% Fuel Oil Barges FOB Rdam (Platts) Futures"
+        },
+        "63": {
+            "category": "Energy",
+            "description": "3.5% Fuel Oil Rdam vs. 3.5% FOB MED Spread (Platts) BALMO Futures"
+        },
+        "EOB": {
+            "category": "Energy",
+            "description": "Argus Gasoline Eurobob Oxy Barges NWE Crack Spread (1000mt) Futures"
+        },
+        "MAC": {
+            "category": "Energy",
+            "description": "Mini Argus Gasoline Eurobob Oxy Barges NWE Crack Spread (1000mt) Futures"
+        },
+        "4C": {
+            "category": "Energy",
+            "description": "Chicago ULSD (Platts) Futures"
+        },
+        "A5C": {
+            "category": "Energy",
+            "description": "Chicago ULSD (Platts) vs. NY Harbor ULSD Futures"
+        },
+        "2C": {
+            "category": "Energy",
+            "description": "Chicago CBOB Gasoline (Platts) Futures"
+        },
+        "A3C": {
+            "category": "Energy",
+            "description": "Chicago CBOB Gasoline (Platts) vs. RBOB Gasoline Futures"
+        },
+        "FCN": {
+            "category": "Energy",
+            "description": "Daily European 1% Fuel Oil (Platts) Cargoes FOB NWE Futures"
+        },
+        "FOR": {
+            "category": "Energy",
+            "description": "Daily European 3.5% Fuel Oil (Platts) Barges FOB Rdam Futures"
+        },
+        "NCP": {
+            "category": "Energy",
+            "description": "Daily European Naphtha (Platts) CIF NWE Futures"
+        },
+        "GBR": {
+            "category": "Energy",
+            "description": "Daily Gasoline Euro-bob Oxy (Argus) NWE Barges Futures"
+        },
+        "U7": {
+            "category": "Energy",
+            "description": "Diesel 10ppm (Platts) Barges FOB Rdam BALMO Futures"
+        },
+        "7X": {
+            "category": "Energy",
+            "description": "Diesel 10ppm Barges FOB Rdam (Platts) vs. Low Sulphur Gasoil BALMO Futures"
+        },
+        "EWG": {
+            "category": "Energy",
+            "description": "East West Gasoline Futures"
+        },
+        "EWB": {
+            "category": "Energy",
+            "description": "East-West Fuel Oil Spread (Platts) BALMO Futures"
+        },
+        "FEW": {
+            "category": "Energy",
+            "description": "East\u2010West Fuel Oil Spread (Platts) Futures"
+        },
+        "EWN": {
+            "category": "Energy",
+            "description": "East-West Naphtha: Japan C&F vs. Cargoes CIF NWE Spread (Platts) Futures"
+        },
+        "AA5": {
+            "category": "Energy",
+            "description": "EIA Flat Tax On-Highway Diesel Futures"
+        },
+        "JE": {
+            "category": "Energy",
+            "description": "EIA Flat Tax U.S. Retail Gasoline Futures"
+        },
+        "QH": {
+            "category": "Energy",
+            "description": "E-mini NY Harbor ULSD Futures"
+        },
+        "QU": {
+            "category": "Energy",
+            "description": "E-mini RBOB Gasoline - Financial Futures"
+        },
+        "7P": {
+            "category": "Energy",
+            "description": "EuroBob Gasoline 10 ppm (Platts) Barges FOB Rdam Futures"
+        },
+        "7S": {
+            "category": "Energy",
+            "description": "EuroBob Gasoline 10 ppm (Platts) Barges FOB Rdam BALMO Futures"
+        },
+        "A6L": {
+            "category": "Energy",
+            "description": "European 1% Fuel Oil (Platts) Barges FOB Rdam BALMO Futures"
+        },
+        "AUH": {
+            "category": "Energy",
+            "description": "European 1% Fuel Oil Barges FOB Rdam (Platts) Futures"
+        },
+        "EFM": {
+            "category": "Energy",
+            "description": "European 1% Fuel Oil Cargoes FOB MED (Platts) Futures"
+        },
+        "ENS": {
+            "category": "Energy",
+            "description": "European 1% Fuel Oil Cargoes FOB MED vs. European 1% Fuel Oil Cargoes FOB NWE Spread (Platts) Futures"
+        },
+        "AKX": {
+            "category": "Energy",
+            "description": "European 1% Fuel Oil Cargoes FOB NWE (Platts) BALMO Futures"
+        },
+        "AUF": {
+            "category": "Energy",
+            "description": "European 1% Fuel Oil Cargoes FOB NWE (Platts) Futures"
+        },
+        "UV": {
+            "category": "Energy",
+            "description": "European 3.5% Fuel Oil (Platts) Barges FOB Rdam Calendar Futures"
+        },
+        "AKR": {
+            "category": "Energy",
+            "description": "European 3.5% Fuel Oil Barges FOB Rdam (Platts) BALMO Futures"
+        },
+        "EMW": {
+            "category": "Energy",
+            "description": "European 3.5% Fuel Oil Barges FOB Rdam (Platts) Mini Weekly Differential Futures"
+        },
+        "EFF": {
+            "category": "Energy",
+            "description": "European 3.5% Fuel Oil Cargoes FOB MED (Platts) BALMO Futures"
+        },
+        "AUI": {
+            "category": "Energy",
+            "description": "European 3.5% Fuel Oil Cargoes FOB MED (Platts) Futures"
+        },
+        "AUI-AUI": {
+            "category": "Energy",
+            "description": "European 3.5% Fuel Oil Cargoes FOB MED (Platts) Futures"
+        },
+        "AUI:SA": {
+            "category": "Energy",
+            "description": "European 3.5% Fuel Oil Cargoes FOB MED (Platts) Futures"
+        },
+        "AUI:SB": {
+            "category": "Energy",
+            "description": "European 3.5% Fuel Oil Cargoes FOB MED (Platts) Futures"
+        },
+        "M35": {
+            "category": "Energy",
+            "description": "Micro European 3.5% Fuel Oil Cargoes FOB MED (Platts) Futures"
+        },
+        "AGT": {
+            "category": "Energy",
+            "description": "European Diesel 10 ppm Barges FOB Rdam (Platts) Futures"
+        },
+        "EL1": {
+            "category": "Energy",
+            "description": "European Diesel 10ppm Barges FOB Rdam (Platts) vs. NY Harbor ULSD Futures"
+        },
+        "AET": {
+            "category": "Energy",
+            "description": "European Diesel 10 ppm Barges FOB Rdam (Platts) vs. Low Sulphur Gasoil Futures"
+        },
+        "GLI": {
+            "category": "Energy",
+            "description": "European Low Sulphur Gasoil (100mt) Bullet Futures"
+        },
+        "7FT": {
+            "category": "Energy",
+            "description": "European Low Sulphur Gasoil Futures TAS"
+        },
+        "BG": {
+            "category": "Energy",
+            "description": "European Low Sulphur Gasoil (1000mt) Bullet Futures"
+        },
+        "GZ": {
+            "category": "Energy",
+            "description": "European Low Sulphur Gasoil Brent Crack Spread Futures"
+        },
+        "ESB": {
+            "category": "Energy",
+            "description": "European Low Sulphur Gasoil Brent Crack Spread BALMO Futures"
+        },
+        "AGX": {
+            "category": "Energy",
+            "description": "European Low Sulphur Gasoil Financial Futures"
+        },
+        "UR": {
+            "category": "Energy",
+            "description": "European Jet Kerosene (Platts) Barges FOB Rdam Calendar Futures"
+        },
+        "AUJ": {
+            "category": "Energy",
+            "description": "European Jet Kerosene Cargoes CIF NWE (Platts) Futures"
+        },
+        "AKZ": {
+            "category": "Energy",
+            "description": "European Naphtha (Platts) BALMO Futures"
+        },
+        "UN": {
+            "category": "Energy",
+            "description": "European Naphtha (Platts) Calendar Futures"
+        },
+        "A43": {
+            "category": "Energy",
+            "description": "European Naphtha (Platts) Crack Spread BALMO Futures"
+        },
+        "EN": {
+            "category": "Energy",
+            "description": "European Naphtha (Platts) Crack Spread Futures"
+        },
+        "EPN": {
+            "category": "Energy",
+            "description": "European Propane CIF ARA (Argus) vs. Naphtha Cargoes CIF NWE (Platts) Futures"
+        },
+        "FSS": {
+            "category": "Energy",
+            "description": "Fuel Diff: 1% NWE FOB Cargoes vs. 3.5% Barges(Platts) Futures"
+        },
+        "FSS-FSS": {
+            "category": "Energy",
+            "description": "Fuel Diff: 1% NWE FOB Cargoes vs. 3.5% Barges(Platts) Futures"
+        },
+        "FSS:SA": {
+            "category": "Energy",
+            "description": "Fuel Diff: 1% NWE FOB Cargoes vs. 3.5% Barges(Platts) Futures"
+        },
+        "FSS:SB": {
+            "category": "Energy",
+            "description": "Fuel Diff: 1% NWE FOB Cargoes vs. 3.5% Barges(Platts) Futures"
+        },
+        "B8": {
+            "category": "Energy",
+            "description": "Gasoil 0.1% (Platts) Barges FOB Rdam BALMO Futures"
+        },
+        "A6V": {
+            "category": "Energy",
+            "description": "Gasoil 0.1% Barges FOB Rdam (Platts) vs. Low Sulphur Gasoil BALMO Futures"
+        },
+        "Z4": {
+            "category": "Energy",
+            "description": "Gasoil 0.1% (Platts) Cargoes CIF MED Futures"
+        },
+        "TW": {
+            "category": "Energy",
+            "description": "Gasoil 0.1% (Platts) Cargoes CIF NWE Futures"
+        },
+        "AB7": {
+            "category": "Energy",
+            "description": "Gasoil 0.1% (Platts) Cargoes CIF NWE BALMO Futures"
+        },
+        "4V": {
+            "category": "Energy",
+            "description": "Gasoil 0.1% Cargoes CIF NWE (Platts) vs. Low Sulphur Gasoil BALMO Futures"
+        },
+        "X6": {
+            "category": "Energy",
+            "description": "Gasoil 0.1% (Platts) CIF MED BALMO Futures"
+        },
+        "8W": {
+            "category": "Energy",
+            "description": "Gasoil 0.1% Cargoes CIF MED (Platts) vs. Low Sulphur Gasoil BALMO Futures"
+        },
+        "AVL": {
+            "category": "Energy",
+            "description": "Gasoil 0.1% Barges FOB Rdam (Platts) Futures"
+        },
+        "M1B": {
+            "category": "Energy",
+            "description": "Micro Gasoil 0.1% Barges FOB Rdam (Platts) Futures"
+        },
+        "AWQ": {
+            "category": "Energy",
+            "description": "Gasoil 0.1% Barges FOB Rdam (Platts) vs. Low Sulphur Gasoil Futures"
+        },
+        "AZ5": {
+            "category": "Energy",
+            "description": "Gasoil 0.1% Cargoes CIF MED (Platts) vs. Low Sulphur Gasoil Futures"
+        },
+        "ATU": {
+            "category": "Energy",
+            "description": "Gasoil 0.1% Cargoes CIF NWE (Platts) vs. Low Sulphur Gasoil Futures"
+        },
+        "GKS": {
+            "category": "Energy",
+            "description": "Gasoline 10 ppm (Platts) FOB MED Crack Spread Futures"
+        },
+        "GNO": {
+            "category": "Energy",
+            "description": "Gasoline Eurobob Non-Oxy NWE Barges (Argus) Futures"
+        },
+        "GNB": {
+            "category": "Energy",
+            "description": "Gasoline Eurobob Non-Oxy NWE Barges (Argus) BALMO Futures"
+        },
+        "GNS": {
+            "category": "Energy",
+            "description": "Gasoline Eurobob Non-Oxy NWE Barges (Argus) Crack Spread Futures"
+        },
+        "RGF": {
+            "category": "Energy",
+            "description": "RBOB Gasoline vs Eurobob Non-Oxy NWE Barges (Argus) (349 860 gallons) Futures"
+        },
+        "GES": {
+            "category": "Energy",
+            "description": "Gasoline Eurobob Non-Oxy NWE Barges (Argus) vs Gasoline Eurobob Oxy NWE Barges (Argus) Futures"
+        },
+        "SGF": {
+            "category": "Energy",
+            "description": "Singapore Gasoline 92 Unleaded (Platts) vs Gasoline Eurobob Non-Oxy NWE Barges (Argus) Futures"
+        },
+        "BR7": {
+            "category": "Energy",
+            "description": "Gasoline Euro\u2010bob Oxy (Argus) NWE Barges BALMO Futures"
+        },
+        "T7K": {
+            "category": "Energy",
+            "description": "Gasoline Euro\u2010bob Oxy (Argus) NWE Barges Crack Spread Futures"
+        },
+        "B7H": {
+            "category": "Energy",
+            "description": "Gasoline Euro\u2010bob Oxy (Argus) NWE Barges Futures"
+        },
+        "A7I": {
+            "category": "Energy",
+            "description": "Gasoline Euro-bob Oxy NWE Barges (Argus) Crack Spread BALMO Futures"
+        },
+        "EGN": {
+            "category": "Energy",
+            "description": "Gasoline Euro-bob Oxy NWE Barges (Argus) vs European Naphtha CIF NWE (Platts) Futures"
+        },
+        "EGB": {
+            "category": "Energy",
+            "description": "Gasoline Euro-bob Oxy NWE Barges (Argus) vs European Naphtha CIF NWE (Platts) BALMO Futures"
+        },
+        "AA7": {
+            "category": "Energy",
+            "description": "Group Three ULSD (Platts) Futures"
+        },
+        "AA6": {
+            "category": "Energy",
+            "description": "Group Three ULSD (Platts) vs. NY Harbor ULSD Futures"
+        },
+        "AA9": {
+            "category": "Energy",
+            "description": "Group Three Sub-octane Gasoline (Platts) Futures"
+        },
+        "AA8": {
+            "category": "Energy",
+            "description": "Group Three Unleaded Sub-octane Gasoline (Platts) vs. RBOB Gasoline Futures"
+        },
+        "AVZ": {
+            "category": "Energy",
+            "description": "Gulf Coast HSFO (Platts) BALMO Futures"
+        },
+        "CRG": {
+            "category": "Energy",
+            "description": "Gulf Coast CBOB Gasoline A2 (Platts) Futures"
+        },
+        "GCG": {
+            "category": "Energy",
+            "description": "Gulf Coast CBOB Gasoline A2 (Platts) Crack Spread Futures"
+        },
+        "CRB": {
+            "category": "Energy",
+            "description": "Gulf Coast CBOB Gasoline A2 (Platts) vs. RBOB Gasoline Futures"
+        },
+        "A1M": {
+            "category": "Energy",
+            "description": "Gulf Coast Jet (Platts) Up-Down BALMO Futures"
+        },
+        "ME": {
+            "category": "Energy",
+            "description": "Gulf Coast Jet (Platts) vs. Heating Oil Spread Futures"
+        },
+        "AGE": {
+            "category": "Energy",
+            "description": "Gulf Coast Jet Fuel (Platts) Futures"
+        },
+        "GFC": {
+            "category": "Energy",
+            "description": "Gulf Coast HSFO (Platts) Crack Spread BALMO Futures"
+        },
+        "MGH": {
+            "category": "Energy",
+            "description": "Gulf Coast HSFO (Platts) Crack Spread Futures"
+        },
+        "MFB": {
+            "category": "Energy",
+            "description": "Gulf Coast HSFO (Platts) Futures"
+        },
+        "GCB": {
+            "category": "Energy",
+            "description": "Gulf Coast HSFO (Platts) vs. European 3.5% Fuel Oil Barges FOB Rdam (Platts) BALMO Futures"
+        },
+        "GCU": {
+            "category": "Energy",
+            "description": "Gulf Coast HSFO (Platts) vs. European 3.5% Fuel Oil Barges FOB Rdam (Platts) Futures"
+        },
+        "GCI": {
+            "category": "Energy",
+            "description": "Gulf Coast HSFO (Platts) Brent Crack Spread Futures"
+        },
+        "AJ": {
+            "category": "Energy",
+            "description": "Gulf Coast ULSD (Argus) Calendar Futures"
+        },
+        "GUD": {
+            "category": "Energy",
+            "description": "Gulf Coast ULSD (Argus) Up-Down BALMO Futures"
+        },
+        "AUS": {
+            "category": "Energy",
+            "description": "Gulf Coast ULSD (Argus) Up-Down Futures"
+        },
+        "GY": {
+            "category": "Energy",
+            "description": "Gulf Coast ULSD (Platts) Crack Spread Futures"
+        },
+        "ALY": {
+            "category": "Energy",
+            "description": "Gulf Coast ULSD (Platts) Futures"
+        },
+        "A1L": {
+            "category": "Energy",
+            "description": "Gulf Coast ULSD (Platts) Up-Down BALMO Futures"
+        },
+        "LT": {
+            "category": "Energy",
+            "description": "Gulf Coast ULSD (Platts) Up\u2010Down Spread Futures"
+        },
+        "VV": {
+            "category": "Energy",
+            "description": "Gulf Coast ULSD vs. Gulf Coast Jet Spread (Platts) Futures"
+        },
+        "AAW": {
+            "category": "Energy",
+            "description": "Gulf Coast Unl 87 (Argus) Calendar Futures"
+        },
+        "CK": {
+            "category": "Energy",
+            "description": "Gulf Coast Unl 87 (Argus) Crack Spread Futures"
+        },
+        "AUZ": {
+            "category": "Energy",
+            "description": "Gulf Coast Unl 87 (Argus) Up-Down Futures"
+        },
+        "RVR": {
+            "category": "Energy",
+            "description": "Gulf Coast Unl 87 Gasoline M2 (Platts) vs. RBOB Gasoline Futures"
+        },
+        "UGG": {
+            "category": "Energy",
+            "description": "Gulf Coast Unl 87 Gasoline M2 (Argus) Futures"
+        },
+        "RBG": {
+            "category": "Energy",
+            "description": "Gulf Coast Unl 87 Gasoline M2 (Argus) vs. RBOB Spread Futures"
+        },
+        "GCM": {
+            "category": "Energy",
+            "description": "Gulf Coast Unl 87 Gasoline M2 (Platts) Futures"
+        },
+        "GCC": {
+            "category": "Energy",
+            "description": "Gulf Coast Unl 87 Gasoline M2 (Platts) Crack Spread Futures"
+        },
+        "GBB": {
+            "category": "Energy",
+            "description": "Gulf Coast Unl 87 Gasoline M2 (Platts) vs. RBOB BALMO Futures"
+        },
+        "AJB": {
+            "category": "Energy",
+            "description": "Japan C&F Naphtha (Platts) Brent Crack Spread Futures"
+        },
+        "JNC": {
+            "category": "Energy",
+            "description": "Japan C&F Naphtha Dubai (Platts) Brent Crack Spread Futures"
+        },
+        "JA": {
+            "category": "Energy",
+            "description": "Japan C&F Naphtha (Platts) Futures"
+        },
+        "E6": {
+            "category": "Energy",
+            "description": "Japan Naphtha (Platts) BALMO Futures"
+        },
+        "1T": {
+            "category": "Energy",
+            "description": "Jet Aviation Fuel (Platts) Cargoes FOB MED Futures"
+        },
+        "A1V": {
+            "category": "Energy",
+            "description": "Jet Aviation Fuel Cargoes FOB MED (Platts) vs. Low Sulphur Gasoil Futures"
+        },
+        "AJR": {
+            "category": "Energy",
+            "description": "Jet Barges FOB Rdam (Platts) vs. Low Sulphur Gasoil Futures"
+        },
+        "HJC": {
+            "category": "Energy",
+            "description": "Jet Cargoes CIF NWE (Platts) vs. Low Sulphur Gasoil Futures"
+        },
+        "X9": {
+            "category": "Energy",
+            "description": "Jet Fuel (Platts) Barges FOB Rdam BALMO Futures"
+        },
+        "9Q": {
+            "category": "Energy",
+            "description": "Jet Fuel Barges FOB Rdam (Platts) vs. Low Sulphur Gasoil BALMO Futures"
+        },
+        "F3": {
+            "category": "Energy",
+            "description": "Jet Fuel (Platts) Cargoes CIF NWE BALMO Futures"
+        },
+        "A6X": {
+            "category": "Energy",
+            "description": "Jet Fuel Cargoes CIF NWE (Platts) vs. Low Sulphur Gasoil BALMO Futures"
+        },
+        "JFC": {
+            "category": "Energy",
+            "description": "Jet Fuel Cargoes CIF NWE (Platts) Crack Spread Futures"
+        },
+        "JFB": {
+            "category": "Energy",
+            "description": "Jet Fuel Cargoes CIF NWE (Platts) Crack Spread BALMO Futures"
+        },
+        "ALX": {
+            "category": "Energy",
+            "description": "Los Angeles CARB Diesel (OPIS) Futures"
+        },
+        "AKL": {
+            "category": "Energy",
+            "description": "Los Angeles CARB Diesel (OPIS) vs. NY Harbor ULSD Futures"
+        },
+        "MH": {
+            "category": "Energy",
+            "description": "Los Angeles CARBOB Gasoline (OPIS) Futures"
+        },
+        "AJL": {
+            "category": "Energy",
+            "description": "Los Angeles CARBOB Gasoline (OPIS) vs. RBOB Gasoline Futures"
+        },
+        "AJS": {
+            "category": "Energy",
+            "description": "Los Angeles Jet (OPIS) vs. NY Harbor ULSD Futures"
+        },
+        "LL": {
+            "category": "Energy",
+            "description": "Los Angeles Jet Fuel (OPI Futures"
+        },
+        "MQ": {
+            "category": "Energy",
+            "description": "Los Angeles Jet Fuel (Platts) vs. NY Harbor ULSD Futures"
+        },
+        "U9": {
+            "category": "Energy",
+            "description": "Low Sulphur Gasoil BALMO Futures"
+        },
+        "GOC": {
+            "category": "Energy",
+            "description": "Low Sulphur Gasoil Crack Spread (1000mt) Financial Futures"
+        },
+        "ESS": {
+            "category": "Energy",
+            "description": "Low Sulphur Gasoil Crack Spread (1000mt) BALMO Financial Futures"
+        },
+        "AQA": {
+            "category": "Energy",
+            "description": "Low Sulphur Gasoil Mini Financial Futures"
+        },
+        "MBS": {
+            "category": "Energy",
+            "description": "Middle East Gasoil FOB Arab Gulf (Platts) BALMO Futures"
+        },
+        "MPE": {
+            "category": "Energy",
+            "description": "Middle East Gasoil FOB Arab Gulf (Platts) Futures"
+        },
+        "MFP": {
+            "category": "Energy",
+            "description": "Mini 1% Fuel Oil Cargoes CIF NWE (Platts) Futures"
+        },
+        "MFD": {
+            "category": "Energy",
+            "description": "Mini 1% Fuel Oil Cargoes FOB MED (Platts) Futures"
+        },
+        "MNS": {
+            "category": "Energy",
+            "description": "Mini 1% Fuel Oil Cargoes FOB NWE (Platts) Crack Spread (100mt) Futures"
+        },
+        "MMF": {
+            "category": "Energy",
+            "description": "Mini 3.5% Fuel Oil (Platts) Cargoes FOB MED Calendar Futures"
+        },
+        "MFR": {
+            "category": "Energy",
+            "description": "Mini 3.5% Fuel Oil Barges FOB Rdam (Platts) Crack Spread (100mt) Futures"
+        },
+        "MFR-MFR": {
+            "category": "Energy",
+            "description": "Mini 3.5% Fuel Oil Barges FOB Rdam (Platts) Crack Spread (100mt) Futures"
+        },
+        "MFR:SA": {
+            "category": "Energy",
+            "description": "Mini 3.5% Fuel Oil Barges FOB Rdam (Platts) Crack Spread (100mt) Futures"
+        },
+        "MFR:SB": {
+            "category": "Energy",
+            "description": "Mini 3.5% Fuel Oil Barges FOB Rdam (Platts) Crack Spread (100mt) Futures"
+        },
+        "MEW": {
+            "category": "Energy",
+            "description": "Mini East-West Fuel Oil Spread (Platts) Futures"
+        },
+        "0A": {
+            "category": "Energy",
+            "description": "Mini European 1% Fuel Oil (Platts) Barges FOB Rdam BALMO Futures"
+        },
+        "0B": {
+            "category": "Energy",
+            "description": "Mini European 1% Fuel Oil (Platts) Cargoes FOB NWE Futures"
+        },
+        "0C": {
+            "category": "Energy",
+            "description": "Mini European 1% Fuel Oil (Platts) Cargoes FOB NWE BALMO Futures"
+        },
+        "AT0": {
+            "category": "Energy",
+            "description": "Mini European 1% Fuel Oil Barges FOB Rdam (Platts) Futures"
+        },
+        "0E": {
+            "category": "Energy",
+            "description": "Mini European 3.5% Fuel Oil (Platts) Barges FOB Rdam BALMO Futures"
+        },
+        "MEF": {
+            "category": "Energy",
+            "description": "Micro European 3.5% Fuel Oil Barges FOB Rdam (Platts) Futures"
+        },
+        "A0D": {
+            "category": "Energy",
+            "description": "Mini European 3.5% Fuel Oil Barges FOB Rdam (Platts) Futures"
+        },
+        "A0D-A0D": {
+            "category": "Energy",
+            "description": "Mini European 3.5% Fuel Oil Barges FOB Rdam (Platts) Futures"
+        },
+        "A0D:SA": {
+            "category": "Energy",
+            "description": "Mini European 3.5% Fuel Oil Barges FOB Rdam (Platts) Futures"
+        },
+        "A0D:SB": {
+            "category": "Energy",
+            "description": "Mini European 3.5% Fuel Oil Barges FOB Rdam (Platts) Futures"
+        },
+        "MUD": {
+            "category": "Energy",
+            "description": "Mini European Diesel 10 ppm Barges FOB Rdam (Platts) vs. Low Sulphur Gasoil Futures"
+        },
+        "MJB": {
+            "category": "Energy",
+            "description": "Mini European Jet Kero Barges FOB Rdam (Platts) vs. Low Sulphur Gasoil Futures"
+        },
+        "MJC": {
+            "category": "Energy",
+            "description": "Mini European Jet Kero Cargoes CIF NWE (Platts) vs. Low Sulphur Gasoil Futures"
+        },
+        "MEE": {
+            "category": "Energy",
+            "description": "Mini European Naphtha (Platts) BALMO Futures"
+        },
+        "MNC": {
+            "category": "Energy",
+            "description": "Mini European Naphtha CIF NWE (Platts) Futures"
+        },
+        "MGF": {
+            "category": "Energy",
+            "description": "Mini Gasoil 0.1% Cargoes CIF NWE (Platts) vs. Low Sulphur Gasoil Futures"
+        },
+        "MGB": {
+            "category": "Energy",
+            "description": "Mini Gasoil 0.1% Barges FOB Rdam (Platts) vs. Low Sulphur Gasoil Futures"
+        },
+        "MEO": {
+            "category": "Energy",
+            "description": "Mini Gasoline Euro-bob Oxy NWE Barges (Argus) Futures"
+        },
+        "MEB": {
+            "category": "Energy",
+            "description": "Mini Gasoline Euro-bob Oxy NWE Barges (Argus) BALMO Futures"
+        },
+        "MJN": {
+            "category": "Energy",
+            "description": "Mini Japan C&F Naphtha (Platts) Futures"
+        },
+        "E6M": {
+            "category": "Energy",
+            "description": "Mini Japan Naphtha (Platts) BALMO Futures"
+        },
+        "MGS": {
+            "category": "Energy",
+            "description": "Mini Middle East HSFO 180 cst FOB Arab Gulf (Platts) BALMO Futures"
+        },
+        "MHE": {
+            "category": "Energy",
+            "description": "Mini Middle East HSFO 180 cst FOB Arab Gulf (Platts) Futures"
+        },
+        "MHS": {
+            "category": "Energy",
+            "description": "Mini Middle East HSFO 380 cst FOB Arab Gulf (Platts) BALMO Futures"
+        },
+        "MSE": {
+            "category": "Energy",
+            "description": "Mini Middle East HSFO 380 cst FOB Arab Gulf (Platts) Futures"
+        },
+        "MNE": {
+            "category": "Energy",
+            "description": "Mini Middle East Naphtha FOB Arab Gulf (Platts) BALMO Futures"
+        },
+        "MME": {
+            "category": "Energy",
+            "description": "Mini Middle East Naphtha FOB Arab Gulf (Platts) Futures"
+        },
+        "MXB": {
+            "category": "Energy",
+            "description": "Mini RBOB Gasoline vs. Euro-bob Oxy NWE Barges (Argus) Futures"
+        },
+        "MXR": {
+            "category": "Energy",
+            "description": "Mini RBOB Gasoline vs. Euro-bob Oxy NWE Barges (Argus) BALMO Futures"
+        },
+        "5L": {
+            "category": "Energy",
+            "description": "Mini Singapore Fuel Oil 180 cst (Platts) BALMO Futures"
+        },
+        "A0F": {
+            "category": "Energy",
+            "description": "Mini Singapore Fuel Oil 180 cst (Platts) Futures"
+        },
+        "MTB": {
+            "category": "Energy",
+            "description": "Mini Singapore Fuel Oil 380 cst (Platts) BALMO Futures"
+        },
+        "MAF": {
+            "category": "Energy",
+            "description": "Micro Singapore Fuel Oil 380 cst (Platts) Futures"
+        },
+        "MTS": {
+            "category": "Energy",
+            "description": "Mini Singapore Fuel Oil 380 cst (Platts) Futures"
+        },
+        "MSB": {
+            "category": "Energy",
+            "description": "Mini Singapore Fuel Oil 380cst (Platts) vs. European 3.5%Fuel Oil Barges FOB Rdam (Platts) Futures"
+        },
+        "MSG": {
+            "category": "Energy",
+            "description": "Mini Singapore Gasoil (Platts) Futures"
+        },
+        "UCM": {
+            "category": "Energy",
+            "description": "Mini ULSD 10ppm Cargoes CIF MED (Platts) vs. Low Sulphur Gasoil Futures"
+        },
+        "MGN": {
+            "category": "Energy",
+            "description": "Mini ULSD 10ppm Cargoes CIF NWE (Platts) vs. Low Sulphur Gasoil Futures"
+        },
+        "NBB": {
+            "category": "Energy",
+            "description": "Naphtha Cargoes CIF NWE (Platts) Crack Spread (1000mt) BALMO Futures"
+        },
+        "NOO": {
+            "category": "Energy",
+            "description": "Naphtha Cargoes CIF NWE (Platts) Crack Spread (1000mt) Futures"
+        },
+        "NFC": {
+            "category": "Energy",
+            "description": "New York 1% Fuel Oil (Platts) Crack Spread BALMO Futures"
+        },
+        "NFG": {
+            "category": "Energy",
+            "description": "NY 1% Fuel Oil (Platts) vs. Gulf Coast HSFO (Platts) BALMO Futures"
+        },
+        "NYT": {
+            "category": "Energy",
+            "description": "New York 3.0% Fuel Oil (Platts) BALMO Futures"
+        },
+        "NYG": {
+            "category": "Energy",
+            "description": "New York Fuel Oil 1.0% vs. European 1% Fuel Oil Cargoes FOB NWE (Platts) BALMO Futures"
+        },
+        "AVK": {
+            "category": "Energy",
+            "description": "New York Harbor 1.0% Fuel Oil (Platts) BALMO Futures"
+        },
+        "AML": {
+            "category": "Energy",
+            "description": "New York Harbor Residual Fuel (Platts) Crack Spread Futures"
+        },
+        "MM": {
+            "category": "Energy",
+            "description": "New York Harbor Residual Fuel 1.0% (Platts) Futures"
+        },
+        "VR": {
+            "category": "Energy",
+            "description": "NY 1% Fuel Oil (Platts) vs. Gulf Coast HSFO (Platts) Futures"
+        },
+        "AH1": {
+            "category": "Energy",
+            "description": "NY 3.0% Fuel Oil (Platts) Futures"
+        },
+        "FOC": {
+            "category": "Energy",
+            "description": "NY 3.0% Fuel Oil (Platts) vs. Gulf Coast HSFO (Platts) Futures"
+        },
+        "FOC-FOC": {
+            "category": "Energy",
+            "description": "NY 3.0% Fuel Oil (Platts) vs. Gulf Coast HSFO (Platts) Futures"
+        },
+        "FOC:SA": {
+            "category": "Energy",
+            "description": "NY 3.0% Fuel Oil (Platts) vs. Gulf Coast HSFO (Platts) Futures"
+        },
+        "FOC:SB": {
+            "category": "Energy",
+            "description": "NY 3.0% Fuel Oil (Platts) vs. Gulf Coast HSFO (Platts) Futures"
+        },
+        "BUC": {
+            "category": "Energy",
+            "description": "NY Buckeye Jet Fuel (Platts) Futures"
+        },
+        "JTB": {
+            "category": "Energy",
+            "description": "NY Buckeye Jet Fuel (Platts) vs. NY Harbor ULSD BALMO Futures"
+        },
+        "JET": {
+            "category": "Energy",
+            "description": "NY Buckeye Jet Fuel (Platts) vs. NY Harbor ULSD Futures"
+        },
+        "NYF": {
+            "category": "Energy",
+            "description": "NY Fuel Oil 1.0% (Platts) vs. European 1% Fuel Oil Cargoes FOB NWE (Platts) Futures"
+        },
+        "A1G": {
+            "category": "Energy",
+            "description": "NY Harbor ULSD BALMO Futures"
+        },
+        "HOB": {
+            "category": "Energy",
+            "description": "NY Harbor ULSD Brent Crack Spread Futures"
+        },
+        "ABH": {
+            "category": "Energy",
+            "description": "NY Harbor ULSD Bullet Futures"
+        },
+        "1H": {
+            "category": "Energy",
+            "description": "NY Harbor ULSD Crack Spread BALMO Futures"
+        },
+        "AHL": {
+            "category": "Energy",
+            "description": "NY Harbor ULSD Crack Spread Futures"
+        },
+        "MPX": {
+            "category": "Energy",
+            "description": "NY Harbor ULSD Financial Futures"
+        },
+        "HO": {
+            "category": "Energy",
+            "description": "NY Harbor ULSD Futures"
+        },
+        "HOL": {
+            "category": "Energy",
+            "description": "NY Harbor ULSD London Tradable Marker (TAM)"
+        },
+        "HOT": {
+            "category": "Energy",
+            "description": "NY Harbor ULSD Futures TAS"
+        },
+        "23": {
+            "category": "Energy",
+            "description": "NY Harbor ULSD Last Day Financial Futures"
+        },
+        "NLS": {
+            "category": "Energy",
+            "description": "NY Harbor ULSD vs. Low Sulphur Gasoil (1000bbl) Futures"
+        },
+        "A1Q": {
+            "category": "Energy",
+            "description": "NY Jet Fuel (Platts) Futures"
+        },
+        "A1U": {
+            "category": "Energy",
+            "description": "NY Jet Fuel (Platts) vs. NY Harbor ULSD Futures"
+        },
+        "5Y": {
+            "category": "Energy",
+            "description": "NY ULSD (Argus) Futures"
+        },
+        "ULB": {
+            "category": "Energy",
+            "description": "NY ULSD (Argus) vs. NY Harbor ULSD BALMO Futures"
+        },
+        "A7Y": {
+            "category": "Energy",
+            "description": "NY ULSD (Argus) vs. NY Harbor ULSD Futures"
+        },
+        "7N": {
+            "category": "Energy",
+            "description": "Premium Unleaded Gasoline 10 ppm (Platts) Barges FOB Rdam BALMO Futures"
+        },
+        "4G": {
+            "category": "Energy",
+            "description": "Premium Unleaded Gasoline 10 ppm (Platts) Cargoes CIF NWE Futures"
+        },
+        "A7L": {
+            "category": "Energy",
+            "description": "Premium Unleaded Gasoline 10 ppm Barges FOB Rdam (Platts) Futures"
+        },
+        "A8G": {
+            "category": "Energy",
+            "description": "Premium Unleaded Gasoline 10 ppm FOB MED (Platts) BALMO Futures"
+        },
+        "A3G": {
+            "category": "Energy",
+            "description": "Premium Unleaded Gasoline 10 ppm FOB MED (Platts) Futures"
+        },
+        "A1D": {
+            "category": "Energy",
+            "description": "RBOB Gasoline BALMO Futures"
+        },
+        "RLX": {
+            "category": "Energy",
+            "description": "RBOB Gasoline Calendar Futures"
+        },
+        "1E": {
+            "category": "Energy",
+            "description": "RBOB Gasoline Crack Spread BALMO Futures"
+        },
+        "ARE": {
+            "category": "Energy",
+            "description": "RBOB Gasoline Crack Spread Futures"
+        },
+        "RT": {
+            "category": "Energy",
+            "description": "RBOB Gasoline Financial Futures"
+        },
+        "RB": {
+            "category": "Energy",
+            "description": "RBOB Gasoline Futures"
+        },
+        "RBT": {
+            "category": "Energy",
+            "description": "RBOB Gasoline Futures TAS"
+        },
+        "RBL": {
+            "category": "Energy",
+            "description": "RBOB Gasoline Futures Trading At Marker (TAM) - London"
+        },
+        "27": {
+            "category": "Energy",
+            "description": "RBOB Gasoline Last Day Financial Futures"
+        },
+        "RBB": {
+            "category": "Energy",
+            "description": "RBOB Gasoline vs. Brent Crack Spread Futures"
+        },
+        "XER": {
+            "category": "Energy",
+            "description": "RBOB Gasoline vs. Euro-bob Oxy (Argus) NWE Barges Futures"
+        },
+        "EXR": {
+            "category": "Energy",
+            "description": "RBOB Gasoline vs. Euro-bob Oxy NWE Barges (Argus) (350 000 gallons) Futures"
+        },
+        "ARY": {
+            "category": "Energy",
+            "description": "RBOB Gasoline vs. NY Harbor ULSD Futures"
+        },
+        "STR": {
+            "category": "Energy",
+            "description": "Singapore Fuel Oil 180 cst (Platts) 6.35 Brent Crack Spread Futures"
+        },
+        "STS": {
+            "category": "Energy",
+            "description": "Singapore Fuel Oil 180 cst (Platts) 6.35 Dubai (Platts) Crack Spread Futures"
+        },
+        "STY": {
+            "category": "Energy",
+            "description": "Singapore Fuel Oil 180 cst (Platts) 6.35 Dubai Crack Spread BALMO Futures"
+        },
+        "ABS": {
+            "category": "Energy",
+            "description": "Singapore Fuel Oil 180 cst (Platts) BALMO Futures"
+        },
+        "GMB": {
+            "category": "Energy",
+            "description": "Singapore Gasoil (Platts) vs Singapore Marine Fuel 0.5% (Platts) Spread BALMO Futures"
+        },
+        "UA": {
+            "category": "Energy",
+            "description": "Singapore Fuel Oil 180 cst (Platts) Futures"
+        },
+        "GMS": {
+            "category": "Energy",
+            "description": "Singapore Gasoil (Platts) vs Singapore Marine Fuel 0.5% (Platts) Spread Futures"
+        },
+        "SDM": {
+            "category": "Energy",
+            "description": "Singapore Fuel Oil 180 cst (Platts) Mini Weekly Spread Futures"
+        },
+        "MSD": {
+            "category": "Energy",
+            "description": "Singapore Fuel Oil 180 cst vs. 380 cst Spread (Platts) BALMO Futures"
+        },
+        "SD": {
+            "category": "Energy",
+            "description": "Singapore Fuel Oil 180 cst vs. 380 cst Spread (Platts) Futures"
+        },
+        "SF1": {
+            "category": "Energy",
+            "description": "Singapore Fuel Oil 180cst (Platts) Brent Crack Spread (1000mt) Futures"
+        },
+        "STI": {
+            "category": "Energy",
+            "description": "Singapore Fuel Oil 380 cst (Platts) 6.35 Dubai (Platts) Crack Spread Futures"
+        },
+        "ABT": {
+            "category": "Energy",
+            "description": "Singapore Fuel Oil 380 cst (Platts) BALMO Futures"
+        },
+        "SE": {
+            "category": "Energy",
+            "description": "Singapore Fuel Oil 380 cst (Platts) Futures"
+        },
+        "SMW": {
+            "category": "Energy",
+            "description": "Singapore Fuel Oil 380 cst (Platts) Mini Weekly Spread Futures"
+        },
+        "SFB": {
+            "category": "Energy",
+            "description": "Singapore Fuel Oil 380 cst (Platts) vs. European 3.5% Fuel Oil Barges FOB Rdam (Platts) BALMO Futures"
+        },
+        "EVC": {
+            "category": "Energy",
+            "description": "Singapore Fuel Oil 380 cst (Platts) vs. European 3.5% Fuel Oil Barges FOB Rdam (Platts) Futures"
+        },
+        "SF3": {
+            "category": "Energy",
+            "description": "Singapore Fuel Oil 380cst (Platts) Brent Crack Spread (1000mt) Futures"
+        },
+        "AVU": {
+            "category": "Energy",
+            "description": "Singapore Gasoil (Platts) BALMO Futures"
+        },
+        "SGB": {
+            "category": "Energy",
+            "description": "Singapore Gasoil (Platts) Futures"
+        },
+        "AGA": {
+            "category": "Energy",
+            "description": "Singapore Gasoil (Platts) vs. Low Sulphur Gasoil Futures"
+        },
+        "STT": {
+            "category": "Energy",
+            "description": "Singapore Gasoil (Platts) vs. Singapore Gasoil 500 ppm (Platts) Futures"
+        },
+        "ABX": {
+            "category": "Energy",
+            "description": "Singapore Jet Kerosene (Platts) BALMO Futures"
+        },
+        "ASD": {
+            "category": "Energy",
+            "description": "Singapore Jet Kerosene (Platts) Dubai Crack Spread Futures"
+        },
+        "AKS": {
+            "category": "Energy",
+            "description": "Singapore Jet Kerosene (Platts) Futures"
+        },
+        "AZ0": {
+            "category": "Energy",
+            "description": "Singapore Jet Kerosene (Platts) vs. Gasoil (Platts) BALMO Futures"
+        },
+        "RKA": {
+            "category": "Energy",
+            "description": "Singapore Jet Kerosene (Platts) vs. Gasoil (Platts) Futures"
+        },
+        "A1P": {
+            "category": "Energy",
+            "description": "Singapore Mogas 92 Unleaded (Platts) BALMO Futures"
+        },
+        "D1N": {
+            "category": "Energy",
+            "description": "Singapore Mogas 92 Unleaded (Platts) Brent Crack Spread Futures"
+        },
+        "1NA": {
+            "category": "Energy",
+            "description": "Singapore Mogas 92 Unleaded (Platts) Dubai Crack Spread Futures"
+        },
+        "N1B": {
+            "category": "Energy",
+            "description": "Singapore Mogas 92 Unleaded (Platts) Futures"
+        },
+        "W0": {
+            "category": "Energy",
+            "description": "Singapore Mogas 95 Unleaded (Platts) BALMO Futures"
+        },
+        "AV0": {
+            "category": "Energy",
+            "description": "Singapore Mogas 95 Unleaded (Platts) Futures"
+        },
+        "SMU": {
+            "category": "Energy",
+            "description": "Singapore Mogas 95 Unleaded vs. Singapore Mogas 92 Unleaded Spread (Platts) Futures"
+        },
+        "YNO": {
+            "category": "Energy",
+            "description": "Singapore Mogas 97 Unleaded (Platts) BALMO Futures"
+        },
+        "X0": {
+            "category": "Energy",
+            "description": "Singapore Mogas 97 Unleaded (Platts) Futures"
+        },
+        "ZKU": {
+            "category": "Energy",
+            "description": "Singapore Naphtha (Platts) BALMO Futures"
+        },
+        "ASP": {
+            "category": "Energy",
+            "description": "Singapore Naphtha (Platts) Futures"
+        },
+        "GHS": {
+            "category": "Energy",
+            "description": "Singapore Gasoil 500 ppm (Platts) Futures"
+        },
+        "GHB": {
+            "category": "Energy",
+            "description": "Singapore Gasoil 500 ppm (Platts) BALMO Futures"
+        },
+        "MGO": {
+            "category": "Energy",
+            "description": "Mini Singapore Gasoil 500 ppm (Platts) Futures"
+        },
+        "SGG": {
+            "category": "Energy",
+            "description": "Singapore Gasoil 500 ppm (Platts) vs. Low Sulphur Gasoil Futures"
+        },
+        "RHS": {
+            "category": "Energy",
+            "description": "Singapore Jet Kerosene (Platts) vs. Gasoil 500 ppm (Platts) Futures"
+        },
+        "RHB": {
+            "category": "Energy",
+            "description": "Singapore Jet Kerosene (Platts) vs. Gasoil 500 ppm (Platts) BALMO Futures"
+        },
+        "GDH": {
+            "category": "Energy",
+            "description": "Singapore Gasoil 500 ppm (Platts) Dubai (Platts) Crack Spread Futures"
+        },
+        "GDL": {
+            "category": "Energy",
+            "description": "Singapore Gasoil (Platts) Dubai (Platts) Crack Spread Futures"
+        },
+        "Z6": {
+            "category": "Energy",
+            "description": "ULSD 10ppm (Platts) Cargoes CIF MED Futures"
+        },
+        "B1": {
+            "category": "Energy",
+            "description": "ULSD 10ppm (Platts) Cargoes CIF NWE BALMO Futures"
+        },
+        "3V": {
+            "category": "Energy",
+            "description": "ULSD 10ppm Cargoes CIF NWE (Platts) vs. Low Sulphur Gasoil BALMO Futures"
+        },
+        "X7": {
+            "category": "Energy",
+            "description": "ULSD 10ppm (Platts) CIF MED BALMO Futures"
+        },
+        "7V": {
+            "category": "Energy",
+            "description": "ULSD 10ppm CIF MED (Platts) vs. Low Sulphur Gasoil BALMO Futures"
+        },
+        "EP1": {
+            "category": "Energy",
+            "description": "ULSD 10ppm Cargoes CIF Med (Platts) vs. NY Harbor ULSD Futures"
+        },
+        "ATY": {
+            "category": "Energy",
+            "description": "ULSD 10ppm Cargoes CIF NWE (Platts) Futures"
+        },
+        "ATP": {
+            "category": "Energy",
+            "description": "ULSD 10ppm Cargoes CIF NWE (Platts) vs. Low Sulphur Gasoil Futures"
+        },
+        "EO1": {
+            "category": "Energy",
+            "description": "ULSD 10ppm Cargoes CIF NWE (Platts) vs. NY Harbor ULSD Futures"
+        },
+        "AZ7": {
+            "category": "Energy",
+            "description": "ULSD 10ppm CIF MED (Platts) vs. Low Sulphur Gasoil Futures"
+        }
+    }
+}
