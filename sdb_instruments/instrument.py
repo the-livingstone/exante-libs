@@ -404,7 +404,8 @@ class Instrument:
             asyncio.run(
                 self.sdbadds.load_tree(
                     fields=['expiryTime'],
-                    reload_cache=reload_cache
+                    reload_cache=reload_cache,
+                    return_dict=False
                 )
             )
             self.tree_df = self.sdbadds.tree_df
@@ -423,9 +424,10 @@ class Instrument:
                 'expiryTime'
             ]
         fields_list.extend([x for x in fields if x not in fields_list])
-        self.tree = asyncio.run(self.sdbadds.load_tree(
+        asyncio.run(self.sdbadds.load_tree(
             fields=fields_list,
-            reload_cache=True
+            reload_cache=True,
+            return_dict=False
         ))
         self.tree_df = self.sdbadds.tree_df
 
