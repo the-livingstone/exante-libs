@@ -1,5 +1,6 @@
 import asyncio
 import datetime as dt
+import json
 from pandas import DataFrame
 import logging
 from copy import copy, deepcopy
@@ -677,35 +678,74 @@ class DerivativeAdder:
 
 # new series actions
     def setup_new_ticker(self, recreate: bool = False, parsed_data: list[dict] = None):
+
+        def extend_path() -> list:
+            MAPPING = {
+                'FUTURE': {
+                    'CME_group': 'cme_futs.json'
+                },
+                'OPTION': {
+                    'CBOE': ['Equity Options']
+                },
+                'OPTION ON FUTURE': {
+                    'CME_group': 'cme_opts.json'
+                }
+            }
+            if self.exchange in ['CME', 'CBOT', 'NYMEX', 'COMEX']:
+                try:
+                    with open(f"{self.sdbadds.current_dir}/libs/mapping/{MAPPING[self.derivative_type]['CME_group']}", 'r') as f:
+                        cme_map = json.load(f)
+                except FileNotFoundError:
+                    self.logger.warning(
+                        f"{self.sdbadds.current_dir}/libs/mapping/{MAPPING[self.derivative_type]['CME_group']} "
+                        "file is not found! Pls select destination folder manually"
+                    )
+                    return []
+                except json.decoder.JSONDecodeError:
+                    self.logger.warning(
+                        f"{self.sdbadds.current_dir}/libs/mapping/{MAPPING[self.derivative_type]['CME_group']} "
+                        "is malformed json file"
+                    )
+                    return []
+                additional_path = cme_map.get(self.exchange, {}).get(self.ticker, {}).get('category')
+                if additional_path:
+                    return [additional_path]
+                else:
+                    return []
+            elif isinstance(MAPPING[self.derivative_type][self.exchange], list):
+                return MAPPING[self.derivative_type][self.exchange]
+            else:
+                return []
+
+
         message = '''
         Ticker is not found in sdb, we are about to create new ticker folder.
         Select folder to go deeper into the tree, select the same folder again
         to set as destination for new ticker:
         '''
         # choose destination folder
+
         new_folder_destination = None
+        suggested_path = ['Root', self.derivative_type, self.exchange]
+        additional = extend_path()
+        suggested_path.extend(additional)
         if not self.croned:
-            if self.derivative_type == 'FUTURE':
-                suggested_path = ['FUTURE', self.exchange]
-            elif self.derivative_type == 'OPTION' and self.exchange == 'CBOE':
-                suggested_path = ['OPTION', 'CBOE', 'Equity Options']
-            elif self.derivative_type == 'OPTION':
-                suggested_path = ['OPTION', self.exchange]
-            elif self.derivative_type == 'OPTION ON FUTURE':
-                suggested_path = ['OPTION ON FUTURE', self.exchange]
             new_folder_destination = self.sdbadds.browse_folders(
                 suggested_path, message=message, only_folders=True
             )
-        elif self.exchange in allowed_automation.get(self.derivative_type, []):
-            path = ['Root', self.derivative_type, self.exchange]
-            path.extend(allowed_automation[self.derivative_type][self.exchange])
+        else:
             new_folder_destination = (
-                path[-1],
+                suggested_path[-1],
                 get_uuid_by_path(
-                    path,
+                    suggested_path,
                     self.sdbadds.tree_df
                 )
             )
+            # check if there are ticker folders here
+            heirs = asyncio.run(self.sdb.get_heirs(new_folder_destination[1], fields=['ticker']))
+            if len([x for x in heirs if x.get('ticker')]) < len(heirs)/2:
+                self.errormsg += f"{self.ticker}.{self.exchange}: Cannot set destination folder (suggested: {', '.join(suggested_path)})" + "\n"
+                return None
         if not new_folder_destination:
             self.logger.error('New folder destination is not set')
             return None
