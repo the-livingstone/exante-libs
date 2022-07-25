@@ -347,6 +347,14 @@ class Derivative(Instrument):
                     "Bad input data: series _id is not equal to the last uuid in its path"
                 )
             self.parent_folder = asyncio.run(self.sdb.get(self.instrument['path'][-2]))
+            self.series_tree = asyncio.run(
+                self.sdb.get_heirs(
+                    self.instrument['_id'],
+                    full=True,
+                    recursive=True
+                )
+            )
+            self.series_tree.append(self.instrument)
         else:
             self.parent_folder = asyncio.run(self.sdb.get(self.instrument['path'][-1]))
         self.parent_folder_id = self.parent_folder['_id']
