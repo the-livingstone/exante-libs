@@ -26,11 +26,12 @@ class TickDB:
 
     @retry(stop = stop_after_attempt(10), wait = wait_fixed(1))
     async def request(self, method: str, uri: str, params: Dict[str, Any] = None,
-                             js: Dict[str, Any] = None, headers: Dict[str, Any] = None) -> Any:
+                        js: Dict[str, Any] = None, ndjson: str = None,
+                        headers: Dict[str, Any] = None) -> Any:
         async with ClientSession(headers=headers) as session:
             if method == 'get':
                 params = {k:v if not isinstance(v,(list,tuple)) else ','.join(v)  for k,v in params.items() if v!=None}
-            async with session.request(method, uri, params=params, json=js) as response:
+            async with session.request(method, uri, params=params, json=js, data=ndjson) as response:
                 try:
                     return await response.json()
                 except:
@@ -63,21 +64,21 @@ class TickDB:
     async def get_prices(self, instrument, **kwargs):
         return await self.request('get',self.export_api+f'/export/symbols/{quote(instrument, safe = "")}/prices', params = kwargs)
     
-    async def post_prices(self, instrument, jdata, **kwargs):
+    async def post_prices(self, instrument, ndjson: str = None, jdata: Dict[str, Any] = None, **kwargs):
         endpoints = [f'{node}{self.import_api_prefix}/symbols/{quote(instrument, safe = "")}/price' for node in self.prices_nodes]
-        return [await self.request('post', endpoint, js=jdata, params=kwargs, headers = {"Content-Type": "application/x-ld-json"}) for endpoint in endpoints]
+        return [await self.request('post', endpoint, ndjson=ndjson, js=jdata, params=kwargs, headers = {"Content-Type": "application/x-ld-json"}) for endpoint in endpoints]
     
-    async def post_quotes(self, instrument, jdata, **kwargs):
+    async def post_quotes(self, instrument, ndjson: str = None, jdata: Dict[str, Any] = None, **kwargs):
         endpoints = [f'{node}{self.import_api_prefix}/symbols/{quote(instrument, safe = "")}/quotes' for node in self.quotes_nodes]
-        return [await self.request('post', endpoint, js=jdata, params=kwargs, headers = {"Content-Type": "application/x-ld-json"}) for endpoint in endpoints]
+        return [await self.request('post', endpoint, ndjson=ndjson, js=jdata, params=kwargs, headers = {"Content-Type": "application/x-ld-json"}) for endpoint in endpoints]
     
-    async def post_quote_candles(self, instrument, duration, jdata, **kwargs):
+    async def post_quote_candles(self, instrument, duration, ndjson: str = None, jdata: Dict[str, Any] = None, **kwargs):
         endpoints = [f'{node}{self.import_api_prefix}/symbols/{quote(instrument, safe = "")}/qcandles/{duration}' for node in self.candles_nodes]
-        return [await self.request('post', endpoint, js=jdata, params=kwargs, headers = {"Content-Type": "application/x-ld-json"}) for endpoint in endpoints]    
+        return [await self.request('post', endpoint, ndjson=ndjson, js=jdata, params=kwargs, headers = {"Content-Type": "application/x-ld-json"}) for endpoint in endpoints]    
     
-    async def post_trade_candles(self, instrument, duration, jdata, **kwargs):
+    async def post_trade_candles(self, instrument, duration, ndjson: str = None, jdata: Dict[str, Any] = None, **kwargs):
         endpoints = [f'{node}{self.import_api_prefix}/symbols/{quote(instrument, safe = "")}/tcandles/{duration}' for node in self.candles_nodes]
-        return [await self.request('post', endpoint, js=jdata, params=kwargs, headers = {"Content-Type": "application/x-ld-json"}) for endpoint in endpoints]
+        return [await self.request('post', endpoint, ndjson=ndjson, js=jdata, params=kwargs, headers = {"Content-Type": "application/x-ld-json"}) for endpoint in endpoints]
     
     async def get_prices_snapshot(self, **kwargs):
         for node in self.prices_nodes:
