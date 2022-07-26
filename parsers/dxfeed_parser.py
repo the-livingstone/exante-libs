@@ -331,10 +331,10 @@ class Parser(DxFeed, ExchangeParser):
     provider = 'DXFEED'
     
 
-    def __init__(self, scheme='US', env='prod'):
+    def __init__(self, scheme='US', env='prod', engine=None):
         self.sdb = SymbolDB(env)
         self.sdbadds = SDBAdditional(env='prod')
-        super().__init__(scheme=scheme)
+        super().__init__(scheme=scheme, engine=engine)
         self.provider_id = next((
             x['providerId'] for x in asyncio.run(self.sdb.get_feed_providers()) if x['name'] == 'DXFEED'
         ), None)

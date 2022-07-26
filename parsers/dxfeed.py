@@ -9,16 +9,22 @@ import requests
 import json
 import csv
 import logging
+from sqlalchemy.engine import Engine
+import pandas as pd
 
 class DxFeed:
     def __init__(
             self,
-            cred_file='/etc/support/auth/dxfeed.json',
-            scheme='US',
-            ipf='https://tools.dxfeed.com/ipf'
+            cred_file: str = '/etc/support/auth/dxfeed.json',
+            scheme: str = 'US',
+            ipf: str = 'https://tools.dxfeed.com/ipf',
+            engine: Engine = None,
+            db_table = 'ipf'
         ):
         self.set_region(scheme, cred_file)
         self.ipf = ipf
+        self.engine = engine
+        self.db_table = db_table
 
     @property
     def logger(self):
@@ -123,6 +129,51 @@ class DxFeed:
 
             return data
 
+    def get_from_db(self, TYPE: list = None, SYMBOL: list = None, CURRENCY: list = None, mode: str = 'dict', **kwargs):
+        if not self.engine:
+            logging.error('Sql connection engine is not established')
+            return {}
+        sql_query = f"SELECT * FROM {self.db_table}"
+        conditions = []
+        params = {
+            'type': TYPE,
+            'symbol': SYMBOL,
+            'currency': CURRENCY
+        }
+        for key, val in kwargs.items():
+            if isinstance(val, list):
+                params.update({key.lower(): val})
+        for field, value in params.items():
+            op = '~' if field in ['symbol', 'description'] else '='
+            if not isinstance(value, list):
+                continue
+            if not len(value):
+                continue
+            if field == 'description':
+                condition = ' OR '.join([f"{field} {op} '.*{x}.*'" for x in value])
+            else:
+                condition = ' OR '.join([f"{field} {op} '{x}'" for x in value])
+            conditions.append(
+                f"({condition})"
+            )
+        if conditions:
+            sql_query += ' WHERE '
+            sql_query += ' AND '.join(conditions)
+        try:
+            search_df = pd.read_sql(sql_query, self.engine)
+            search_df.columns = map(lambda x: x.upper(), search_df.columns)
+            if 'INDEX' in search_df.columns:
+                search_df.drop(columns=['INDEX'], inplace=True)
+        except Exception as e:
+            logging.error(f"{e.__class__.__name__}: {e}")
+            search_df = pd.DataFrame()
+        if mode == 'list':
+            result = list(search_df.to_records())
+        else:
+            result = search_df.to_dict('records')
+        return result
+
+
     def search_stock(self, ticker: list = None, description=None, cfi=None, isin=None):
         """
         Search STOCK in IPF
@@ -132,6 +183,9 @@ class DxFeed:
         :param isin: ISIN code
         :return: list [dict1, dict2] or None
         """
+        if self.engine:
+            data = self.get(['STOCK'], ticker, mode='list')
+            return data
         data = self.get(['STOCK'], ticker, mode='list')
 
         if data:
@@ -150,6 +204,9 @@ class DxFeed:
         :param isin: ISIN code only for EU
         :return: list [dict1, dict2] or None
         """
+        if self.engine:
+            data = self.get(['ETF'], ticker)
+            return data
         data = self.get(['ETF'], ticker, mode='list')
 
         if data:
@@ -172,6 +229,9 @@ class DxFeed:
         :param cfi: CFI code as string for search
         :return: list [dict1, dict2] or None
         """
+        if self.engine:
+            data = self.get(['FUTURE'], ticker, PRODUCT=products)
+            return data
         data = self.get(['FUTURE'], ticker, mode='list', PRODUCT=products)
 
         if data:
@@ -188,6 +248,9 @@ class DxFeed:
         :param ticker: list of symbol patterns, e.g. * or /ES
         :return: list [dict1, dict2] or None
         """
+        if self.engine:
+            data = self.get(['SPREAD'], ticker)
+            return data
         data = self.get(['SPREAD'], ticker, mode='list')
 
         if data:
@@ -206,6 +269,9 @@ class DxFeed:
         :param cfi: CFI code as string for search
         :return: list [dict1, dict2] or None
         """
+        if self.engine:
+            data = self.get(['OPTION'], ticker, PRODUCT=products)
+            return data
         data = self.get(['OPTION'], ticker, mode='list', PRODUCT=products)
 
         if data:
