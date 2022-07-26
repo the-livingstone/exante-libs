@@ -184,7 +184,7 @@ class DxFeed:
         :return: list [dict1, dict2] or None
         """
         if self.engine:
-            data = self.get(['STOCK'], ticker, mode='list')
+            data = self.get_from_db(['STOCK'], ticker, mode='list')
             return data
         data = self.get(['STOCK'], ticker, mode='list')
 
@@ -205,7 +205,7 @@ class DxFeed:
         :return: list [dict1, dict2] or None
         """
         if self.engine:
-            data = self.get(['ETF'], ticker)
+            data = self.get_from_db(['ETF'], ticker)
             return data
         data = self.get(['ETF'], ticker, mode='list')
 
@@ -230,7 +230,7 @@ class DxFeed:
         :return: list [dict1, dict2] or None
         """
         if self.engine:
-            data = self.get(['FUTURE'], ticker, PRODUCT=products)
+            data = self.get_from_db(['FUTURE'], ticker, PRODUCT=products)
             return data
         data = self.get(['FUTURE'], ticker, mode='list', PRODUCT=products)
 
@@ -249,7 +249,7 @@ class DxFeed:
         :return: list [dict1, dict2] or None
         """
         if self.engine:
-            data = self.get(['SPREAD'], ticker)
+            data = self.get_from_db(['SPREAD'], ticker)
             return data
         data = self.get(['SPREAD'], ticker, mode='list')
 
@@ -270,7 +270,7 @@ class DxFeed:
         :return: list [dict1, dict2] or None
         """
         if self.engine:
-            data = self.get(['OPTION'], ticker, PRODUCT=products)
+            data = self.get_from_db(['OPTION'], ticker, PRODUCT=products)
             return data
         data = self.get(['OPTION'], ticker, mode='list', PRODUCT=products)
 
