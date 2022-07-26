@@ -6,6 +6,7 @@ import logging
 from copy import copy, deepcopy
 from typing import Union
 from enum import Enum
+from sqlalchemy.engine import Engine
 from libs.editor_interactive import EditInstrument
 from libs.async_symboldb import SymbolDB
 from libs.parsers import DxfeedParser as DF
@@ -47,10 +48,6 @@ allowed_automation = {
 class TypeUndefined(Exception):
     pass
 
-class Parsers(Enum):
-    REUTERS = DS
-    DXFEED = DF
-
 
 class DerivativeAdder:
 
@@ -70,6 +67,7 @@ class DerivativeAdder:
             sdb: SymbolDB = None,
             sdbadds: SDBAdditional = None,
             tree_df: DataFrame = None,
+            db_engine: Engine = None,
             env='prod'
         ) -> None:
         self.errormsg = ''
@@ -105,6 +103,7 @@ class DerivativeAdder:
         else:
             self.existing_expirations = []
         self.navi = set_schema[self.env]['navigation'](self.schema)
+        self.db_engine = db_engine
 
     @property
     def logger(self):
@@ -362,7 +361,7 @@ class DerivativeAdder:
             self.logger.error(f"Cannot get feed_provider for {target}")
             return {'series': {}, 'contracts': []}
         if feed_provider == 'DXFEED':
-            parser = DF()
+            parser = DF(engine=self.db_engine)
         elif feed_provider == 'REUTERS':
             parser = DS()
         else:
@@ -852,7 +851,7 @@ class DerivativeAdder:
             overrides = self.set_reuters_overrides(overrides)
             parser = DS()
         elif feed_provider == 'DXFEED':
-            parser = DF()
+            parser = DF(engine=self.db_engine)
         else:
             self.logger.error(f'Cannot set new ticker for {feed_provider} feed provider, sorry')
             return None
