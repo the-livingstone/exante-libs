@@ -660,17 +660,17 @@ class Parser(DxFeed, ExchangeParser):
 
         prefix = prefix_dict[product]
         col_suffix = f':{suffix}' if suffix else ''
-        strikes='(?P<side>P|C)\d+(\.\d+)?' if product in ['OPTION', 'OPTION ON FUTURE'] else ''
+        strikes=r'(?P<side>P|C)\d+(\.\d+)?' if product in ['OPTION', 'OPTION ON FUTURE'] else ''
 
         if product in ['CALENDAR', 'PRODUCT']:
             if second_ticker:
                 if maturity is None:
-                    maturity='\w{1}\d{2}'
+                    maturity=r'[FGHJKMNQUVXZ]\d{2}'
                 regexp = rf'{prefix}{ticker}{maturity}{col_suffix}-\/{second_ticker}{maturity}{col_suffix}$'
             elif second_maturity:
                 if maturity is None:
-                    maturity='\w{1}\d{2}'
-                second_maturity='\w{1}\d{2}'
+                    maturity=r'[FGHJKMNQUVXZ]\d{2}'
+                second_maturity=r'[FGHJKMNQUVXZ]\d{2}'
                 regexp = rf'{prefix}{ticker}{maturity}{col_suffix}-\/{ticker}{second_maturity}{col_suffix}$'
             else:
                 return None
@@ -678,9 +678,9 @@ class Parser(DxFeed, ExchangeParser):
             if exchange == 'EUREX' and 'OPTION' in product:
                 prefix=prefix_dict['OPTION']
             if maturity is None:
-                maturity='\d{6}' if maturity_type == '??????' \
-                    else '\w{1}\d{4}' if maturity_type == '????' \
-                    else '\w{1}\d{2}' if maturity_type == '???' else ''
+                maturity=r'\d{6}' if maturity_type == '??????' \
+                    else r'[FGHJKMNQUVXZ]\d{4}' if maturity_type == '????' \
+                    else r'[FGHJKMNQUVXZ]\d{2}' if maturity_type == '???' else ''
             regexp = rf'{prefix}{ticker}{maturity}{strikes}{col_suffix}$'
         return regexp
 
@@ -690,11 +690,18 @@ class Parser(DxFeed, ExchangeParser):
         re_cal_spread = r"(?P<ticker>\w+)\.(?P<exchange>\w+)(\.[CR]S\/(?P<mat>[FGHJKMNQUVXZ]\d{4})-(?P<scnd_mat>[FGHJKMNQUVXZ]\d{4}))?"
         re_prod_spread = r"(?P<ticker>\w+)-(?P<second_ticker>\w+)\.(?P<exchange>\w+)(\.(?P<mat>[FGHJKMNQUVXZ]\d{4}))?"
 
-        prefix = {
-            'FUTURE': '/',
-            'OPTION': '.',
-            'OPTION ON FUTURE': './',
-        }
+        if self.engine:
+            prefix = {
+                'FUTURE': r'\/',
+                'OPTION': r'\.',
+                'OPTION ON FUTURE': r'\.\/',
+            }
+        else:
+            prefix = {
+                'FUTURE': '/',
+                'OPTION': '.',
+                'OPTION ON FUTURE': './',
+            }
         if overrides is None:
             overrides = {}
         if product in ['FUTURE', 'OPTION', 'OPTION ON FUTURE']:
@@ -710,26 +717,35 @@ class Parser(DxFeed, ExchangeParser):
             suffix = overrides['suffix'] if overrides.get('suffix') else \
                 exchange_set[payload['exchange']].get('suffix', [''])[0]
             payload['suffix'] = suffix
-            col_suffix = f':{suffix}' if suffix else ''
+            if self.engine:
+                col_suffix = rf'\:{suffix}' if suffix else ''
+            else:
+                col_suffix = f':{suffix}' if suffix else ''
 
             if product == 'FUTURE':
                 if payload['exchange'] != 'EUREX':
-                    maturity_type = '???'
+                    maturity_type = r'[FGHJKMNQUVXZ]\d{2}' if self.engine else '???'
                 else:
-                    maturity_type = '??????'
+                    maturity_type = r'\d{6}' if self.engine else '??????'
                 search_str = f"{prefix[product]}{payload['ticker']}{maturity_type}{col_suffix}"
             elif payload['exchange'] == 'EUREX':
-                maturity_type = exchange_set[payload['exchange']]['maturity']
-                search_str = (
-                    f".{payload['ticker']}{maturity_type}P*{col_suffix},"
-                    f".{payload['ticker']}{maturity_type}C*{col_suffix}"
-                )
+                if self.engine:
+                    search_str = rf"\.{payload['ticker']}\d{{6}}[CP]\d+(\.\d+)?{col_suffix}"
+                else:
+                    search_str = (
+                        f".{payload['ticker']}??????P*{col_suffix},"
+                        f".{payload['ticker']}??????C*{col_suffix}"
+                    )
             else:
                 maturity_type = exchange_set[payload['exchange']]['maturity']
-                search_str = (
-                    f"{prefix[product]}{payload['ticker']}{maturity_type}P*{col_suffix},"
-                    f"{prefix[product]}{payload['ticker']}{maturity_type}C*{col_suffix}"
-                )
+                if self.engine:
+                    maturity_type = r'[FGHJKMNQUVXZ]\d{2}' if maturity_type == '???' else r'\d{6}'
+                    search_str = rf"{prefix[product]}{payload['ticker']}{maturity_type}[CP]\d+(\.\d+)?{col_suffix}"
+                else:
+                    search_str = (
+                        f"{prefix[product]}{payload['ticker']}{maturity_type}P*{col_suffix},"
+                        f"{prefix[product]}{payload['ticker']}{maturity_type}C*{col_suffix}"
+                    )
             payload['maturity_type'] = maturity_type
         elif product == 'CALENDAR':
             payload = {
@@ -742,9 +758,16 @@ class Parser(DxFeed, ExchangeParser):
             suffix = overrides['suffix'] if overrides.get('suffix') else \
                 exchange_set[payload['exchange']].get('suffix', [''])[0]
             payload['suffix'] = suffix
-            col_suffix = f':{suffix}' if suffix else ''
-            search_str = f"=/{payload['ticker']}{maturity_type}{col_suffix}-/{payload['ticker']}{maturity_type}{col_suffix}"
-            first_fut = f"/{payload['ticker']}{maturity_type}{col_suffix}"
+            if self.engine:
+                col_suffix = rf'\:{suffix}' if suffix else ''
+                maturity_type = r'[FGHJKMNQUVXZ]\d{2}' if maturity_type == '???' else r'\d{6}'
+                search_str = rf"\=\/{payload['ticker']}{maturity_type}{col_suffix}-\/{payload['ticker']}{maturity_type}{col_suffix}"
+                first_fut = rf"\/{payload['ticker']}{maturity_type}{col_suffix}"
+            else:
+                col_suffix = f':{suffix}' if suffix else ''
+
+                search_str = f"=/{payload['ticker']}{maturity_type}{col_suffix}-/{payload['ticker']}{maturity_type}{col_suffix}"
+                first_fut = f"/{payload['ticker']}{maturity_type}{col_suffix}"
             payload.update({
                 'first_fut': first_fut
             })
@@ -760,10 +783,17 @@ class Parser(DxFeed, ExchangeParser):
             suffix = overrides['suffix'] if overrides.get('suffix') else \
                 exchange_set[payload['exchange']].get('suffix', [''])[0]
             payload['suffix'] = suffix
-            col_suffix = f':{suffix}' if suffix else ''
-            search_str = f"=/{payload['ticker']}{maturity_type}{col_suffix}-/{payload['second_ticker']}{maturity_type}{col_suffix}"
-            first_fut = f"/{payload['ticker']}{maturity_type}{col_suffix}"
-            second_fut = f"/{payload['second_ticker']}{maturity_type}{col_suffix}"
+            if self.engine:
+                col_suffix = rf'\:{suffix}' if suffix else ''
+                maturity_type = r'[FGHJKMNQUVXZ]\d{2}' if maturity_type == '???' else r'\d{6}'
+                search_str = rf"\=\/{payload['ticker']}{maturity_type}{col_suffix}-\/{payload['second_ticker']}{maturity_type}{col_suffix}"
+                first_fut = rf"/{payload['ticker']}{maturity_type}{col_suffix}"
+                second_fut = rf"/{payload['second_ticker']}{maturity_type}{col_suffix}"
+            else:
+                col_suffix = f':{suffix}' if suffix else ''
+                search_str = f"=/{payload['ticker']}{maturity_type}{col_suffix}-/{payload['second_ticker']}{maturity_type}{col_suffix}"
+                first_fut = f"/{payload['ticker']}{maturity_type}{col_suffix}"
+                second_fut = f"/{payload['second_ticker']}{maturity_type}{col_suffix}"
             payload.update({
                 'first_fut': first_fut,
                 'second_fut': second_fut
@@ -774,7 +804,7 @@ class Parser(DxFeed, ExchangeParser):
                 'ticker': re.match(re_stock, series).group('ticker'),
                 'exchange': re.match(re_stock, series).group('exchange')
             }
-            search_str = f"{payload['ticker']}*"
+            search_str = rf"{payload['ticker']}.*" if self.engine else f"{payload['ticker']}*"
         else:
             search_str = None
             self.logger.error("No exchange defined")
