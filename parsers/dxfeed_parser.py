@@ -690,20 +690,38 @@ class Parser(DxFeed, ExchangeParser):
         re_cal_spread = r"(?P<ticker>\w+)\.(?P<exchange>\w+)(\.[CR]S\/(?P<mat>[FGHJKMNQUVXZ]\d{4})-(?P<scnd_mat>[FGHJKMNQUVXZ]\d{4}))?"
         re_prod_spread = r"(?P<ticker>\w+)-(?P<second_ticker>\w+)\.(?P<exchange>\w+)(\.(?P<mat>[FGHJKMNQUVXZ]\d{4}))?"
 
-        if self.engine:
-            prefix = {
-                'FUTURE': r'\/',
-                'OPTION': r'\.',
-                'OPTION ON FUTURE': r'\.\/',
-            }
-        else:
-            prefix = {
-                'FUTURE': '/',
-                'OPTION': '.',
-                'OPTION ON FUTURE': './',
-            }
-        if overrides is None:
-            overrides = {}
+        db_template = {
+            'FUTURE': r'\/{ticker}{maturity_type}{col_suffix}',
+            'OPTION': r'\.{ticker}{maturity_type}[CP]\d+(\.\d+)?{col_suffix}',
+            'OPTION ON FUTURE': r'\.\/{ticker}{maturity_type}[CP]\d+(\.\d+)?{col_suffix}',
+            'STOCK': r'{ticker}',
+            'CALENDAR': r'\=\/{ticker}{maturity_type}{col_suffix}-\/{ticker}{maturity_type}{col_suffix}',
+            'PRODUCT': r'\=\/{ticker}{maturity_type}{col_suffix}-\/{second_ticker}{maturity_type}{col_suffix}'
+        }
+        ticker = ''
+        second_ticker = ''
+        maturity_type = ''
+        col_suffix = ''
+        http_template = {
+            'FUTURE': '/{ticker}{maturity_type}{col_suffix}',
+            'OPTION': (
+                ".{ticker}{maturity_type}P*{col_suffix},"
+                ".{ticker}{maturity_type}C*{col_suffix}"
+            ),
+            'OPTION ON FUTURE': (
+                "./{ticker}{maturity_type}P*{col_suffix},"
+                "./{ticker}{maturity_type}C*{col_suffix}"
+            ),
+            'STOCK': '{ticker}',
+            'CALENDAR': (
+                "=/{ticker}{maturity_type}{col_suffix}"
+                "-/{ticker}{maturity_type}{col_suffix}"
+            ),
+            'PRODUCT': (
+                "=/{ticker}{maturity_type}{col_suffix}"
+                "-/{second_ticker}{maturity_type}{col_suffix}"
+            )
+        }
         if product in ['FUTURE', 'OPTION', 'OPTION ON FUTURE']:
             payload = {
                 'ticker': re.match(re_fut_opt, series).group('ticker'),
@@ -714,39 +732,6 @@ class Parser(DxFeed, ExchangeParser):
                 payload['ticker'] = overrides['symbolName']
             elif overrides.get('symbolIdentifier/identifier'):
                 payload['ticker'] = overrides['symbolIdentifier/identifier']
-            suffix = overrides['suffix'] if overrides.get('suffix') else \
-                exchange_set[payload['exchange']].get('suffix', [''])[0]
-            payload['suffix'] = suffix
-            if self.engine:
-                col_suffix = rf'\:{suffix}' if suffix else ''
-            else:
-                col_suffix = f':{suffix}' if suffix else ''
-
-            if product == 'FUTURE':
-                if payload['exchange'] != 'EUREX':
-                    maturity_type = r'[FGHJKMNQUVXZ]\d{2}' if self.engine else '???'
-                else:
-                    maturity_type = r'\d{6}' if self.engine else '??????'
-                search_str = f"{prefix[product]}{payload['ticker']}{maturity_type}{col_suffix}"
-            elif payload['exchange'] == 'EUREX':
-                if self.engine:
-                    search_str = rf"\.{payload['ticker']}\d{{6}}[CP]\d+(\.\d+)?{col_suffix}"
-                else:
-                    search_str = (
-                        f".{payload['ticker']}??????P*{col_suffix},"
-                        f".{payload['ticker']}??????C*{col_suffix}"
-                    )
-            else:
-                maturity_type = exchange_set[payload['exchange']]['maturity']
-                if self.engine:
-                    maturity_type = r'[FGHJKMNQUVXZ]\d{2}' if maturity_type == '???' else r'\d{6}'
-                    search_str = rf"{prefix[product]}{payload['ticker']}{maturity_type}[CP]\d+(\.\d+)?{col_suffix}"
-                else:
-                    search_str = (
-                        f"{prefix[product]}{payload['ticker']}{maturity_type}P*{col_suffix},"
-                        f"{prefix[product]}{payload['ticker']}{maturity_type}C*{col_suffix}"
-                    )
-            payload['maturity_type'] = maturity_type
         elif product == 'CALENDAR':
             payload = {
                 'ticker': re.match(re_cal_spread, series).group('ticker'),
@@ -754,24 +739,6 @@ class Parser(DxFeed, ExchangeParser):
                 'maturity': re.match(re_cal_spread, series).group('mat'),
                 'second_maturity': re.match(re_cal_spread, series).group('scnd_mat')
             }
-            maturity_type = exchange_set[payload['exchange']]['maturity']
-            suffix = overrides['suffix'] if overrides.get('suffix') else \
-                exchange_set[payload['exchange']].get('suffix', [''])[0]
-            payload['suffix'] = suffix
-            if self.engine:
-                col_suffix = rf'\:{suffix}' if suffix else ''
-                maturity_type = r'[FGHJKMNQUVXZ]\d{2}' if maturity_type == '???' else r'\d{6}'
-                search_str = rf"\=\/{payload['ticker']}{maturity_type}{col_suffix}-\/{payload['ticker']}{maturity_type}{col_suffix}"
-                first_fut = rf"\/{payload['ticker']}{maturity_type}{col_suffix}"
-            else:
-                col_suffix = f':{suffix}' if suffix else ''
-
-                search_str = f"=/{payload['ticker']}{maturity_type}{col_suffix}-/{payload['ticker']}{maturity_type}{col_suffix}"
-                first_fut = f"/{payload['ticker']}{maturity_type}{col_suffix}"
-            payload.update({
-                'first_fut': first_fut
-            })
-
         elif product == 'PRODUCT':
             payload = {
                 'ticker': re.match(re_prod_spread, series).group('ticker'),
@@ -779,36 +746,100 @@ class Parser(DxFeed, ExchangeParser):
                 'exchange': re.match(re_prod_spread, series).group('exchange'),
                 'maturity': re.match(re_prod_spread, series).group('mat')
             }
-            maturity_type = exchange_set[payload['exchange']]['maturity']
-            suffix = overrides['suffix'] if overrides.get('suffix') else \
-                exchange_set[payload['exchange']].get('suffix', [''])[0]
-            payload['suffix'] = suffix
-            if self.engine:
-                col_suffix = rf'\:{suffix}' if suffix else ''
-                maturity_type = r'[FGHJKMNQUVXZ]\d{2}' if maturity_type == '???' else r'\d{6}'
-                search_str = rf"\=\/{payload['ticker']}{maturity_type}{col_suffix}-\/{payload['second_ticker']}{maturity_type}{col_suffix}"
-                first_fut = rf"/{payload['ticker']}{maturity_type}{col_suffix}"
-                second_fut = rf"/{payload['second_ticker']}{maturity_type}{col_suffix}"
-            else:
-                col_suffix = f':{suffix}' if suffix else ''
-                search_str = f"=/{payload['ticker']}{maturity_type}{col_suffix}-/{payload['second_ticker']}{maturity_type}{col_suffix}"
-                first_fut = f"/{payload['ticker']}{maturity_type}{col_suffix}"
-                second_fut = f"/{payload['second_ticker']}{maturity_type}{col_suffix}"
-            payload.update({
-                'first_fut': first_fut,
-                'second_fut': second_fut
-            })
-
         elif product == 'STOCK':
             payload = {
                 'ticker': re.match(re_stock, series).group('ticker'),
                 'exchange': re.match(re_stock, series).group('exchange')
             }
-            search_str = rf"{payload['ticker']}.*" if self.engine else f"{payload['ticker']}*"
         else:
-            search_str = None
             self.logger.error("No exchange defined")
-            payload = {}
+            payload = {'search_str': None}
+            return payload
+        
+        ticker = payload.get('ticker', '')
+        second_ticker = payload.get('second_ticker', '')
+
+
+        if overrides is None:
+            overrides = {}
+        suffix = overrides['suffix'] if overrides.get('suffix') else \
+            exchange_set[payload['exchange']].get('suffix', [''])[0]
+        payload['suffix'] = suffix
+        if self.engine:
+            col_suffix = rf'\:{suffix}' if suffix else ''
+        else:
+            col_suffix = f':{suffix}' if suffix else ''
+
+        if product == 'FUTURE' and payload['exchange'] == 'EUREX':
+            maturity_type = r'\d{6}' if self.engine else '??????'
+        elif product == 'OPTION' and payload['exchange'] == 'CBOE':
+            maturity_type = r'\d{6}' if self.engine else '??????'
+        else:
+            maturity_type = r'[FGHJKMNQUVXZ]\d{2}' if self.engine else '???'
+
+        if product == 'STOCK':
+            search_str = db_template[product].format(
+                ticker=ticker
+            ) if self.engine else http_template[product].format(
+                ticker=ticker
+            )
+        elif product == 'PRODUCT':
+            search_str = db_template[product].format(
+                ticker=ticker,
+                second_ticker=second_ticker,
+                maturity_type=maturity_type,
+                col_suffix=col_suffix
+            ) if self.engine else http_template[product].format(
+                ticker=ticker,
+                second_ticker=second_ticker,
+                maturity_type=maturity_type,
+                col_suffix=col_suffix
+            )
+            first_fut = db_template['FUTURE'].format(
+                ticker=ticker,
+                maturity_type=maturity_type,
+                col_suffix=col_suffix
+            ) if self.engine else http_template['FUTURE'].format(
+                ticker=ticker,
+                maturity_type=maturity_type,
+                col_suffix=col_suffix
+            )
+            second_fut = db_template['FUTURE'].format(
+                ticker=second_ticker,
+                maturity_type=maturity_type,
+                col_suffix=col_suffix
+            ) if self.engine else http_template['FUTURE'].format(
+                ticker=second_ticker,
+                maturity_type=maturity_type,
+                col_suffix=col_suffix
+            )
+            payload.update({
+                'first_fut': first_fut,
+                'second_fut': second_fut
+            })
+        else:
+            search_str = db_template[product].format(
+                ticker=ticker,
+                maturity_type=maturity_type,
+                col_suffix=col_suffix
+            ) if self.engine else http_template[product].format(
+                ticker=ticker,
+                maturity_type=maturity_type,
+                col_suffix=col_suffix
+            )
+            if product == 'CALENDAR':
+                first_fut = db_template['FUTURE'].format(
+                    ticker=ticker,
+                    maturity_type=maturity_type,
+                    col_suffix=col_suffix
+                ) if self.engine else http_template['FUTURE'].format(
+                    ticker=ticker,
+                    maturity_type=maturity_type,
+                    col_suffix=col_suffix
+                )
+                payload.update({
+                    'first_fut': first_fut
+                })
         payload.update({
             'search_str': search_str
         })
