@@ -685,6 +685,11 @@ class Parser(DxFeed, ExchangeParser):
         return regexp
 
     def __create_search_list(self, series: str, product: str, overrides: dict = None) -> list:
+        ticker = ''
+        second_ticker = ''
+        maturity_type = ''
+        col_suffix = ''
+        
         re_stock = r"(?P<ticker>\w+)\.(?P<exchange>[A-Z]*)"
         re_fut_opt = r"(?P<ticker>\w+)\.(?P<exchange>\w+)(\.(?P<mat>\d{0,2}[FGHJKMNQUVXZ]\d{4}))?"
         re_cal_spread = r"(?P<ticker>\w+)\.(?P<exchange>\w+)(\.[CR]S\/(?P<mat>[FGHJKMNQUVXZ]\d{4})-(?P<scnd_mat>[FGHJKMNQUVXZ]\d{4}))?"
@@ -698,10 +703,6 @@ class Parser(DxFeed, ExchangeParser):
             'CALENDAR': r'\=\/{ticker}{maturity_type}{col_suffix}-\/{ticker}{maturity_type}{col_suffix}',
             'PRODUCT': r'\=\/{ticker}{maturity_type}{col_suffix}-\/{second_ticker}{maturity_type}{col_suffix}'
         }
-        ticker = ''
-        second_ticker = ''
-        maturity_type = ''
-        col_suffix = ''
         http_template = {
             'FUTURE': '/{ticker}{maturity_type}{col_suffix}',
             'OPTION': (
