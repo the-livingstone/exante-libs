@@ -741,6 +741,31 @@ class SpreadExpiration(Instrument):
                 f"{self.expiration.isoformat()}, {self.calendar_type=})"
             )
 
+    def __eq__(self, other):
+        return (
+            self.expiration == other.expiration
+            and (
+                (
+                    self.far_maturity is None
+                    and other.far_maturity is None
+                )
+                or self.far_maturity == other.far_maturity
+            )
+            and self.ticker == other.ticker
+            and self.exchange == other.exchange
+        )
+    
+    def __gt__(self, other: object) -> bool:
+        if self.far_maturity:
+            return (
+                self.expiration > other.expiration
+                or (
+                    self.expiration == other.expiration
+                    and self.far_maturity > other.far_maturity
+                )
+            )
+        else:
+            return self.expiration > other.expiration
 
     @property
     def logger(self):

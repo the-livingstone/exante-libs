@@ -351,7 +351,7 @@ class FutureExpiration(Instrument):
             future: Future,
             expiration_date: Union[str, dt.date, dt.datetime] = None,
             maturity: str = None,
-            payload: dict = None,
+            payload: dict = None
         ):
         self.env = future.env
         self.future = future
@@ -417,6 +417,12 @@ class FutureExpiration(Instrument):
             f"FutureExpiration({self.ticker}.{self.exchange}.{self._date_to_symbolic(self.maturity)}, "
             f"{self.expiration.isoformat()})"
         )
+    
+    def __eq__(self, other: object) -> bool:
+        return (self.expiration == other.expiration and self.maturity == other.maturity)
+    
+    def __gt__(self, other: object) -> bool:
+        return self.expiration > other.expiration
 
     @property
     def logger(self):

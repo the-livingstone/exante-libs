@@ -868,10 +868,19 @@ class OptionExpiration(Instrument):
         )
 
     def __eq__(self, other):
-        if self.expiration == other.expiration and self.ticker == other.ticker and self.exchange == other.exchange:
-            return True
-        else:
-            return False
+        return (
+            self.expiration == other.expiration
+            and self.ticker == other.ticker
+            and self.exchange == other.exchange
+        )
+    
+    def __gt__(self, other: object) -> bool:
+        return (
+            self.expiration > other.expiration 
+            and self.option.week_number >= other.option.week_number
+        )
+
+
 
     @property
     def logger(self):
