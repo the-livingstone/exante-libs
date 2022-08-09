@@ -207,12 +207,6 @@ set_schema = {
     },
     'cprod': {
         'BOND': cdb_schemas.BondSchema,
-        'SPREAD': {
-            'SPREAD': cdb_schemas.SpreadSchema,
-            'CALENDAR_SPREAD': cdb_schemas.CalendarSpreadSchema,
-        },
-        'CALENDAR': sdb_schemas.CalendarSpreadSchema,
-        'PRODUCT': sdb_schemas.SpreadSchema,
         'CFD': cdb_schemas.CfdSchema,
         'FOREX': cdb_schemas.ForexSchema,
         'FUND': cdb_schemas.FundSchema,
@@ -238,10 +232,11 @@ stock_exchange_mapping = {
 def set_instrument_type(
         instrument_type: str = None,
         schema: BaseModel = None,
-        target_dict: dict = None
+        target_dict: dict = None,
+        env: str = 'prod'
     ):
     if target_dict is None:
-        target_dict = set_schema
+        target_dict = set_schema[env]
     if schema:
         instrument_type = None
         for key, val in target_dict.items():
@@ -370,11 +365,11 @@ class Instrument:
         if schema:
             self.schema = schema
             if not instrument_type:
-                self.instrument_type = set_instrument_type(schema=schema)
+                self.instrument_type = set_instrument_type(schema=schema, env=env)
             else:
-                self.instrument_type = set_instrument_type(instrument_type=instrument_type)
+                self.instrument_type = set_instrument_type(instrument_type=instrument_type, env=env)
         elif instrument_type and env:
-            self.instrument_type = set_instrument_type(instrument_type=instrument_type)
+            self.instrument_type = set_instrument_type(instrument_type=instrument_type, env=env)
             if self.instrument_type is InstrumentTypes.SPREAD:
                 if kwargs.get('spread_type') in ['SPREAD', 'CALENDAR_SPREAD']:
                     self.schema: BaseModel = set_schema[env][self.instrument_type.value][kwargs['spread_type']]
