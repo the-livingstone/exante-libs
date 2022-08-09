@@ -111,6 +111,40 @@ def convert_maturity(
             mmy_year += 10
         return f"{mmy_year}-0{mmy_month}" if mmy_month < 10 else f"{mmy_year}-{mmy_month}"
 
+def normalize_date(date_input: Union[str, dt.date, dt.datetime, dict], time: str = None):
+    if isinstance(date_input, dict):
+        if not date_input.get('year') or date_input.get('month') or date_input.get('day'):
+            raise ValueError(f'Bad date dict: {date_input}')
+        date_dict = date_input
+    elif isinstance(date_input, dt.date):
+        date_dict = {
+            'year': date_input.year,
+            'month': date_input.month,
+            'day': date_input.day
+        }
+    elif isinstance(date_input, dt.datetime):
+        date_dict = {
+            'year': date_input.year,
+            'month': date_input.month,
+            'day': date_input.day,
+            'time': date_input.strftime('%H:%M:%S')
+        }
+    elif isinstance(date_input, str):
+        try:
+            date_obj = dt.date.fromisoformat(date_input.split('T')[0])
+        except Exception:
+            raise ValueError(f'Bad date string: {date_input}')
+        date_dict = {
+            'year': date_obj.year,
+            'month': date_obj.month,
+            'day': date_obj.day
+        }
+    if time and re.match(r'\d{2}\:\d{2}\:\d{2}', time):
+        date_dict.update({'time': time})
+    return date_dict
+
+        
+
 # Some helping pieces
 class UnderlyingId(BaseModel):
     type: str = Field(
@@ -157,6 +191,7 @@ class FutureContract(BaseModel):
     expiry: SdbDate
     maturityDate: SdbDate
     maturity: str
+    exchangeLink: Optional[str]
     identifiers: Optional[Identifiers]
     isAbstract: bool = Field(
         False,
@@ -167,22 +202,10 @@ class FutureContract(BaseModel):
     def format_future_name_and_maturity(cls, values):
         values['maturity'] = convert_maturity(values.get('maturity'))
         values['name'] = values['maturity']
-        if isinstance(values.get('expiry'), str) and values['expiry']: # not empty str
-            if values['expiry'][-1] == 'Z':
-                values['expiry'] = values['expiry'][:-1]
-            if 'T' in values['expiry']:
-                # it's ok to raise ValueError here
-                values['expiry'] = dt.datetime.fromisoformat(values['expiry'])
-            else:
-                values['expiry'] = dt.date.fromisoformat(values['expiry'])
-        exp = {
-            'day': values['expiry'].day,
-            'month': values['expiry'].month,
-            'year': values['expiry'].year
-        }
-        if isinstance(values['expiry'], dt.datetime):
-            exp.update({'time': values['expiry'].strftime('%H:%M:%S')})
-        values['expiry'] = exp
+        if values.get('perpetual_'):
+            values['expiry'] = normalize_date(dt.date(2100, 1, 1), values.get('time_'))
+        else:
+            values['expiry'] = normalize_date(values.get('expiry'), values.get('time_'))
         values['maturityDate'] = {
             'year': values['maturity'].split('-')[0],
             'month': values['maturity'].split('-')[1]
@@ -204,6 +227,7 @@ class FutureContract(BaseModel):
             values['identifiers'] = identifiers
         return values
 
+
 class ParsedFutureSchema(BaseModel):
     ticker: str
     exchange: str
@@ -216,6 +240,7 @@ class ParsedFutureSchema(BaseModel):
     currency: Optional[str]
     country: Optional[str]
     MIC: Optional[str]
+    exchangeLink: Optional[str]
     isPhysicalDelivery: Optional[bool]
     underlyingId: Optional[UnderlyingId]
     base_ric_: Optional[str]
