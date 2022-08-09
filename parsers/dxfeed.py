@@ -171,6 +171,7 @@ class DxFeed:
             result = list(search_df.to_records())
         else:
             result = search_df.to_dict('records')
+            result = [{key: val for key, val in x.items() if val is not None} for x in result]
         return result
 
 
