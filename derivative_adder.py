@@ -9,8 +9,7 @@ from enum import Enum
 from sqlalchemy.engine import Engine
 from libs.editor_interactive import EditInstrument
 from libs.async_symboldb import SymbolDB
-from libs.parsers import DxfeedParser as DF
-from libs.parsers import DscopeParser as DS
+from libs.parsers import DxfeedParser as DF, FtxParser as Ftx, DscopeParser as DS
 from libs.async_sdb_additional import SDBAdditional, Months, SdbLists
 from libs.sdb_instruments import (
     NoInstrumentError,
@@ -230,7 +229,7 @@ class DerivativeAdder:
         # as CBOE options are constantly balanced between gateways, CBOE folder doesn't have default routes,
         # so a little bit of help here by hardcoding DXFEED as main feed provider
         if self.exchange == 'CBOE':
-            prov_name, main_feed_source = next(
+            main_prov_name, main_feed_source = next(
                 x for x
                 in asyncio.run(
                     self.sdbadds.get_list_from_sdb(
@@ -238,6 +237,7 @@ class DerivativeAdder:
                     )
                 ) if x[0] == 'DXFEED'
             )
+            feed_sources = [main_feed_source]
         else:
             if parent:
                 compiled_parent = asyncio.run(
@@ -250,13 +250,14 @@ class DerivativeAdder:
                 )
             else:
                 compiled_parent = instrument.compiled_parent
-            main_feed_source = next((
+            feed_sources = [
                 x['gateway']['providerId'] for x
                 in compiled_parent.get('feeds', {}).get('gateways', [])
                 if x.get('gateway', {}).get('enabled')
                 and x.get('gatewayId') not in http_feeds
-            ), None)
-            prov_name = next((
+            ]
+            main_feed_source = feed_sources[0] if feed_sources else None
+            main_prov_name = next((
                 x[0] for x
                 in asyncio.run(
                     self.sdbadds.get_list_from_sdb(
@@ -266,19 +267,11 @@ class DerivativeAdder:
                 if x[1] == main_feed_source
             ), None)
         payload = {
-            'provider': prov_name,
+            'provider': main_prov_name,
             'prov_id': main_feed_source,
             'instrument_type': self.sdbadds.tree_df.loc[
                 self.sdbadds.tree_df['_id'] == instrument.instrument['path'][1]
             ].iloc[0]['name'],
-            # 'instrument_type': next(
-            #     (
-            #         x['name'] for x
-            #         in instrument.tree
-            #         if x['_id'] == instrument.instrument['path'][1]
-            #     ),
-            #     asyncio.run(self.sdb.get(instrument.instrument['path'][1]))['name']
-            # ),
             'exchange_id': instrument.instrument.get(
                 'exchangeId',
                 instrument.compiled_parent.get('exchangeId')
@@ -288,19 +281,28 @@ class DerivativeAdder:
             payload.update({
                 'ticker': instrument.instrument.get('ticker')
             })
-
-        for provider, properties in provider_specific.items():
-            overrides_to_get = properties + common
-            payload[provider] = instrument.get_provider_overrides(
-                provider,
+        for source in feed_sources:
+            prov_name = next((
+                x[0] for x
+                in asyncio.run(
+                    self.sdbadds.get_list_from_sdb(
+                        SdbLists.FEED_PROVIDERS.value
+                    )
+                )
+                if x[1] == source
+            ), None)
+            payload.setdefault(prov_name, {})
+            overrides_to_get = common + provider_specific.get(prov_name, [])
+            payload[prov_name] = instrument.get_provider_overrides(
+                prov_name,
                 *overrides_to_get,
                 compiled=True,
                 silent=True
             )
             if not parent:
-                payload[provider].update(
+                payload[prov_name].update(
                     instrument.get_provider_overrides(
-                        provider,
+                        prov_name,
                         *overrides_to_get,
                         compiled=False,
                         silent=True
@@ -364,6 +366,8 @@ class DerivativeAdder:
             parser = DF(engine=self.db_engine)
         elif feed_provider == 'REUTERS':
             parser = DS()
+        elif feed_provider == 'FTX':
+            parser = Ftx()
         else:
             raise RuntimeError(f'Unknown feed provider: {feed_provider}')
         overrides_to_parse = {
@@ -492,12 +496,15 @@ class DerivativeAdder:
 
     def add_expirations(
             self,
-            target: Option,
+            target: Union[Future, Option, Spread],
             parsed_contracts: list[dict],
             skip_if_exists: bool = True
         ):
         for contract in parsed_contracts:
-            target.add_payload(contract, skip_if_exists=skip_if_exists)
+            try:
+                target.add_payload(contract, skip_if_exists=skip_if_exists)
+            except Exception as e:
+                self.logger.warning(f"{e.__class__.__name__}: expiration {contract['name']} is not added")
 
     def validate_series(
             self, 
@@ -711,7 +718,7 @@ class DerivativeAdder:
                     return [additional_path]
                 else:
                     return []
-            elif isinstance(MAPPING[self.derivative_type][self.exchange], list):
+            elif isinstance(MAPPING[self.derivative_type].get(self.exchange), list):
                 return MAPPING[self.derivative_type][self.exchange]
             else:
                 return []
@@ -803,7 +810,7 @@ class DerivativeAdder:
             instrument=asyncio.run(self.sdb.get(destination_path[-1])),
             env=self.env,
             sdb=self.sdb,
-            sdbadds=self.sdbadds
+            sdbadds=self.sdbadds,
         )
         overrides = self.get_overrides(parent, parent=True)
         overrides.update({'ticker': self.ticker})
@@ -852,6 +859,8 @@ class DerivativeAdder:
             parser = DS()
         elif feed_provider == 'DXFEED':
             parser = DF(engine=self.db_engine)
+        elif feed_provider == 'FTX':
+            parser = Ftx()
         else:
             self.logger.error(f'Cannot set new ticker for {feed_provider} feed provider, sorry')
             return None
