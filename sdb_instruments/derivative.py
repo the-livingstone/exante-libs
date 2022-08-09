@@ -582,14 +582,14 @@ class Derivative(Instrument):
             ), None)
         else:
             same_name = self.tree_df.loc[self.tree_df['name'] == self.ticker]
-            same_parent = same_name[
-                same_name.apply(
-                    lambda x: self.parent_folder_id in x['path'],
-                    axis=1
-                )
-            ]
-            if not same_parent.empty:
-                instr_id = same_parent.iloc[0]['_id']
+            if not same_name.empty:
+                same_parent = same_name[
+                    same_name.apply(
+                        lambda x: self.parent_folder_id in x['path'],
+                        axis=1
+                    )
+                ]
+                instr_id = same_parent.iloc[0]['_id'] if not same_parent.empty else None
             else:
                 instr_id = None
             # instr_id = next((
