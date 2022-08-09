@@ -339,7 +339,8 @@ class SymbolDB:
         data = {key: val for key, val in data.items() if key not in strip_fields}
         return data
 
-    def date_to_sdb(self, dto: dt.date, include_day: bool = True) -> dict:
+    @staticmethod
+    def date_to_sdb(dto: dt.date, include_day: bool = True) -> dict:
         """
         method to convert date to valid symboldb format
         :param dto: datetime object
@@ -354,7 +355,8 @@ class SymbolDB:
             r = {'month': dto.month, 'year': dto.year}
         return r
 
-    def sdb_to_date(self, date_dict) -> dt.date:
+    @staticmethod
+    def sdb_to_date(date_dict: dict) -> dt.date:
         """
         takes dictionary with Month, Year, Day keys and returns
         datetime object
