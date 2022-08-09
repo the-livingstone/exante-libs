@@ -1685,14 +1685,6 @@ class Account(BaseModel):
         if scheme not in [x[1] for x in ValidationLists.exec_schemes]:
             raise ValueError(f'{scheme} is not valid execution scheme id')
         return scheme
-    
-    @root_validator
-    def check_trading_route(cls, values: dict):
-        fb = values.get('allow_fallback')
-        scheme = values.get('execution_scheme_id')
-        if fb is not None and scheme is None:
-            raise ValueError('Execution scheme is required')
-        return values
 
 class Accounts(BaseModel):
     account_id: str = Field(
@@ -1798,34 +1790,6 @@ class AssetInformation(BaseModel):
             raise ValueError(f'{asset_class} is invalid asset class')
         return asset_class
 
-class AssetInformations(BaseModel):
-    asset_class: Optional[str] = Field(
-        alias='assetClass',
-        title='assetClass'
-    )
-    asset_sub_class: Optional[str] = Field(
-        alias='assetSubClass',
-        title='assetSubClass'
-    )
-    cfi: Optional[str] = Field(
-        alias='CFI',
-        title='CFI'
-    )
-    sector: Optional[str] = Field(
-        alias='sector',
-        title='sector'
-    )
-
-class Legs(BaseModel):
-    exante_id: str = Field(
-        alias='exanteId',
-        title='exanteId'
-    )
-    quantity: int = Field(
-        alias='quantity',
-        title='quantity'
-    )
-
 class FatalRejects(BaseModel):
     code: str = Field(
         alias='code',
@@ -1906,10 +1870,6 @@ class CommonSchema(BaseModel):
         alias='isTrading',
         title='isTrading'
     )
-    asset_informations: Optional[AssetInformations] = Field(
-        alias='assetInformations',
-        title='assetInformations'
-    )
     search_weight: Optional[int] = Field(
         alias='searchWeight',
         title='searchWeight'
@@ -1925,11 +1885,6 @@ class CommonSchema(BaseModel):
     ticker: Optional[str] = Field(
         alias='ticker',
         title='ticker'
-    )
-    market_data_group: Optional[str] = Field(
-        alias='marketDataGroup',
-        title='marketDataGroup',
-        opts_list=ValidationLists.market_data_groups
     )
     shortname: str = Field(
         alias='shortName',
@@ -1960,10 +1915,10 @@ class CommonSchema(BaseModel):
         title='currency',
         opts_list=[x[1] for x in ValidationLists.currencies]
     )
-    country: Optional[str] = Field(
-        alias='country',
-        title='country',
-        opts_list=[(x, y) for x, y in ValidationLists.countries.items()]
+    base_currency: Optional[str] = Field(
+        alias='currency',
+        title='currency',
+        opts_list=[x[1] for x in ValidationLists.currencies]
     )
     feeds: Optional[Feeds] = Field(
         alias='feeds',
@@ -1994,7 +1949,7 @@ class CommonSchema(BaseModel):
         alias='minOrderQuantity',
         title='minOrderQuantity'
     )
-    min_lot_size: Optional[int] = Field(
+    min_lot_size: Optional[float] = Field(
         alias='minLotSize',
         title='minLotSize'
     )
@@ -2002,7 +1957,7 @@ class CommonSchema(BaseModel):
         alias='lotSize',
         title='lotSize'
     )
-    contract_multiplier: float = Field(
+    contract_multiplier: Optional[float] = Field(
         alias='contractMultiplier',
         title='contractMultiplier'
     )
@@ -2034,10 +1989,6 @@ class CommonSchema(BaseModel):
         alias='isLiquid',
         title='isLiquid'
     )
-    is_replace_enabled: Optional[bool] = Field(
-        alias='isReplaceEnabled',
-        title='isReplaceEnabled'
-    )
     has_negative_price: Optional[bool] = Field(
         alias='hasNegativePrice',
         title='hasNegativePrice'
@@ -2046,14 +1997,9 @@ class CommonSchema(BaseModel):
         alias='isRobotTradable',
         title='isRobotTradable'
     )
-    quote_filters: QuoteFilters = Field(
+    quote_filters: Optional[QuoteFilters] = Field(
         alias='quoteFilters',
         title='quoteFilters'
-    )
-    available_order_types: Optional[List[str]] = Field(
-        alias='availableOrderTypes',
-        title='availableOrderTypes',
-        opts_list=ValidationLists.order_types
     )
     aodt: Aodt = Field(
         alias='availableOrderDurationTypes',
@@ -2100,17 +2046,9 @@ class CommonSchema(BaseModel):
         alias='underlying',
         title='underlying'
     )
-    synthetic_feed: Optional[SyntheticFeed] = Field(
-        alias='syntheticFeed',
-        title='syntheticFeed'
-    )
     symbol_id: Optional[str] = Field(
         alias='symbolId',
         title='symbolId'
-    )
-    quote_lifetime: Optional[int] = Field(
-        alias='quoteLifetime',
-        title='quoteLifetime'
     )
     delay_feed_depth: Optional[int] = Field(
         alias='delayFeedDepth',
@@ -2121,22 +2059,10 @@ class CommonSchema(BaseModel):
         title='orderAutomation'
     )
 
-    @validator('market_data_group', allow_reuse=True)
-    def check_market_data_group(cls, item):
-        if item not in ValidationLists.market_data_groups:
-            raise ValueError(f'{item} is invalid market_data_group')
-        return item
-
-    @validator('currency', allow_reuse=True)
+    @validator('currency', 'base_currency', allow_reuse=True)
     def check_currency(cls, item):
         if item not in [x[1] for x in ValidationLists.currencies]:
             raise ValueError(f'{item} is invalid currency')
-        return item
-
-    @validator('country', allow_reuse=True)
-    def check_country(cls, item):
-        if item not in ValidationLists.countries.values():
-            raise ValueError(f'{item} is invalid country')
         return item
 
     @validator('schedule_id', allow_reuse=True)
@@ -2144,13 +2070,6 @@ class CommonSchema(BaseModel):
         if item not in [x[1] for x in ValidationLists.schedules]:
             raise ValueError(f'{item} is invalid schedule id')
         return item
-
-    @validator('available_order_types', allow_reuse=True)
-    def check_available_order_types(cls, items):
-        for item in items:
-            if item not in ValidationLists.order_types:
-                raise ValueError(f'{item} is invalid order type')
-        return items
 
     @validator('exchange_id', allow_reuse=True)
     def check_exchange_id(cls, item):
@@ -2204,6 +2123,11 @@ class BondSchema(CommonSchema):
     coupon_rate: float = Field(
         alias='couponRate',
         title='couponRate'
+    )
+    country: Optional[str] = Field(
+        alias='country',
+        title='country',
+        opts_list=[(x, y) for x, y in ValidationLists.countries.items()]
     )
     payment_frequency: int = Field(
         alias='paymentFrequency',
@@ -2437,6 +2361,12 @@ class BondSchema(CommonSchema):
             raise ValueError(f'{item} is invalid sink schedule amount type')
         return item
 
+    @validator('country', allow_reuse=True)
+    def check_country(cls, item):
+        if item not in ValidationLists.countries.values():
+            raise ValueError(f'{item} is invalid country')
+        return item
+
 class UnderlyingId(BaseModel):
     instrument_type: str = Field(
         'symbolId',
@@ -2623,9 +2553,13 @@ class FutureSchema(CommonSchema):
         alias='type',
         title='type'
     )
-    maturity_date: SdbDate = Field(
+    maturity_date: Optional[SdbDate] = Field(
         alias='maturityDate',
         title='maturityDate'
+    )
+    maturity_name: Optional[str] = Field(
+        alias='maturityName',
+        title='maturityName'
     )
     last_trading: Optional[SdbDate] = Field(
         alias='lastTrading',
@@ -2635,61 +2569,19 @@ class FutureSchema(CommonSchema):
         alias='lastAvailable',
         title='lastAvailable'
     )
+
     underlying_id: Optional[UnderlyingId] = Field(
         alias='underlyingId',
         title='underlyingId'
     )
-    legs: Optional[List[Legs]] = Field(
-        alias='legs',
-        title='legs'
-    )
-    is_physical_delivery: bool = Field(
-        alias='isPhysicalDelivery',
-        title='isPhysicalDelivery'
-    )
-    maturity_name: Optional[str] = Field(
-        alias='maturityName',
-        title='maturityName'
-    )
-    is_settle_pnl_on_expiry_date: Optional[bool] = Field(
-        alias='isSettlePNLOnExpiryDate',
-        title='isSettlePNLOnExpiryDate'
-    )
-    portfolio_margin: Optional[bool] = Field(
-        alias='portfolioMargin',
-        title='portfolioMargin'
-    )
-    first_notice_day: Optional[SdbDate] = Field(
-        alias='firstNoticeDay',
-        title='firstNoticeDay'
-    )
-    commodity_details: Optional[str] = Field(
-        alias='commodityDetails',
-        title='commodityDetails'
-    )
-    commodity_base: Optional[str] = Field(
-        alias='commodityBase',
-        title='commodityBase',
-        opts_list=ValidationLists.commodity_bases
-    )
-    near_maturity_date: Optional[SdbDate] = Field(
-        alias='nearMaturityDate',
-        title='nearMaturityDate'
-    )
-    far_maturity_date: Optional[SdbDate] = Field(
-        alias='farMaturityDate',
-        title='farMaturityDate'
-    )
-    show_as_fund: Optional[bool] = Field(
-        alias='showAsFund',
-        title='showAsFund'
-    )
+    @root_validator(allow_reuse=True)
+    def check_maturity(cls, values):
+        if values.get('maturity_name'):
+            return values
+        if values.get('expiry') and values.get('maturity_date'):
+            return values
+        raise ValueError('Either maturityName or both of expiry and maturityDate should be set')
 
-    @validator('commodity_base', allow_reuse=True)
-    def check_commodity_base(cls, item):
-        if item not in ValidationLists.commodity_bases:
-            raise ValueError(f'{item} is invalid commodity base')
-        return item
 
 class StrikePrice(BaseModel):
     strike_price: float = Field(
@@ -2884,137 +2776,6 @@ class OptionSchema(CommonSchema):
                 raise ValueError('Last available is less than expiry')
         return items
 
-class CalendarSpreadSchema(CommonSchema):
-
-    sym_type: str = Field(
-        'CALENDAR_SPREAD',
-        const=True,
-        alias='type',
-        title='type'
-    )
-    spread_type: str = Field(
-        alias='spreadType',
-        title='spreadType',
-        opts_list=ValidationLists.spread_types
-    )
-    maturity_date: SdbDate = Field(
-        alias='maturityDate',
-        title='maturityDate'
-    )
-    near_maturity_date: SdbDate = Field(
-        alias='nearMaturityDate',
-        title='nearMaturityDate'
-    )
-    far_maturity_date: SdbDate = Field(
-        alias='farMaturityDate',
-        title='farMaturityDate'
-    )
-    legs: List[Legs] = Field(
-        alias='legs',
-        title='legs'
-    )
-    send_long_fix_originator: Optional[bool] = Field(
-        alias='sendLongFixOriginator',
-        title='sendLongFixOriginator'
-    )
-    country: Optional[str] = Field(
-        alias='country',
-        title='country'
-    )
-    apply_execution_scheme: Optional[bool] = Field(
-        alias='applyExecutionScheme',
-        title='applyExecutionScheme'
-    )
-    is_physical_delivery: bool = Field(
-        alias='isPhysicalDelivery',
-        title='isPhysicalDelivery'
-    )
-    stop_trigger_policy: Optional[str] = Field(
-        alias='stopTriggerPolicy',
-        title='stopTriggerPolicy'
-    )
-    leg_gap: int = Field(
-        alias='legGap',
-        title='legGap'
-    )
-    first_notice_day: Optional[SdbDate] = Field(
-        alias='firstNoticeDay',
-        title='firstNoticeDay'
-    )
-    quote_monitor_schedule_id: Optional[str] = Field(
-        alias='quoteMonitorScheduleId',
-        title='quoteMonitorScheduleId'
-    )
-    trade_price_multiplier: Optional[int] = Field(
-        alias='tradePriceMultiplier',
-        title='tradePriceMultiplier'
-    )
-
-    @validator('spread_type', allow_reuse=True)
-    def check_spread_type(cls, item):
-        if item not in ValidationLists.spread_types:
-            raise ValueError(f'{item} is invalid spread type')
-        return item
-
-class SpreadSchema(CommonSchema):
-
-    sym_type: str = Field(
-        'FUTURE',
-        const=True,
-        alias='type',
-        title='type'
-    )
-    maturity_date: SdbDate = Field(
-        alias='maturityDate',
-        title='maturityDate'
-    )
-    legs: List[Legs] = Field(
-        alias='legs',
-        title='legs'
-    )
-    send_long_fix_originator: Optional[bool] = Field(
-        alias='sendLongFixOriginator',
-        title='sendLongFixOriginator'
-    )
-    country: Optional[str] = Field(
-        alias='country',
-        title='country'
-    )
-    apply_execution_scheme: Optional[bool] = Field(
-        alias='applyExecutionScheme',
-        title='applyExecutionScheme'
-    )
-    is_physical_delivery: bool = Field(
-        alias='isPhysicalDelivery',
-        title='isPhysicalDelivery'
-    )
-    stop_trigger_policy: Optional[str] = Field(
-        alias='stopTriggerPolicy',
-        title='stopTriggerPolicy'
-    )
-    first_notice_day: Optional[SdbDate] = Field(
-        alias='firstNoticeDay',
-        title='firstNoticeDay'
-    )
-    quote_monitor_schedule_id: Optional[str] = Field(
-        alias='quoteMonitorScheduleId',
-        title='quoteMonitorScheduleId'
-    )
-    trade_price_multiplier: Optional[int] = Field(
-        alias='tradePriceMultiplier',
-        title='tradePriceMultiplier'
-    )
-
-class SyntheticSettings(BaseModel):
-    sources: List[SyntheticSources] = Field(
-        alias='sources',
-        title='sources'
-    )
-    enable_market_depth: bool = Field(
-        alias='enableMarketDepth',
-        title='enableMarketDepth'
-    )
-
 class FxSpotSchema(CommonSchema):
 
     sym_type: str = Field(
@@ -3039,14 +2800,6 @@ class FxSpotSchema(CommonSchema):
     inverted_pnl: Optional[bool] = Field(
         alias='invertedPnL',
         title='invertedPnL'
-    )
-    execution_monitoring: Optional[ExecutionMonitoring] = Field(
-        alias='executionMonitoring',
-        title='executionMonitoring'
-    )
-    synthetic_settings: Optional[Dict] = Field(
-        alias='syntheticSettings',
-        title='syntheticSettings'
     )
 
     @validator('base_currency', allow_reuse=True)
@@ -3079,10 +2832,6 @@ class ForexSchema(CommonSchema):
     tree_path_override: Optional[List[str]] = Field(
         alias='treePathOverride',
         title='treePathOverride'
-    )
-    is_physical_delivery: Optional[bool] = Field(
-        alias='isPhysicalDelivery',
-        title='isPhysicalDelivery'
     )
     use_in_crossrates: Optional[bool] = Field(
         alias='useInCrossrates',
