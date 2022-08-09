@@ -35,8 +35,6 @@ class EditInstrument:
         'FX_SPOT': cdb_schemas.FxSpotSchema,
         'FOREX': cdb_schemas.ForexSchema,
         'OPTION': cdb_schemas.OptionSchema,
-        'SPREAD': cdb_schemas.SpreadSchema,
-        'CALENDAR_SPREAD': cdb_schemas.CalendarSpreadSchema,
         'CFD': cdb_schemas.CfdSchema,
         'FUND': cdb_schemas.FundSchema
     }
@@ -533,9 +531,7 @@ class EditInstrument:
                 compiled_template = self.sdbadds.lua_compile(self.modify_copy, test_string, compiled=True)
                 
                 if compiled_template and new_input:
-                    return {
-                        '$template': test_string
-                    }
+                    return test_string
                 elif compiled_template:
                     message = f'Current template compilation: {compiled_template}' + '\n'
                 else:
@@ -546,13 +542,9 @@ class EditInstrument:
                     message, header=test_string, delimiter=None
                 )
                 if input_string is None:
-                    return {
-                        '$template': old_value
-                    }
+                    return old_value
                 elif input_string == 'Done':
-                    return {
-                        '$template': test_string
-                    }
+                    return test_string
                 else:
                     test_string = input_string
         
@@ -754,11 +746,8 @@ class EditInstrument:
         elif field_title == 'sdbdate':
             action = 'set_sdb_date'
         elif field_title == '$template':
-            if not old_value.get('$template'):
-                old_value.update({
-                    '$template': ''
-                })
-            old_value = old_value['$template']
+            if isinstance(old_value, Exception):
+                old_value = self.__get_part[path[:-2]][path[-2]].setdefault('$template', '')
             action = 'set_template'
         elif field_title == 'underlyingid':
             action = 'set_underlying'
