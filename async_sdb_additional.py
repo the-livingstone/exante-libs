@@ -1418,7 +1418,7 @@ class SDBAdditional:
                 compiled_template = template_func(compiled_instrument)
                 return compiled_template
             except KeyError as kerr:
-                match = re.search(rf'instrument[\w\.]*{kerr}', template_func)
+                match = re.search(rf'instrument[\w\.]*{kerr}', template)
                 if match:
                     missing_key_path = template_func[match.span()[0]:match.span()[1]].split('.')[1:]
                     helping_dict = compiled_instrument
@@ -1714,9 +1714,9 @@ class SDBAdditional:
                         readable_name = f'{parent[:-1].capitalize()} overrides'
                     
                     elif parent == 'providerOverrides':
-                        readable_name = next(
+                        readable_name = next((
                             x[0] for x in always_transform['providerId'] if key == x[1]
-                        )
+                        ), '<<no name>>')
                     else:
                         readable_name = key
                     elements.append([
