@@ -10,3 +10,4 @@ from .exchange_parser_base import (
 )
 from .dscope_parser import Parser as DscopeParser
 from .dxfeed_parser import Parser as DxfeedParser
+from .ftx_parser import Parser as FtxParser
