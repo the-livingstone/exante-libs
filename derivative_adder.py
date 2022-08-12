@@ -810,7 +810,7 @@ class DerivativeAdder:
             instrument=asyncio.run(self.sdb.get(destination_path[-1])),
             env=self.env,
             sdb=self.sdb,
-            sdbadds=self.sdbadds,
+            sdbadds=self.sdbadds
         )
         overrides = self.get_overrides(parent, parent=True)
         overrides.update({'ticker': self.ticker})
