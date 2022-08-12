@@ -122,10 +122,18 @@ class SDBAdditional:
     execution_to_route = []
     tree_df = pd.DataFrame()
 
-    def __init__(self, env: str = 'prod', nocache: bool = False) -> None:
+    def __init__(
+            self,
+            env: str = 'prod',
+            sdb: SymbolDB = None,
+            bo: BackOffice = None,
+            nocache: bool = False,
+            test: bool = False
+        ) -> None:
         self.env = env
-        self.sdb = SymbolDB(env)
-        self.bo = BackOffice(env)
+        self.sdb = sdb if isinstance(sdb, SymbolDB) else SymbolDB(env, test=test)
+        self.bo = bo if isinstance(bo, BackOffice) else BackOffice(env)
+        self.test = False
         self.nocache = nocache
         self.current_dir = os.getcwd()
         if self.current_dir == '/':
@@ -401,11 +409,12 @@ class SDBAdditional:
             else:
                 parents.append(heirs[selected])
     
-    async def build_inheritance(self, payload, include_self=False) -> dict:
+    async def build_inheritance(self, payload, include_self=False, cache: list[dict] = None) -> dict:
         """
         build the full dict of instrument with all inherited properties
         :param payload: uuid or symbolId or dict of instrument or full list of instruments to be compiled
         :param include_self: include the given instrument properties or build parent folder properties
+        :param cache: already downloaded list of instruments to avoid unnecessary http_requests 
         :return: full dict of inherited properties
         """
 
@@ -473,27 +482,44 @@ class SDBAdditional:
         ]
         parents = []
         if isinstance(payload, str):
-            instrument = await self.sdb.get(payload)
-            if not instrument.get('_id'):
-                return {}
+            if cache and payload in [x['_id'] for x in cache if x.get('_id')]:
+                instrument = deepcopy(
+                    next(x for x in cache if x['_id'] == payload)
+                )
+            else:
+                instrument = await self.sdb.get(payload)
+                if not instrument.get('_id'):
+                    return {}
         elif isinstance(payload, dict): # build inheritance for a given dict
             instrument = deepcopy(payload)
-        elif isinstance(payload, list) \
-            and len(payload) \
-            and isinstance(payload[0], dict):
-
+        elif isinstance(payload, list) and len(payload) and all(isinstance(x, dict) for x in payload):
             with_ids = sorted([x for x in payload if x.get('_id')], key=lambda p: len(p['path']))
             without_ids = sorted([x for x in payload if not x.get('_id')], key=lambda p: len(p['path']))
             parents = deepcopy(with_ids + without_ids)
-            instrument = parents[-1]
+            instrument = parents.pop(-1)
         else:
             return {}
         if not parents and not instrument.get('_id'):
-            gather = [self.sdb.get(x) for x in instrument['path']]
-            parents = [x for x in await asyncio.gather(*gather) if x]
+            gather = []
+            for p in instrument['path']:
+                if cache and p in [x['_id'] for x in cache if x.get('_id')]:
+                    parents.append(
+                        next(x for x in cache if x['_id'] == p)
+                    )
+                else:
+                    gather.append(self.sdb.get(p))
+            if gather:
+                parents.extend(await asyncio.gather(*gather))
             parents = sorted(parents, key=lambda p: len(p['path']))
         elif not parents:
-            parents = await self.sdb.get_parents(instrument['_id'])
+            if cache and all(
+                p in [x['_id'] for x in cache] for p
+                in instrument['path'][:-1]
+            ):
+                parents = [x for x in cache if x['_id'] in instrument['path'][:-1]]
+                parents.append(instrument)
+            else:
+                parents = await self.sdb.get_parents(instrument['_id'])
             parents = sorted(parents, key=lambda p: len(p['path']))[:-1]
         if include_self:
             exclude = []
@@ -504,9 +530,9 @@ class SDBAdditional:
         compilation = {key: val for key, val in compilation.items() if key not in exclude}
         return compilation
 
-    def compile_expiry_time(self, instrument, compiled=False):
+    def compile_expiry_time(self, instrument, compiled=False, cache=None):
         if not compiled:
-            compiled_instrument = asyncio.run(self.build_inheritance(instrument, include_self=True))
+            compiled_instrument = asyncio.run(self.build_inheritance(instrument, include_self=True, cache=None))
         else:
             compiled_instrument = instrument
         schedule_tz = next((
@@ -530,12 +556,12 @@ class SDBAdditional:
                 )
             )
         )
-        expiry_time = (localized_exp - localized_exp.utcoffset()).strftime('%Y-%m-%dT%XZ')
+        expiry_time = (localized_exp - localized_exp.utcoffset()).strftime('%Y-%m-%dT%X.000Z')
         return expiry_time
 
-    def compile_symbol_id(self, instrument, compiled=False, strike: str = 'B*'):
+    def compile_symbol_id(self, instrument, compiled=False, strike: str = 'B*', cache=None):
         if not compiled:
-            compiled_instrument = asyncio.run(self.build_inheritance(instrument, include_self=True))
+            compiled_instrument = asyncio.run(self.build_inheritance(instrument, include_self=True, cache=cache))
         else:
             compiled_instrument = instrument
         exchange_name = next((
@@ -1391,9 +1417,9 @@ class SDBAdditional:
 
         return tuple(result)
     
-    def lua_compile(self, instrument: dict, template: str, compiled=False):
+    def lua_compile(self, instrument: dict, template: str, compiled=False, cache=None):
         if not compiled:
-            compiled_instrument = asyncio.run(self.build_inheritance(instrument, include_self=True))
+            compiled_instrument = asyncio.run(self.build_inheritance(instrument, include_self=True, cache=cache))
         else:
             compiled_instrument = deepcopy(instrument)
         if isinstance(instrument, str) and not self.sdb.is_uuid(instrument):
