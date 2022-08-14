@@ -46,8 +46,13 @@ class SymbolDB:
     months = ('', 'F', 'G', 'H', 'J', 'K', 'M',
               'N', 'Q', 'U', 'V', 'X', 'Z')
 
-    def __init__(self, env='prod', user=None, password=None,
-                 credentials=('%s/credentials.json' % os.path.expanduser('~'))):
+    def __init__(
+            self,
+            env='prod',
+            user=None,
+            password=None,
+            credentials=('%s/credentials.json' % os.path.expanduser('~')),
+        ):
         """
         class init method
         :param env: environment
@@ -663,14 +668,33 @@ class SymbolDB:
         if not fields:
             fields = []
         default_fields = ['_id', 'name', 'isAbstract']
+        fields.extend(default_fields)
         if tree:
-            relevant = [x for x in tree if _id in x['path'][:-1]]
-            return [x['_id'] for x in relevant]
+            if recursive:
+                return [
+                    {
+                        key: x.get(key) for key
+                        in x
+                        if key in fields
+                    } for x
+                    in tree
+                    if _id in x['path'][:-1]
+                ]
+            else:
+                return [
+                    {
+                        key: x.get(key) for key
+                        in x
+                        if key in fields
+                    } for x
+                    in tree
+                    if len(x['path']) > 1
+                    and x['path'][-2] == _id
+                ]
+
         heirs = []
-        fields_str = ''
-        if not full:
-            default_fields += [x for x in fields if x not in ['_id', 'name', 'isAbstract']]
-            fields_str = ','.join(default_fields)
+        fields = list(set(fields))
+        fields_str = ','.join(fields) if not full else ''
         params = {
             'parentId': _id,
             'fields': fields_str,
