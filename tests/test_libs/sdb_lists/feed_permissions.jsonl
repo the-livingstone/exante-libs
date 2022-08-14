@@ -1,0 +1,14 @@
+{"simpleSubscription": true, "retailFeedPrice": "11.9", "professionalFeedPrice": "54.6", "marketDataGroup": "EUREX", "feedPermission": "delayed", "currency": "EUR"}
+{"simpleSubscription": true, "retailFeedPrice": "10.0", "professionalFeedPrice": "105.0", "marketDataGroup": "CME", "feedPermission": "delayed", "currency": "USD"}
+{"simpleSubscription": true, "retailFeedPrice": "10.0", "professionalFeedPrice": "105.0", "marketDataGroup": "COMEX", "feedPermission": "delayed", "currency": "USD"}
+{"simpleSubscription": true, "retailFeedPrice": "10.0", "professionalFeedPrice": "105.0", "marketDataGroup": "NYMEX", "feedPermission": "delayed", "currency": "USD"}
+{"simpleSubscription": true, "retailFeedPrice": "10.0", "professionalFeedPrice": "105.0", "marketDataGroup": "CBOT", "feedPermission": "delayed", "currency": "USD"}
+{"simpleSubscription": false, "retailFeedPrice": "4.9", "professionalFeedPrice": "64.9", "marketDataGroup": "XETRA", "feedPermission": "delayed", "currency": "EUR"}
+{"simpleSubscription": false, "retailFeedPrice": "110.0", "professionalFeedPrice": "110.0", "marketDataGroup": "ICE EU Commodities", "feedPermission": "delayed", "currency": "USD"}
+{"simpleSubscription": false, "retailFeedPrice": "125.0", "professionalFeedPrice": "125.0", "marketDataGroup": "ICE EU Financials", "feedPermission": "delayed", "currency": "USD"}
+{"simpleSubscription": false, "retailFeedPrice": "110.0", "professionalFeedPrice": "110.0", "marketDataGroup": "ICE US", "feedPermission": "delayed", "currency": "USD"}
+{"simpleSubscription": false, "retailFeedPrice": "1.73", "professionalFeedPrice": "70.25", "marketDataGroup": "EURONEXT", "feedPermission": "delayed", "currency": "EUR"}
+{"simpleSubscription": false, "retailFeedPrice": "1.73", "professionalFeedPrice": "17.6", "marketDataGroup": "EURONEXT Equity and Index Derivatives", "feedPermission": "delayed", "currency": "EUR"}
+{"simpleSubscription": false, "retailFeedPrice": "1.73", "professionalFeedPrice": "7.2", "marketDataGroup": "Euronext Commodity Derivatives", "feedPermission": "delayed", "currency": "EUR"}
+{"simpleSubscription": false, "retailFeedPrice": "6.0", "professionalFeedPrice": "25.0", "marketDataGroup": "SIX", "feedPermission": "delayed", "currency": "CHF"}
+{"simpleSubscription": false, "retailFeedPrice": "1.25", "professionalFeedPrice": "31.5", "marketDataGroup": "CBOE", "feedPermission": "delayed", "currency": "USD"}
