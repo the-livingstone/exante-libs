@@ -560,10 +560,14 @@ class SDBAdditional:
         return expiry_time
 
     def compile_symbol_id(self, instrument, compiled=False, strike: str = 'B*', cache=None):
+        if isinstance(instrument, dict) and instrument.get('isAbstract'):
+            return None
         if not compiled:
             compiled_instrument = asyncio.run(self.build_inheritance(instrument, include_self=True, cache=cache))
         else:
             compiled_instrument = instrument
+        if compiled_instrument.get('isAbstract'):
+            return None
         exchange_name = next((
             x[0] for x
             in asyncio.run(self.get_list_from_sdb(SdbLists.EXCHANGES.value))
@@ -968,8 +972,9 @@ class SDBAdditional:
                 SdbLists.CURRENCIES: self.sdb_currencies,
                 SdbLists.SECTIONS: self.sdb_sections
             }
-            for uc in update_cache:
-                await self.__write_cache(uc, sdb_lists[uc])
+            if not self.test:
+                for uc in update_cache:
+                    await self.__write_cache(uc, sdb_lists[uc])
         
         await check_cache()
         if list_name == SdbLists.CURRENCIES.value:
@@ -1142,7 +1147,8 @@ class SDBAdditional:
                                 if x[1] == acc['accountId']
                             )
                         })
-        await self.__write_cache(SdbLists.EXECUTION_TO_ROUTE, self.execution_to_route)
+        if not self.test:
+            await self.__write_cache(SdbLists.EXECUTION_TO_ROUTE, self.execution_to_route)
         return self.execution_to_route
 
     async def load_feed_permissions(self):
@@ -1163,7 +1169,8 @@ class SDBAdditional:
         if all_conditions(self.feed_perms):
             return self.feed_perms
         self.feed_perms = self.bo.feed_permissions_get()
-        await self.__write_cache(SdbLists.FEED_PERMISSIONS, self.feed_perms)
+        if not self.test:
+            await self.__write_cache(SdbLists.FEED_PERMISSIONS, self.feed_perms)
         return self.feed_perms
 
     async def load_stock_rics(self):
@@ -1240,7 +1247,8 @@ class SDBAdditional:
                 if x[1] > suffix_count[0][1] / 3
             ]
         self.stock_rics = exchanges
-        await self.__write_cache(SdbLists.STOCK_RICS, self.stock_rics, env='prod')
+        if not self.test:
+            await self.__write_cache(SdbLists.STOCK_RICS, self.stock_rics, env='prod')
         return self.stock_rics
 
     async def load_tree(self, fields: list = [], reload_cache: bool = False, return_dict=True) -> list:
@@ -1344,7 +1352,8 @@ class SDBAdditional:
             inplace=True
         )
         self.tree_df = loaded_tree_df
-        await self.__write_cache(SdbLists.TREE, self.tree_df)
+        if not self.test:
+            await self.__write_cache(SdbLists.TREE, self.tree_df)
         if return_dict:
             self.tree = loaded_tree_df.to_dict('records')
             return self.tree
@@ -1398,7 +1407,8 @@ class SDBAdditional:
                 result.update(self.used_symbols)
                 if not self.used_symbols:
                     raise RuntimeError(f'Cannot get used symbols for {self.env}!')
-        await self.__write_cache(SdbLists.USED_SYMBOLS, self.used_symbols)
+        if not self.test:
+            await self.__write_cache(SdbLists.USED_SYMBOLS, self.used_symbols)
         if consider_demo:
             if all_conditions(self.used_symbols_demo) and not reload_cache:
                 result.update(self.used_symbols_demo)
@@ -1413,7 +1423,8 @@ class SDBAdditional:
                     result.update(self.used_symbols_demo)
                     if not self.used_symbols_demo:
                         raise RuntimeError(f'Cannot get used symbols for demo!')
-            await self.__write_cache(SdbLists.USED_SYMBOLS_DEMO, self.used_symbols_demo)
+            if not self.test:
+                await self.__write_cache(SdbLists.USED_SYMBOLS_DEMO, self.used_symbols_demo)
 
         return tuple(result)
     
