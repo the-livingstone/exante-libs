@@ -131,7 +131,7 @@ class SDBAdditional:
             test: bool = False
         ) -> None:
         self.env = env
-        self.sdb = sdb if isinstance(sdb, SymbolDB) else SymbolDB(env, test=test)
+        self.sdb = sdb if isinstance(sdb, SymbolDB) else SymbolDB(env)
         self.bo = bo if isinstance(bo, BackOffice) else BackOffice(env)
         self.test = False
         self.nocache = nocache
