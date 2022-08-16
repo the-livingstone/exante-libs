@@ -115,6 +115,7 @@ def format_maturity(input_data):
 class Balancer:
     def __init__(self, feed_type: str, blacklist = None, env: str = 'prod'):
         self.mon = Monitor(env)
+        self.demo_mon = Monitor('demo')
         self.sdbadds = SDBAdditional(env)
         self.raw_feeds_info = dict()
         if isinstance(blacklist, str):
@@ -187,11 +188,22 @@ class Balancer:
                 regexp = re.compile(r'gw-feed-delay-(?!cboe)')
         else:
             regexp = re.compile(r'gw-feed')
-        result = {
-            x['name'].split('@')[0].replace('-proc1', ''): x['name'] for x
-            in self.mon.all_modules()
-            if re.match(regexp, x['name'])
-        }
+        if not demo:
+            result = {
+                x['name'].split('@')[0].replace('-proc1', ''): x['name'] for x
+                in self.mon.all_modules()
+                if re.match(regexp, x['name'])
+            }
+        else:
+            result = {
+                x['name'].split('@')[0].replace('-proc1', ''): x['name'] for x
+                in self.demo_mon.all_modules()
+                if re.match(regexp, x['name'])
+            }
+
+        if not result:
+            raise RuntimeError("Cannot parse feed gateways")
+
         return result
 
     def least_busy_feed(self, demo=False):
@@ -219,7 +231,7 @@ class Balancer:
         for module in self.demo_feeds:
             try:
                 load = int(
-                    self.mon.indicator_status(
+                    self.demo_mon.indicator_status(
                         module['monitor_module'],
                         path
                     )['state']['description'].split()[0]
