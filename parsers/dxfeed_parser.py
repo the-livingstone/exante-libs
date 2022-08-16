@@ -648,12 +648,12 @@ class Parser(DxFeed, ExchangeParser):
         ticker = search_list.get('ticker')
         exchange = search_list.get('exchange')
         maturity = search_list.get('maturity')
-        maturity_type = search_list.get('maturity_type')
+        search_str = search_list.get('search_str', '')
         second_ticker = search_list.get('second_ticker')
         second_maturity = search_list.get('second_maturity')
         suffix = search_list.get('suffix')
 
-        if None in [ticker, product, maturity_type]:
+        if None in [ticker, product]:
             return None
         
 
@@ -678,9 +678,9 @@ class Parser(DxFeed, ExchangeParser):
             if exchange == 'EUREX' and 'OPTION' in product:
                 prefix=prefix_dict['OPTION']
             if maturity is None:
-                maturity=r'\d{6}' if maturity_type == '??????' \
-                    else r'[FGHJKMNQUVXZ]\d{4}' if maturity_type == '????' \
-                    else r'[FGHJKMNQUVXZ]\d{2}' if maturity_type == '???' else ''
+                maturity=r'\d{6}' if re.search(r'\?\?\?\?\?\?', search_str) \
+                    else r'[FGHJKMNQUVXZ]\d{4}' if re.search(r'\?\?\?\?\?', search_str) \
+                    else r'[FGHJKMNQUVXZ]\d{2}' if re.search(r'\?\?\?', search_str) else ''
             regexp = rf'{prefix}{ticker}{maturity}{strikes}{col_suffix}$'
         return regexp
 
