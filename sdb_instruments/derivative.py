@@ -583,6 +583,7 @@ class Derivative(Instrument):
                 in self.parent_tree
                 if self.parent_folder_id in x['path']
                 and x['name'] == self.ticker
+                and x['isAbstract']
             ), None)
         elif self.instrument_type is InstrumentTypes.OPTION \
             and self.parent_tree:
@@ -591,9 +592,13 @@ class Derivative(Instrument):
                 x for x
                 in self.parent_tree
                 if x['name'] == self.ticker
+                and x['isAbstract']
             ), None)
         else:
-            same_name = self.tree_df.loc[self.tree_df['name'] == self.ticker]
+            same_name = self.tree_df.loc[
+                (self.tree_df['name'] == self.ticker)
+                & (self.tree_df['isAbstract'] == True)
+            ]
             if not same_name.empty:
                 same_parent = same_name[
                     same_name.apply(
