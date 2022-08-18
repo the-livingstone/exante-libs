@@ -30,8 +30,8 @@ class Months(Enum):
 class SymbolDB:
     def __init__(
             self,
-            tree_path = f'{os.getcwd()}/libs/test_libs/selected_tree.json',
-            sdb_lists_path = f'{os.getcwd()}/libs/test_libs/sdb_lists'
+            tree_path = f'{os.getcwd()}/libs/tests/test_libs/selected_tree.json',
+            sdb_lists_path = f'{os.getcwd()}/libs/tests/test_libs/sdb_lists'
         ) -> None:
         self.tree_path = tree_path
         self.sdb_lists_path = sdb_lists_path
@@ -191,18 +191,23 @@ class SymbolDB:
         ):
         if not fields:
             fields = []
-        default_fields = ['_id', 'name', 'isAbstract']
+        default_fields = ['_id', 'name', 'isAbstract', 'path']
         fields.extend(default_fields)
         if recursive:
-            return [
-                {
-                    key: x.get(key) for key
-                    in x
-                    if key in fields
-                } for x
+            heirs = [
+                x for x
                 in self.tree
                 if _id in x['path'][:-1]
             ]
+        else:
+            heirs = [
+                x for x
+                in self.tree
+                if len(x['path']) > 1
+                and x['path'][-2] == _id
+            ]
+        if full:
+            return heirs
         else:
             return [
                 {
@@ -210,9 +215,7 @@ class SymbolDB:
                     in x
                     if key in fields
                 } for x
-                in self.tree
-                if len(x['path']) > 1
-                and x['path'][-2] == _id
+                in heirs
             ]
 
     async def get_parents(self, _id, fields: list = None) -> list[dict]:

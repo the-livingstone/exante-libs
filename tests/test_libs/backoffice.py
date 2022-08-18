@@ -7,7 +7,7 @@ class BackOffice:
     def __init__(
             self,
             env='prod',
-            sdb_lists_path = f'{os.getcwd()}/libs/test_libs/sdb_lists'
+            sdb_lists_path = f'{os.getcwd()}/libs/tests/test_libs/sdb_lists'
         ) -> None:
         self.env = env
         self.sdb_lists_path = sdb_lists_path
