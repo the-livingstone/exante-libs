@@ -1008,6 +1008,11 @@ class OptionExpiration(Instrument):
             in self.instrument['strikePrices']['PUT']
             if self._generate_exante_id(x['strikePrice'], 'PUT') in self.used_symbols
         ]
+        cant_touch_this['CALL'] = [
+            x for x 
+            in self.instrument['strikePrices']['CALL']
+            if self._generate_exante_id(x['strikePrice'], 'CALL') in self.used_symbols
+        ]
         for side in ['PUT', 'CALL']:
             # can't_touch - new_strikes
             preserved[side] = {
