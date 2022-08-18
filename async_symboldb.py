@@ -667,19 +667,24 @@ class SymbolDB:
         """
         if not fields:
             fields = []
-        default_fields = ['_id', 'name', 'isAbstract']
+        default_fields = ['_id', 'name', 'isAbstract', 'path']
         fields.extend(default_fields)
         if tree:
             if recursive:
-                return [
-                    {
-                        key: x.get(key) for key
-                        in x
-                        if key in fields
-                    } for x
+                heirs = [
+                    x for x
                     in tree
                     if _id in x['path'][:-1]
                 ]
+            else:
+                heirs = [
+                    x for x
+                    in tree
+                    if len(x['path']) > 1
+                    and x['path'][-2] == _id
+                ]
+            if full:
+                return heirs
             else:
                 return [
                     {
@@ -687,9 +692,7 @@ class SymbolDB:
                         in x
                         if key in fields
                     } for x
-                    in tree
-                    if len(x['path']) > 1
-                    and x['path'][-2] == _id
+                    in heirs
                 ]
 
         heirs = []
