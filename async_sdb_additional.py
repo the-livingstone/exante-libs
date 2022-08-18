@@ -131,9 +131,9 @@ class SDBAdditional:
             test: bool = False
         ) -> None:
         self.env = env
-        self.sdb = sdb if isinstance(sdb, SymbolDB) else SymbolDB(env)
-        self.bo = bo if isinstance(bo, BackOffice) else BackOffice(env)
-        self.test = False
+        self.sdb = sdb if sdb else SymbolDB(env)
+        self.bo = bo if bo else BackOffice(env)
+        self.test = test
         self.nocache = nocache
         self.current_dir = os.getcwd()
         if self.current_dir == '/':
@@ -496,7 +496,7 @@ class SDBAdditional:
             with_ids = sorted([x for x in payload if x.get('_id')], key=lambda p: len(p['path']))
             without_ids = sorted([x for x in payload if not x.get('_id')], key=lambda p: len(p['path']))
             parents = deepcopy(with_ids + without_ids)
-            instrument = parents.pop(-1)
+            instrument = parents[-1]
         else:
             return {}
         if not parents and not instrument.get('_id'):
