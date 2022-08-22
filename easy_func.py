@@ -19,3 +19,12 @@ def execute_async_tasks(tasks: list)->list:
     loop.run_until_complete(results)
     loop.close()
     return results.result()
+
+
+def count_dict_nested_values(dictionary: dict, counter: int=0) -> int:
+	for mykey in dictionary:
+		if isinstance(dictionary[mykey], dict):
+			counter = count_dict_nested_values(dictionary[mykey], counter)
+		else:
+			counter += 1
+	return counter
