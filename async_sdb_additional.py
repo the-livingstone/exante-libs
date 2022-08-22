@@ -136,6 +136,7 @@ class SDBAdditional:
         self.test = test
         self.nocache = nocache
         self.current_dir = os.getcwd()
+        self.instrument_cache = []
         if self.current_dir == '/':
             self.current_dir = '/home/instsupport/airflow/dags'
         self.current_dir = self.current_dir if self.current_dir[-1] != '/' else self.current_dir[:-1]
@@ -266,6 +267,26 @@ class SDBAdditional:
                 payload.to_json('/'.join(file_path), 'records', lines=True)
         except Exception as e:
             self.logger.warning(f"{e.__class__.__name__}: {list_name.value} cache is not updated")
+
+    def __update_instrument_cache(self, instruments: list[dict]):
+        for instr in instruments:
+            if not all(
+                (key in instr) for key
+                in ['_id', '_rev', '_creationTime', '_lastUpdateTime']
+            ): # not a strict verification that instrument is fully loaded (not selected fields only)
+                continue
+            existing_num = next((
+                num for num, x
+                in enumerate(self.instrument_cache)
+                if x['_id'] == instr['_id']
+            ), None)
+            # new
+            if existing_num is None:
+                self.instrument_cache.append(deepcopy(instr))
+            # existing
+            else:
+                self.instrument_cache[existing_num] = deepcopy(instr)
+
 
     def browse_folders(self, input_path: list = None, message: str = None, only_folders: bool = False, allowed: list = None) -> str:
         """
@@ -472,6 +493,16 @@ class SDBAdditional:
             # if there is nothing to inherit take child settings
             else:
                 return copy(child)
+
+        if cache is None:
+            cache = []
+        cache.extend([
+            x for x
+            in self.instrument_cache
+            if x['_id'] not in [
+                y['_id'] for y in cache
+            ]
+        ])
         compilation = {}
         exclude = [
             '_rev',
@@ -490,6 +521,7 @@ class SDBAdditional:
                 instrument = await self.sdb.get(payload)
                 if not instrument.get('_id'):
                     return {}
+                self.__update_instrument_cache([instrument])
         elif isinstance(payload, dict): # build inheritance for a given dict
             instrument = deepcopy(payload)
         elif isinstance(payload, list) and len(payload) and all(isinstance(x, dict) for x in payload):
@@ -504,12 +536,14 @@ class SDBAdditional:
             for p in instrument['path']:
                 if cache and p in [x['_id'] for x in cache if x.get('_id')]:
                     parents.append(
-                        next(x for x in cache if x['_id'] == p)
+                        next(deepcopy(x) for x in cache if x['_id'] == p)
                     )
                 else:
                     gather.append(self.sdb.get(p))
             if gather:
-                parents.extend(await asyncio.gather(*gather))
+                loaded = await asyncio.gather(*gather)
+                self.__update_instrument_cache(loaded)
+                parents.extend(loaded)
             parents = sorted(parents, key=lambda p: len(p['path']))
         elif not parents:
             if cache and all(
@@ -520,6 +554,7 @@ class SDBAdditional:
                 parents.append(instrument)
             else:
                 parents = await self.sdb.get_parents(instrument['_id'])
+                self.__update_instrument_cache(parents)
             parents = sorted(parents, key=lambda p: len(p['path']))[:-1]
         if include_self:
             exclude = []
@@ -532,7 +567,7 @@ class SDBAdditional:
 
     def compile_expiry_time(self, instrument, compiled=False, cache=None):
         if not compiled:
-            compiled_instrument = asyncio.run(self.build_inheritance(instrument, include_self=True, cache=None))
+            compiled_instrument = asyncio.run(self.build_inheritance(instrument, include_self=True, cache=cache))
         else:
             compiled_instrument = instrument
         schedule_tz = next((
@@ -665,6 +700,7 @@ class SDBAdditional:
         if self.sdb.is_uuid(search_string):
             instrument = asyncio.run(self.sdb.get(search_string))
             if instrument:
+                self.__update_instrument_cache([instrument])
                 symbol_id = self.compile_symbol_id(instrument)
                 sym_uuid = {
                     'columns': [
@@ -863,29 +899,58 @@ class SDBAdditional:
         
         return dict_part
 
-    async def get_instrument_type(self, symbol) -> str:
+    async def get_instrument_type(self, symbol, cache: list[dict] = None) -> str:
         """
         Method to get the inherited instrument type
         :param uuid: uuid or symbolId of instrument
         :return: instrument type
         """
+
+        if cache is None:
+            cache = []
+        cache.extend([
+            x for x
+            in self.instrument_cache
+            if x['_id'] not in [
+                y['_id'] for y in cache
+            ]
+        ])
         if isinstance(symbol, str):
             if self.sdb.is_uuid(symbol):
                 parents = await self.sdb.get_parents(symbol)
             instrument = await self.sdb.get(symbol)
-            parents = await self.sdb.get_parents(instrument['_id']) if instrument else []
+            if not instrument:
+                return None
+            self.__update_instrument_cache(instrument)
         elif isinstance(symbol, dict) and symbol.get('path'):
-            if symbol.get('type'):
-                return symbol['type']
-            if symbol.get('id'):
-                parents = await self.sdb.get_parents(symbol['_id'])
-            else:
-                get_parents = []
-                for p in symbol['path']:
-                    get_parents.append(self.sdb.get(p))
-                parents = list(await asyncio.gather(*get_parents))
+            instrument = symbol
         else:
             return None
+
+        if instrument.get('type'):
+            return instrument['type']
+        if instrument.get('_id'):
+            if cache and all(
+                p in [x['_id'] for x in cache] for p
+                in instrument['path'][:-1]
+            ):
+                parents = [x for x in cache if x['_id'] in instrument['path'][:-1]]
+            else:
+                parents = await self.sdb.get_parents(instrument['_id'])
+                self.__update_instrument_cache(parents)
+        else:
+            gather = []
+            for p in instrument['path']:
+                if cache and p in [x['_id'] for x in cache if x.get('_id')]:
+                    parents.append(
+                        next(deepcopy(x) for x in cache if x['_id'] == p)
+                    )
+                else:
+                    gather.append(self.sdb.get(p))
+            if gather:
+                loaded = await asyncio.gather(*gather)
+                self.__update_instrument_cache(loaded)
+                parents.extend(loaded)
         sym_type = next((
             x['type'] for x
             in reversed(sorted(parents, key=lambda x: len(x['path'])))            
