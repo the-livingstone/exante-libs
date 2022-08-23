@@ -9,8 +9,8 @@ class NoInstrumentError(Exception):
 class NoExchangeError(Exception):
     """Common exception for problems with Series"""
     pass
-from .instrument import Instrument, InstrumentTypes, InitThemAll, set_schema
-from .derivative import Derivative, get_uuid_by_path
+from .instrument import Instrument, InstrumentTypes, InitThemAll, set_schema, get_uuid_by_path
+from .derivative import Balancer, Derivative
 from .option import Option, OptionExpiration, WeeklyCommon
 from .future import Future, FutureExpiration
 # from .spread import Spread, SpreadExpiration

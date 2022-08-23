@@ -266,7 +266,7 @@ def get_uuid_by_path(input_path: list, df: DataFrame) -> str:
                         axis=1
                     )
     ]
-    while candidates.shape[0] > 1:
+    while len(path) > 0:
         parent_name = path.pop(-1)
         # same procedure as for candidates: filter by name and then by path length
         possible_parents = df[df['name'] == parent_name]
@@ -287,6 +287,7 @@ def get_uuid_by_path(input_path: list, df: DataFrame) -> str:
         return candidates.iloc[0]['_id']
     else:
         return None
+
 
 class Instrument:
     def __init__(
