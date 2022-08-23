@@ -916,12 +916,17 @@ class SDBAdditional:
             ]
         ])
         if isinstance(symbol, str):
-            if self.sdb.is_uuid(symbol):
-                parents = await self.sdb.get_parents(symbol)
-            instrument = await self.sdb.get(symbol)
+            instrument = next(
+                (
+                    x for x
+                    in cache
+                    if x['_id'] == symbol
+                ),
+                await self.sdb.get(symbol)
+            )
             if not instrument:
                 return None
-            self.__update_instrument_cache(instrument)
+            self.__update_instrument_cache([instrument])
         elif isinstance(symbol, dict) and symbol.get('path'):
             instrument = symbol
         else:
