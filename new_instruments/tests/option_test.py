@@ -122,17 +122,19 @@ def test_find_parent_folder_id():
         sdbadds,
         tree_df
     )
-    mes_folder = sdb.get(mes_folder_id)
-    spx_folder = sdb.get(spx_folder_id)
-    aa_folder = sdb.get(aa_folder_id)
+    aapl_folder = asyncio.run(sdb.get(aapl_folder_id))
+    mes_folder = asyncio.run(sdb.get(mes_folder_id))
+    spx_folder = asyncio.run(sdb.get(spx_folder_id))
+    aa_folder = asyncio.run(sdb.get(aa_folder_id))
 
     assert mes_folder['name'] == 'CME'
     assert spx_folder['name'] == 'CBOE'
     assert aa_folder['name'] == 'CBOE'
+    assert aapl_folder['name'] == 'CBOE'
     assert mes_option_type == 'OPTION ON FUTURE'
     assert spx_option_type == 'OPTION'
     assert aa_option_type == 'OPTION'
-
+    assert aapl_option_type == 'OPTION'
 
 
 # get existing series
