@@ -1173,50 +1173,101 @@ class SDBAdditional:
             self.execution_to_route: list = await self.__load_cache(SdbLists.EXECUTION_TO_ROUTE)
         if all_conditions(self.execution_to_route):
             return self.execution_to_route
+
+        self.execution_to_route = []
         tree = await self.load_tree(fields=['brokers'])
-        for symbol in tree:
-            if not symbol.get('brokers') or not symbol['brokers'].get('accounts', []):
-                continue
-            for acc in symbol['brokers']['accounts']:
-                if not acc['account'].get('executionSchemeId'):
-                    continue
-                if acc['account']['executionSchemeId'] not in [
-                    x['_id'] for x in self.execution_to_route
-                ]:
-                    item = {
-                        '_id': acc['account']['executionSchemeId'],
-                        'name': next(
-                            x[0] for x
-                            in await self.get_list_from_sdb(SdbLists.EXECSCHEMES.value)
-                            if x[1] == acc['account']['executionSchemeId']
-                        ),
-                        'routes': [
-                            {
-                                '_id': acc['accountId'],
-                                'name': next(
-                                    x[0] for x
-                                    in await self.get_list_from_sdb(SdbLists.ACCOUNTS.value)
-                                    if x[1] == acc['accountId']
-                                )
-                            }
-                        ]
-                    }
-                    self.execution_to_route.append(item)
-                else:
-                    routes = next(
-                        y['routes'] for y
-                        in self.execution_to_route
-                        if y['_id'] == acc['account']['executionSchemeId']
-                    )
-                    if acc['accountId'] not in [x['_id'] for x in routes]:
-                        routes.append({
-                            '_id': acc['accountId'],
-                            'name': next(
-                                x[0] for x
-                                in await self.get_list_from_sdb(SdbLists.ACCOUNTS.value)
-                                if x[1] == acc['accountId']
-                            )
-                        })
+        symbols = [x for x in tree if x.get('brokers')]
+        accounts = [
+            acc for symbol
+            in tree
+            if symbol['brokers'] is not None
+            for acc in symbol['brokers'].get('accounts', [])
+            if acc['account'].get('executionSchemeId')
+        ]
+        wo_scheme = [
+            acc for symbol
+            in tree
+            if symbol['brokers'] is not None
+            for acc in symbol['brokers'].get('accounts', [])
+            if not acc['account'].get('executionSchemeId')
+        ]
+        always_wo_scheme = {
+            x['accountId'] for x
+            in wo_scheme
+            if len([
+                acc for acc
+                in accounts
+                if acc['accountId'] == x['accountId'] 
+            ]) < 10 # usually it should be zero BUT SOMETIMES
+        }
+        for scheme in await self.get_list_from_sdb(SdbLists.EXECSCHEMES.value):
+            using_accounts = {
+                x['accountId'] for x
+                in accounts
+                if x['account']['executionSchemeId'] == scheme[1]
+            }
+            item = (
+                scheme[0],
+                scheme[1],
+                [
+                    next(x for x in self.sdb_accs if x['_id'] == acc) for acc
+                    in using_accounts
+                ]
+            )
+            self.execution_to_route.append(item)
+        self.execution_to_route.append((
+            None,
+            None,
+            [
+                next(x for x in self.sdb_accs if x['_id'] == acc) for acc
+                in always_wo_scheme
+            ]
+
+        ))
+
+        # for symbol in tree:
+        #     if not symbol.get('brokers') or not symbol['brokers'].get('accounts', []):
+        #         continue
+        #     for acc in symbol['brokers']['accounts']:
+        #         if not acc['account'].get('executionSchemeId'):
+        #             continue
+        #         if acc['account']['executionSchemeId'] not in [
+        #             x['_id'] for x in self.execution_to_route
+        #         ]:
+        #             item = {
+        #                 '_id': acc['account']['executionSchemeId'],
+        #                 'name': next(
+        #                     x[0] for x
+        #                     in await self.get_list_from_sdb(SdbLists.EXECSCHEMES.value)
+        #                     if x[1] == acc['account']['executionSchemeId']
+        #                 ),
+        #                 'routes': [
+        #                     {
+        #                         '_id': acc['accountId'],
+        #                         'name': next(
+        #                             x[0] for x
+        #                             in await self.get_list_from_sdb(SdbLists.ACCOUNTS.value)
+        #                             if x[1] == acc['accountId']
+        #                         )
+        #                     }
+        #                 ]
+        #             }
+        #             self.execution_to_route.append(item)
+        #         else:
+        #             routes = next(
+        #                 y['routes'] for y
+        #                 in self.execution_to_route
+        #                 if y['_id'] == acc['account']['executionSchemeId']
+        #             )
+        #             if acc['accountId'] not in [x['_id'] for x in routes]:
+        #                 routes.append({
+        #                     '_id': acc['accountId'],
+        #                     'name': next(
+        #                         x[0] for x
+        #                         in await self.get_list_from_sdb(SdbLists.ACCOUNTS.value)
+        #                         if x[1] == acc['accountId']
+        #                     )
+        #                 })
         if not self.test:
             await self.__write_cache(SdbLists.EXECUTION_TO_ROUTE, self.execution_to_route)
         return self.execution_to_route
