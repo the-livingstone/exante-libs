@@ -540,34 +540,70 @@ class ValidationLists:
         '\u00c5land Islands': 'AX'
     }
     sdbadds = SDBAdditional()
-    accounts = asyncio.run(
-        sdbadds.get_list_from_sdb(SdbLists.ACCOUNTS.value, id_only=False)
-    )
-    gateways = asyncio.run(
-        sdbadds.get_list_from_sdb(SdbLists.GATEWAYS.value, id_only=False)
-    )
-    broker_providers = asyncio.run(
-        sdbadds.get_list_from_sdb(SdbLists.BROKER_PROVIDERS.value)
-    )
-    feed_providers = asyncio.run(
-        sdbadds.get_list_from_sdb(SdbLists.FEED_PROVIDERS.value)
-    )
-    currencies = asyncio.run(
-        sdbadds.get_list_from_sdb(SdbLists.CURRENCIES.value)
-    )
-    exchanges = asyncio.run(
-        sdbadds.get_list_from_sdb(SdbLists.EXCHANGES.value, id_only=False)
-    )
-    exec_schemes = asyncio.run(
-        sdbadds.get_list_from_sdb(SdbLists.EXECSCHEMES.value)
-    )
-    sections = asyncio.run(
-        sdbadds.get_list_from_sdb(SdbLists.SECTIONS.value, id_only=False)
-    )
-    market_data_groups = [x['marketDataGroup'] for x in asyncio.run(sdbadds.load_feed_permissions())]
-    schedules = asyncio.run(
-        sdbadds.get_list_from_sdb(SdbLists.SCHEDULES.value)
-    )
+    tasks = [
+        sdbadds.get_list_from_sdb(SdbLists.ACCOUNTS.value, id_only=False),
+        sdbadds.get_list_from_sdb(SdbLists.GATEWAYS.value, id_only=False),
+        sdbadds.get_list_from_sdb(SdbLists.BROKER_PROVIDERS.value),
+        sdbadds.get_list_from_sdb(SdbLists.FEED_PROVIDERS.value),
+        sdbadds.get_list_from_sdb(SdbLists.CURRENCIES.value),
+        sdbadds.get_list_from_sdb(SdbLists.EXCHANGES.value, id_only=False),
+        sdbadds.get_list_from_sdb(SdbLists.EXECSCHEMES.value),
+        sdbadds.get_list_from_sdb(SdbLists.SECTIONS.value, id_only=False),
+        sdbadds.get_list_from_sdb(SdbLists.SCHEDULES.value),
+        sdbadds.load_execution_to_route(),
+        sdbadds.load_feed_permissions()
+    ]
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    results = asyncio.gather(*tasks)
+    loop.run_until_complete(results)
+    loop.close()
+    (
+        accounts,
+        gateways,
+        broker_providers,
+        feed_providers,
+        currencies,
+        exchanges,
+        exec_schemes,
+        sections,
+        schedules,
+        exec_to_route,
+        feed_perms
+    ) = results.result()
+
+
+    # accounts = asyncio.run(
+    #     sdbadds.get_list_from_sdb(SdbLists.ACCOUNTS.value, id_only=False)
+    # )
+    # gateways = asyncio.run(
+    #     sdbadds.get_list_from_sdb(SdbLists.GATEWAYS.value, id_only=False)
+    # )
+    # broker_providers = asyncio.run(
+    #     sdbadds.get_list_from_sdb(SdbLists.BROKER_PROVIDERS.value)
+    # )
+    # feed_providers = asyncio.run(
+    #     sdbadds.get_list_from_sdb(SdbLists.FEED_PROVIDERS.value)
+    # )
+    # currencies = asyncio.run(
+    #     sdbadds.get_list_from_sdb(SdbLists.CURRENCIES.value)
+    # )
+    # exchanges = asyncio.run(
+    #     sdbadds.get_list_from_sdb(SdbLists.EXCHANGES.value, id_only=False)
+    # )
+    # exec_schemes = asyncio.run(
+    #     sdbadds.get_list_from_sdb(SdbLists.EXECSCHEMES.value)
+    # )
+    # sections = asyncio.run(
+    #     sdbadds.get_list_from_sdb(SdbLists.SECTIONS.value, id_only=False)
+    # )
+    # schedules = asyncio.run(
+    #     sdbadds.get_list_from_sdb(SdbLists.SCHEDULES.value)
+    # )
+    # exec_to_route = asyncio.run(
+    #     sdbadds.load_execution_to_route()
+    # )
+    market_data_groups = [x['marketDataGroup'] for x in feed_perms]
     asset_classes = [
         'EQ',
         'CO',
@@ -1671,31 +1707,32 @@ class Account(BaseModel):
         alias='constraints',
         title='constraints'
     )
-    @validator('provider_id', allow_reuse=True)
-    def check_provider_id(cls, provider_id):
-        if provider_id not in [x[1]['account']['providerId'] for x in ValidationLists.accounts]:
-            raise ValueError(f'{provider_id} is not valid provider id')
-        return provider_id
+    # @validator('provider_id', allow_reuse=True)
+    # def check_provider_id(cls, provider_id):
+    #     if provider_id not in [x[1]['account']['providerId'] for x in ValidationLists.accounts]:
+    #         raise ValueError(f'{provider_id} is not valid provider id')
+    #     return provider_id
 
-    @validator('gateway_id', allow_reuse=True)
-    def check_gateway_id(cls, gateway_id):
-        if gateway_id not in [x[1]['account']['gatewayId'] for x in ValidationLists.accounts]:
-            raise ValueError(f'{gateway_id} is not valid gateway id')
-        return gateway_id
+    # @validator('gateway_id', allow_reuse=True)
+    # def check_gateway_id(cls, gateway_id):
+    #     if gateway_id not in [x[1]['account']['gatewayId'] for x in ValidationLists.accounts]:
+    #         raise ValueError(f'{gateway_id} is not valid gateway id')
+    #     return gateway_id
 
-    @validator('execution_scheme_id', allow_reuse=True)
-    def check_execution_scheme(cls, scheme):
-        if scheme not in [x[1] for x in ValidationLists.exec_schemes]:
-            raise ValueError(f'{scheme} is not valid execution scheme id')
-        return scheme
+    # @validator('execution_scheme_id', allow_reuse=True)
+    # def check_execution_scheme(cls, scheme):
+    #     if scheme not in [x[1] for x in ValidationLists.exec_schemes]:
+    #         raise ValueError(f'{scheme} is not valid execution scheme id')
+    #     return scheme
     
-    @root_validator
-    def check_trading_route(cls, values: dict):
-        fb = values.get('allow_fallback')
-        scheme = values.get('execution_scheme_id')
-        if fb is not None and scheme is None:
-            raise ValueError('Execution scheme is required')
-        return values
+    # @root_validator
+    # def check_trading_route(cls, values: dict):
+
+    #     fb = values.get('allow_fallback')
+    #     scheme = values.get('execution_scheme_id')
+    #     if fb is not None and scheme is None:
+    #         raise ValueError('Execution scheme is required')
+    #     return values
 
 class Accounts(BaseModel):
     account_id: str = Field(
@@ -1708,11 +1745,46 @@ class Accounts(BaseModel):
         title='account'
     )
 
-    @validator('account_id', allow_reuse=True)
-    def check_account_id(cls, account_id):
-        if account_id not in [x[1]['accountId'] for x in ValidationLists.accounts]:
-            raise ValueError(f'{account_id} is not valid account id')
-        return account_id
+    @root_validator(allow_reuse=True)
+    def check_account(cls, values: dict):
+        existing_account = next((
+            x for x
+            in ValidationLists.accounts
+            if x[1]['accountId'] == values.get('account_id')
+        ), None)
+        if not existing_account:
+            raise ValueError(f"{values.get('account_id')=} is not valid account id")
+        account: Account = values.get('account')
+        if account.provider_id != existing_account[1]['account']['providerId']:
+            raise ValueError(f'{account.provider_id=} is not valid provider id')
+
+        if account.gateway_id != existing_account[1]['account']['gatewayId']:
+            raise ValueError(f'{account.gateway_id=} is not valid gateway id')
+
+        wo_scheme_accounts = next(
+            x[2] for x
+            in ValidationLists.exec_to_route
+            if x[0] is None    
+        )
+        if existing_account[1]['accountId'] not in wo_scheme_accounts:
+            scheme_set = next((
+                x for x
+                in ValidationLists.exec_to_route
+                if x[1] == account.execution_scheme_id
+            ), None)
+            if not scheme_set:
+                raise ValueError(
+                    f'{account.execution_scheme_id=} is not valid execution scheme id'
+                )
+            if existing_account[1]['accountId'] not in [
+                x['_id'] for x in scheme_set[2]
+            ]:
+                raise ValueError(
+                    f"{account.execution_scheme_id=} ({scheme_set[0]}) "
+                    f"is not used for {values.get('account_id')=} ({existing_account[0]}) in SDB"
+                )           
+
+        return values
 
 class Brokers(BaseModel):
     broker_overrides: Optional[Dict[str, BrokerOverrides]] = Field(
