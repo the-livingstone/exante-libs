@@ -1083,9 +1083,9 @@ class EditInstrument:
         else:
             account_name, new_account = deepcopy(accs_choices[accs_selected])
             execution_schemes = [
-                (ex['name'], ex['_id']) for ex
+                (ex[0], ex[1]) for ex
                 in asyncio.run(self.sdbadds.load_execution_to_route())
-                if new_account['accountId'] in [y['_id'] for y in ex['routes']]
+                if new_account['accountId'] in [y['_id'] for y in ex[2]]
             ]
             if len(execution_schemes) == 1:
                 execution_scheme = execution_schemes[0]
