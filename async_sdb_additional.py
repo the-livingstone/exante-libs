@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import ast
 import asyncio
 from copy import copy, deepcopy
 import datetime as dt
@@ -1251,7 +1250,7 @@ class SDBAdditional:
 
     async def load_stock_rics(self):
 
-        def all_conditions(list_in_question, last_update):
+        def all_conditions(list_in_question):
             # check if:
             # · is a list
             # · large enough to contain at least 10 items
