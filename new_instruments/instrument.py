@@ -220,8 +220,7 @@ set_schema = {
     'prod': {
         'BOND': sdb_schemas.BondSchema,
         'CALENDAR_SPREAD': sdb_schemas.CalendarSpreadSchema,
-        'CALENDAR': sdb_schemas.CalendarSpreadSchema,
-        'PRODUCT': sdb_schemas.SpreadSchema,
+        'SPREAD': sdb_schemas.SpreadSchema,
         'CFD': sdb_schemas.CfdSchema,
         'FOREX': sdb_schemas.ForexSchema,
         'FUND': sdb_schemas.FundSchema,
@@ -319,23 +318,29 @@ class Instrument:
         if schema:
             self.schema = schema
             self.instrument_type = self.set_instrument_type_by_schema(
-                schema, kwargs.get('spread_type')
+                schema
             )
         else:
-            if instrument_type:
+            if instrument_type == 'SPREAD':
+                self.schema = set_schema[env]['SPREAD']
                 self.instrument_type = self.set_instrument_type(
                     instrument_type
                 )
+            elif instrument_type:
+                self.instrument_type = self.set_instrument_type(
+                    instrument_type
+                )
+                self.schema = set_schema[env][self.instrument_type.value]
             elif instrument:
                 self.instrument_type = self.set_instrument_type_by_payload(
                     instrument,
                     self.sdbadds
                 )
+                self.schema = set_schema[env][self.instrument_type.value]
             else:
                 raise RuntimeError(
                 f'Instrument type could not be defined'
             )
-            self.schema = set_schema[env][self.instrument_type.value]
         self.navi: sdb_schemas.SchemaNavigation = set_schema[env]['navigation'](self.schema)
 
         # set instrument
@@ -348,16 +353,9 @@ class Instrument:
 
     @staticmethod
     def set_instrument_type_by_schema(
-            schema: BaseModel,
-            spread_type: str = None
+            schema: BaseModel
         ) -> InstrumentTypes:
-        if spread_type.lower() == 'product' and isinstance(
-            schema,
-            (
-                sdb_schemas.SpreadSchema,
-                cdb_schemas.SpreadSchema
-                )
-            ):
+        if isinstance(schema, sdb_schemas.SpreadSchema):
             return InstrumentTypes.FUTURE
         instrument_type = next((
             x for env 
@@ -367,9 +365,9 @@ class Instrument:
         ), None)
         if instrument_type == 'OPTION ON FUTURE':
             return InstrumentTypes.OPTION
-        elif instrument_type == 'CALENDAR':
+        elif instrument_type == 'CALENDAR_SPREAD':
             return InstrumentTypes.CALENDAR_SPREAD
-        elif instrument_type == 'PRODUCT':
+        elif instrument_type == 'SPREAD':
             return InstrumentTypes.FUTURE
         elif instrument_type in InstrumentTypes.__members__:
             return InstrumentTypes[instrument_type]
@@ -383,7 +381,7 @@ class Instrument:
             payload: dict,
             sdbadds: SDBAdditional
         ) -> InstrumentTypes:
-        instrument_type = sdbadds.get_instrument_type(payload)
+        instrument_type = asyncio.run(sdbadds.get_instrument_type(payload))
         if instrument_type in InstrumentTypes.__members__:
             return InstrumentTypes[instrument_type]
         else:
@@ -397,9 +395,9 @@ class Instrument:
         ) -> InstrumentTypes:
         if instrument_type == 'OPTION ON FUTURE':
             return InstrumentTypes.OPTION
-        elif instrument_type == 'CALENDAR':
+        elif instrument_type == 'CALENDAR_SPREAD':
             return InstrumentTypes.CALENDAR_SPREAD
-        elif instrument_type == 'PRODUCT':
+        elif instrument_type == 'SPREAD':
             return InstrumentTypes.FUTURE
         elif instrument_type in InstrumentTypes.__members__:
             return InstrumentTypes[instrument_type]
