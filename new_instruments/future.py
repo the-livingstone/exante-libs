@@ -32,8 +32,7 @@ class Future(Derivative):
             bo: BackOffice = None,
             sdb: SymbolDB = None,
             sdbadds: SDBAdditional = None,
-            env: str = 'prod',
-            test: bool = False
+            env: str = 'prod'
         ):
         self.ticker = ticker
         self.exchange = exchange
@@ -47,8 +46,7 @@ class Future(Derivative):
             sdb,
             sdbadds,
             env,
-            reload_cache=False,
-            test=test
+            reload_cache=False
         ).get_instances
 
         self.instrument_type = 'FUTURE'
@@ -97,16 +95,14 @@ class Future(Derivative):
             sdb: SymbolDB = None,
             sdbadds: SDBAdditional = None,
             reload_cache: bool = True,
-            env: str = 'prod',
-            test: bool = False
+            env: str = 'prod'
         ):
         bo, sdb, sdbadds, tree_df = InitThemAll(
             bo,
             sdb,
             sdbadds,
             env,
-            reload_cache=reload_cache,
-            test=test
+            reload_cache=reload_cache
         ).get_instances
         if not parent_folder_id:
             parent_folder_id = get_uuid_by_path(
@@ -154,7 +150,6 @@ class Future(Derivative):
             sdbadds: SDBAdditional = None,
             reload_cache: bool = True,
             env: str = 'prod',
-            test: bool = False,
             **kwargs
         ):
         bo, sdb, sdbadds, tree_df = InitThemAll(
@@ -163,7 +158,6 @@ class Future(Derivative):
             sdbadds,
             env,
             reload_cache=reload_cache,
-            test=test
         ).get_instances
         if not parent_folder_id:
             parent_folder_id = get_uuid_by_path(
@@ -226,16 +220,14 @@ class Future(Derivative):
             sdb: SymbolDB = None,
             sdbadds: SDBAdditional = None,
             reload_cache: bool = True,
-            env: str = 'prod',
-            test: bool = False
+            env: str = 'prod'
         ):
         bo, sdb, sdbadds, tree_df = InitThemAll(
             bo,
             sdb,
             sdbadds,
             env,
-            reload_cache=reload_cache,
-            test=test
+            reload_cache=reload_cache
         ).get_instances
         check_path = get_uuid_by_path(
                 payload.get('path', []),
@@ -333,9 +325,11 @@ class Future(Derivative):
         present_expirations = [
             num for num, x
             in enumerate(self.contracts)
-            if x.expiration == expiration_date
-            or x.maturity == maturity
-            or x.contract_name == symbol_id  # expiration: Z2021
+            if (
+                x.expiration == expiration_date
+                or x.maturity == maturity
+                or x.contract_name == symbol_id  # expiration: Z2021
+            ) and x.instrument.get('isTrading') is not False
         ]
         if len(present_expirations) == 1:
             return present_expirations[0], self
@@ -567,7 +561,7 @@ class Future(Derivative):
 
         if self.new_expirations:
             create_result = asyncio.run(self.sdb.batch_create(
-                input_data=[x.get_expiration()[0] for x in self.new_expirations]
+                input_data=[x.instrument for x in self.new_expirations]
             ))
             if create_result:
                 if isinstance(create_result, str):
@@ -584,7 +578,7 @@ class Future(Derivative):
                 })
         if update_expirations:
             update_result = asyncio.run(self.sdb.batch_update(
-                input_data=[x.get_expiration()[0] for x in update_expirations]
+                input_data=[x.instrument for x in update_expirations]
             ))
             if update_result:
                 if isinstance(update_result, str):
@@ -643,7 +637,7 @@ class FutureExpiration(Instrument):
     def from_scratch(
             cls,
             future: Future,
-            expiration_date: Union[str, dt.date, dt.datetime] = None,
+            expiration_date: Union[str, dt.date, dt.datetime],
             maturity: str = None,
             reference: dict = None,
             reload_cache: bool = False,
@@ -695,6 +689,27 @@ class FutureExpiration(Instrument):
             **kwargs
         )
 
+    def __repr__(self):
+        return (
+            f"FutureExpiration({self.contract_name}, "
+            f"{self.expiration.isoformat()})"
+        )
+
+    def __eq__(self, other: object) -> bool:
+        return (self.expiration == other.expiration and self.maturity == other.maturity)
+    
+    def __gt__(self, other: object) -> bool:
+        return self.expiration > other.expiration
+
+
+    @property
+    def logger(self):
+        return logging.getLogger(f"{self.__class__.__name__}")
+
+    @property
+    def contract_name(self):
+        return f"{self.ticker}.{self.exchange}.{self._maturity_to_symbolic(self.maturity)}"
+
     @staticmethod
     def create_expiration_dict(
             future: Future,
@@ -724,29 +739,6 @@ class FutureExpiration(Instrument):
         FutureExpiration.set_la_lt(future, instrument)
         return instrument
 
-
-    def __repr__(self):
-        return (
-            f"FutureExpiration({self.series_name}.{self._maturity_to_symbolic(self.maturity)}, "
-            f"{self.expiration.isoformat()})"
-        )
-
-    def __eq__(self, other: object) -> bool:
-        return (self.expiration == other.expiration and self.maturity == other.maturity)
-    
-    def __gt__(self, other: object) -> bool:
-        return self.expiration > other.expiration
-
-
-    @property
-    def logger(self):
-        return logging.getLogger(f"{self.__class__.__name__}")
-
-    @property
-    def contract_name(self):
-        return f"{self.ticker}.{self.exchange}.{self._maturity_to_symbolic(self.maturity)}"
-
-
     @staticmethod
     def set_la_lt(future: Future, instrument: dict):
         if future.set_la:
@@ -765,5 +757,5 @@ class FutureExpiration(Instrument):
     def get_diff(self) -> dict:
         return DeepDiff(self.reference, self.instrument)
 
-    def get_expiration(self):
+    def get_expiration(self) -> tuple[dict, str]:
         return self.instrument, self.contract_name
