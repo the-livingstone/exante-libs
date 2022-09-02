@@ -13,6 +13,6 @@ from .instrument import Instrument, InstrumentTypes, InitThemAll, set_schema, ge
 from .derivative import Balancer, Derivative
 from .option import Option, OptionExpiration, WeeklyCommon
 from .future import Future, FutureExpiration
-# from .spread import Spread, SpreadExpiration
+from .spread import Spread, SpreadExpiration
 # from .bond import Bond
 # from .stock import Stock
