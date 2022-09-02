@@ -17,41 +17,9 @@ from libs.new_instruments import (
     Instrument,
     InitThemAll,
     InstrumentTypes,
+    get_uuid_by_path,
     NoInstrumentError
 )
-
-def get_uuid_by_path(input_path: list, df: DataFrame) -> str:
-    path = deepcopy(input_path)
-    # get instruments with the same name as last one in path
-    candidates = df[df['name'] == path.pop(-1)]
-    # filter candidates by path length: it should be the same as input path
-    candidates = candidates[
-        candidates.apply(
-                        lambda x: len(x['path']) == len(input_path),
-                        axis=1
-                    )
-    ]
-    while len(path) > 0:
-        parent_name = path.pop(-1)
-        # same procedure as for candidates: filter by name and then by path length
-        possible_parents = df[df['name'] == parent_name]
-        if possible_parents.empty:
-            return None
-        possible_parents = possible_parents[
-            possible_parents.apply(
-                lambda x: len(x['path']) == len(path) + 1,
-                axis=1
-        )]
-        candidates = candidates[
-            candidates.apply(
-                lambda x: x['path'][len(path)] in possible_parents.index,
-                axis=1
-            )
-        ]    
-    if candidates.shape[0] == 1:
-        return candidates.iloc[0]['_id']
-    else:
-        return None
 
 class Balancer:
     def __init__(self, feed_type: str, blacklist = None, env: str = 'prod'):
@@ -253,13 +221,11 @@ class Derivative(Instrument):
             tree_df=self.tree_df,
             reload_cache=reload_cache,
             option_type=kwargs.get('option_type'),
-            spread_type=kwargs.get('spread_type'),
             calendar_type=kwargs.get('calendar_type')
         )
 
     @staticmethod
     def _set_parent_folder(
-            # instrument_type: str,
             parent_folder,
             sdb: SymbolDB = None,
             env = 'prod'
@@ -424,18 +390,6 @@ class Derivative(Instrument):
             }) for key, val in kwargs.items()
         ]
         return record
-        if instrument_type is InstrumentTypes.SPREAD:
-            record.update({
-                'description': f'{shortname} Spreads'
-            })
-            if spread_type == 'CALENDAR_SPREAD' and calendar_type == 'REVERSE':
-                record.update({
-                    'spreadType': 'REVERSE'
-                })
-            elif spread_type == 'SPREAD':
-                record.update({
-                    'type': 'FUTURE'
-                })
 
     @staticmethod
     def less_loaded_feeds(
