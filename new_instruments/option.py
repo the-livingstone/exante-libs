@@ -532,9 +532,11 @@ class Option(Derivative):
             present_expirations.extend([
                 (num, opt) for num, x
                 in enumerate(opt.contracts)
-                if x.expiration == expiration_date
-                or x.maturity == maturity
-                or x.contract_name == symbol_id  # expiration: Z2021
+                if (
+                    x.expiration == expiration_date
+                    or x.maturity == maturity
+                    or x.contract_name == symbol_id  # expiration: Z2021
+                ) and x.instrument.get('isTrading') is not False
             ])
             
         if len(present_expirations) == 1:
@@ -1093,57 +1095,11 @@ class OptionExpiration(Instrument):
         for field, val in kwargs.items():
             self.set_field_value(val, field.split('/'))
 
-    def __repr__(self):
-        week_indication = "Monthly" if not self.week_number else f"Week {self.week_number}"
-        return (
-            f"OptionExpiration({self.contract_name}, "
-            f"{self.expiration.isoformat()}, {week_indication})"
-        )
-
-    def __eq__(self, other):
-        return (
-            self.expiration == other.expiration
-            and self.ticker == other.ticker
-            and self.exchange == other.exchange
-        )
-    
-    def __gt__(self, other: object) -> bool:
-        self.expiration > other.expiration 
-
-    @property
-    def logger(self):
-        return logging.getLogger(f"{self.__class__.__name__}")
-
-    @property
-    def contract_name(self):
-        return f"{self.ticker}.{self.exchange}.{self._maturity_to_symbolic(self.maturity)}"
-
-    @staticmethod
-    def set_la_lt(option: Option, instrument: dict):
-        if option.set_la:
-            instrument['lastAvailable'] = option.sdb.date_to_sdb(
-                option.sdb.sdb_to_date(instrument['expiry']) + dt.timedelta(days=3)
-            )
-            if isinstance(option.set_la, str):
-                instrument['lastAvailable']['time'] = option.set_la
-            
-
-        if option.set_lt:
-            instrument['lastTrading'] = deepcopy(instrument['expiry'])
-            if isinstance(option.set_lt, str):
-                instrument['lastTrading']['time'] = option.set_lt
-
-    def _strike_exante_id(self, strike: float, side: str):
-        if re.search(r'\.0$', str(strike)):
-            strike = int(strike)
-        underline = str(strike).replace('.', '_')
-        return f"{self.contract_name}.{side[0]}{underline}"
-
     @classmethod
     def from_scratch(
             cls,
             option: Option,
-            expiration_date: Union[str, dt.date, dt.datetime] = None,
+            expiration_date: Union[str, dt.date, dt.datetime],
             maturity: str = None,
             strikes: dict = None,
             reference: dict = None,
@@ -1212,6 +1168,31 @@ class OptionExpiration(Instrument):
             **kwargs
         )
 
+    def __repr__(self):
+        week_indication = "Monthly" if not self.week_number else f"Week {self.week_number}"
+        return (
+            f"OptionExpiration({self.contract_name}, "
+            f"{self.expiration.isoformat()}, {week_indication})"
+        )
+
+    def __eq__(self, other):
+        return (
+            self.expiration == other.expiration
+            and self.ticker == other.ticker
+            and self.exchange == other.exchange
+        )
+    
+    def __gt__(self, other: object) -> bool:
+        self.expiration > other.expiration 
+
+    @property
+    def logger(self):
+        return logging.getLogger(f"{self.__class__.__name__}")
+
+    @property
+    def contract_name(self):
+        return f"{self.ticker}.{self.exchange}.{self._maturity_to_symbolic(self.maturity)}"
+
     @staticmethod
     def create_expiration_dict(
             option: Option,
@@ -1265,6 +1246,21 @@ class OptionExpiration(Instrument):
         ]
         OptionExpiration.set_la_lt(option, instrument)
         return instrument
+
+    @staticmethod
+    def set_la_lt(option: Option, instrument: dict):
+        if option.set_la:
+            instrument['lastAvailable'] = option.sdb.date_to_sdb(
+                option.sdb.sdb_to_date(instrument['expiry']) + dt.timedelta(days=3)
+            )
+            if isinstance(option.set_la, str):
+                instrument['lastAvailable']['time'] = option.set_la
+            
+
+        if option.set_lt:
+            instrument['lastTrading'] = deepcopy(instrument['expiry'])
+            if isinstance(option.set_lt, str):
+                instrument['lastTrading']['time'] = option.set_lt
 
     @staticmethod
     def check_underlying_future(
@@ -1367,7 +1363,13 @@ class OptionExpiration(Instrument):
                 self.instrument['strikePrices'][side],
                 key=lambda sp: sp['strikePrice']
             )
-    
+
+    def _strike_exante_id(self, strike: float, side: str):
+        if re.search(r'\.0$', str(strike)):
+            strike = int(strike)
+        underline = str(strike).replace('.', '_')
+        return f"{self.contract_name}.{side[0]}{underline}"
+
     def refresh_strikes(
             self,
             strikes: dict,
