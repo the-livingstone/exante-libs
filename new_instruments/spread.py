@@ -736,7 +736,7 @@ class Spread(Derivative):
                 )
                 return {}
 
-        new_contract = FutureExpiration.from_scratch(
+        new_contract = SpreadExpiration.from_scratch(
             self,
             exp_date,
             maturity,
@@ -1125,7 +1125,6 @@ class SpreadExpiration(Instrument):
         ) -> dict:
         instrument = {
             'isAbstract': False,
-            'maturityDate': {},
             'expiry': {
                 'year': expiration.year,
                 'month': expiration.month,
@@ -1133,11 +1132,11 @@ class SpreadExpiration(Instrument):
             },
             'path': deepcopy(spread.instrument['path'])
         }
-        if not spread.instrument['path'][-1] != spread.instrument.get('_id'):
+        if spread.instrument['path'][-1] != spread.instrument.get('_id'):
             instrument['path'].append('<<series_id>>')
 
         if spread.spread_type == 'CALENDAR_SPREAD':
-            if not near_maturity or far_maturity:
+            if not near_maturity or not far_maturity:
                 raise ExpirationError(
                     f'Both {near_maturity=} and {far_maturity=} '
                     'should be set for a calendar spread contract'
@@ -1192,6 +1191,7 @@ class SpreadExpiration(Instrument):
             raise ExpirationError(
                 f'Legs are not set, cannot create contract'
             )
+        instrument['legs'] = legs
         [
             instrument.update({key: val}) for key, val
             in kwargs.items() if len(key.split('/')) == 1
