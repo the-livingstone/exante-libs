@@ -4,14 +4,14 @@ import json
 from pandas import DataFrame
 import logging
 from copy import copy, deepcopy
-from typing import Union
+from typing import Any, Union
 from enum import Enum
 from sqlalchemy.engine import Engine
 from libs.editor_interactive import EditInstrument
 from libs.async_symboldb import SymbolDB
-from libs.parsers import DxfeedParser as DF, FtxParser as Ftx, DscopeParser as DS
+from libs.parsers import DxfeedParser, FtxParser, DscopeParser, ExchangeParser
 from libs.async_sdb_additional import SDBAdditional, Months, SdbLists
-from libs.sdb_instruments import (
+from libs.new_instruments import (
     NoInstrumentError,
     Option,
     OptionExpiration,
@@ -21,6 +21,7 @@ from libs.sdb_instruments import (
     Spread,
     SpreadExpiration,
     Instrument,
+    InitThemAll,
     set_schema,
     get_uuid_by_path
 )
@@ -44,6 +45,17 @@ allowed_automation = {
     }
 }
 
+class DerivativeType(Enum):
+    OPTION = Option
+    OPTION_ON_FUTURE = Option
+    FUTURE = Future
+    SPREAD = Spread
+
+class Parser(Enum):
+    DXFEED = DxfeedParser
+    REUTERS = DscopeParser
+    FTX = FtxParser
+
 class TypeUndefined(Exception):
     pass
 
@@ -52,149 +64,207 @@ class DerivativeAdder:
 
     def __init__(
             self,
-            ticker,
-            exchange,
-            series_payload: dict = None,
-            shortname: str = None,
-            derivative='FUTURE',
+            ticker: str,
+            exchange: str,
+            derivative_type: str,
+            series: Union[Future, Option, Spread] = None,
             weekly: bool = False,
             allowed_expirations: list = None,
             max_timedelta: int = None,
-            recreate: bool = False,
-            reload_cache: bool = True,
             croned: bool = False,
+
             sdb: SymbolDB = None,
             sdbadds: SDBAdditional = None,
-            tree_df: DataFrame = None,
             db_engine: Engine = None,
-            env='prod'
-        ) -> None:
+            env: str = 'prod'
+        ):
         self.errormsg = ''
         self.comment = ''
-        self.env = env
-        self.sdb = sdb if isinstance(sdb, SymbolDB) else SymbolDB(env)
-        self.sdbadds = sdbadds if isinstance(sdbadds, SDBAdditional) else SDBAdditional(env)
-        if not series_payload:
-            series_payload = {}
-            if tree_df is not None and not tree_df.empty:
-                self.sdbadds.tree_df = tree_df
+        self.validation_errors = {}
+        self.new_ticker_parsed = {}
+        (
+            self.bo,
+            self.sdb,
+            self.sdbadds,
+            self.tree_df
+        ) = InitThemAll(
+            sdb=sdb,
+            sdbadds=sdbadds,
+            reload_cache=False,
+            env=env
+        ).get_instances
         self.croned = croned
-        self.ticker = ticker
         self.weekly = weekly
+        self.ticker = ticker
         self.exchange = exchange
-        self.shortname = shortname
-        self.derivative_type = derivative
         self.allowed_expirations = allowed_expirations
         self.max_timedelta = max_timedelta
-        self.validation_errors = {}
-        self.series = self.set_series(
-            series_payload=series_payload,
-            recreate=recreate,
-            reload_cache=reload_cache
-        )
-        if self.series:
-            self.existing_expirations = [
-            x for x in self.series.contracts
-            if x.instrument.get('isTrading') is not False
-        ]
-            if isinstance(self.series, Option):
-                self.derivative_type = self.series.option_type
-        else:
-            self.existing_expirations = []
-        self.navi = set_schema[self.env]['navigation'](self.schema)
         self.db_engine = db_engine
+        self.series = series
+        if series:
+            if isinstance(series, Option):
+                self.derivative_type = series.option_type # OPTION, OPTION ON FUTURE
+            elif isinstance(series, Spread):
+                self.derivative_type = 'SPREAD'
+            else:
+                self.derivative_type = series.instrument_type # FUTURE
+            self.existing_expirations = [
+                x for x
+                in self.series.contracts
+                if x.instrument.get('isTrading') is not False
+            ]
+        else:
+            if derivative_type.replace(' ', '_') not in DerivativeType.__members__:
+                raise RuntimeError(
+                    f"{derivative_type=} is invalid"
+                )
+
 
     @property
     def logger(self):
         return logging.getLogger(f"{self.__class__.__name__}")
 
-# common_methods
-    def set_series(
-            self,
-            series_payload: dict = None,
-            shortname: str = None,
-            destination: str = None,
-            recreate: bool = False,
-            reload_cache: bool = True
+    @classmethod
+    def from_sdb(
+            cls,
+            ticker,
+            exchange,
+            derivative: str,
+
+            weekly: bool = False,
+            allowed_expirations: list = None,
+            max_timedelta: int = None,
+            reload_cache: bool = True,
+            croned: bool = False,
+
+            sdb: SymbolDB = None,
+            sdbadds: SDBAdditional = None,
+            db_engine: Engine = None,
+            env='prod'
         ):
-        if not series_payload:
-            series_payload = {}
-        if 'SPREAD' not in self.derivative_type:
-            self.schema = set_schema[self.env][self.derivative_type]
-        else:
-            self.schema = set_schema[self.env]['SPREAD'][self.derivative_type]
+        (
+            bo,
+            sdb,
+            sdbadds,
+            tree_df
+        ) = InitThemAll(
+            sdb=sdb,
+            sdbadds=sdbadds,
+            reload_cache=reload_cache,
+            env=env
+        ).get_instances
+        if derivative.replace(' ', '_') not in DerivativeType.__members__:
+            raise TypeUndefined(f'{derivative=} is unknown type')
+        series_class: Union[Option, Future, Spread] = DerivativeType[derivative.replace(' ', '_')].value
+        series = series_class.from_sdb(
+            ticker,
+            exchange,
 
-        if self.derivative_type in ['OPTION', 'OPTION ON FUTURE']:
-            try:
-                option = Option(
-                    self.ticker,
-                    self.exchange,
-                    series_payload=series_payload,
-                    shortname=shortname,
-                    parent_folder=destination,
+            bo=bo,
+            sdb=sdb,
+            sdbadds=sdbadds,
+            reload_cache=False,
+            env=env        
+        ) # raises NoExchangeError (if exchange does not exist)
+        # or NoInstrumentError (if ticker does not exist on particular exchange)
+        if series.instrument.get('isTrading'):
+            series.instrument.pop('isTrading')
+        return cls(
+            ticker,
+            exchange,
+            derivative,
+            series,
+            weekly=weekly,
+            allowed_expirations=allowed_expirations,
+            max_timedelta=max_timedelta,
+            croned=croned,
 
-                    recreate=recreate,
-                    reload_cache=reload_cache,
+            sdb=sdb,
+            sdbadds=sdbadds,
+            db_engine=db_engine,
+            env=env
+        )
 
-                    env=self.env,
-                    sdb=self.sdb,
-                    sdbadds=self.sdbadds
-                )
-                self.derivative_type = option.option_type
-                if option.instrument.get('isTrading') is not None:
-                    option.instrument.pop('isTrading')
-                return option
-            except NoInstrumentError:
-                return None
+    @classmethod
+    def from_scratch(
+            cls,
+            ticker: str,
+            exchange: str,
+            derivative: str,
+            shortname: str,
+            parent_folder_id: str = None,
+            option_type: str = None,
+            calendar_type: str = None,
+            recreate: bool = False,
 
-        elif self.derivative_type == 'FUTURE':
-            try:
-                future = Future(
-                    self.ticker,
-                    self.exchange,
-                    series_payload=series_payload,
-                    shortname=shortname,
-                    parent_folder=destination,
+            weekly: bool = False,
+            allowed_expirations: list = None,
+            max_timedelta: int = None,
+            reload_cache: bool = True,
+            croned: bool = False,
+            sdb: SymbolDB = None,
+            sdbadds: SDBAdditional = None,
+            db_engine: Engine = None,
+            env='prod'
+        ):
+        (
+            bo,
+            sdb,
+            sdbadds,
+            tree_df
+        ) = InitThemAll(
+            sdb=sdb,
+            sdbadds=sdbadds,
+            reload_cache=reload_cache,
+            env=env
+        ).get_instances
+        errormsg = ''
+        if derivative.replace(' ', '_') not in DerivativeType.__members__:
+            raise TypeUndefined(f'{derivative=} is unknown type')
+        
+        logger = logging.getLogger(
+            f"DerivativeAdder.from_scratch({ticker}.{exchange})"
+        )
+        target, parsed = DerivativeAdder.setup_new_ticker(
+            ticker,
+            exchange,
+            derivative,
+            shortname=shortname,
+            destination_id=parent_folder_id,
+            recreate=recreate,
+            croned=croned,
 
-                    recreate=recreate,
-                    reload_cache=reload_cache,
+            sdb=sdb,
+            sdbadds=sdbadds,
+            logger=logger,
+            errormsg=errormsg
+        )
+        drv = cls(
+            ticker,
+            exchange,
+            derivative,
+            series=target['target_folder'],
+            weekly=weekly,
+            allowed_expirations=allowed_expirations,
+            max_timedelta=max_timedelta,
+            croned=croned,
 
-                    env=self.env,
-                    sdb=self.sdb,
-                    sdbadds=self.sdbadds
-                )
-                if future.instrument.get('isTrading') is not None:
-                    future.instrument.pop('isTrading')
-                return future
-            except NoInstrumentError:
-                return None
+            sdb=sdb,
+            sdbadds=sdbadds,
+            db_engine=db_engine,
+            env=env
+        )
+        drv.new_ticker_parsed = parsed
+        return drv
 
-        elif self.derivative_type == 'SPREAD':
-            try:
-                spread = Spread(
-                    self.ticker,
-                    self.exchange,
-                    series_payload=series_payload,
-                    shortname=shortname,
-                    parent_folder=destination,
-
-                    recreate=recreate,
-                    reload_cache=reload_cache,
-
-                    env=self.env,
-                    sdb=self.sdb,
-                    sdbadds=self.sdbadds
-                )
-                if spread.instrument.get('isTrading') is not None:
-                    spread.instrument.pop('isTrading')
-                return spread
-            except NoInstrumentError:
-                return None
-
-        else:
-            raise TypeUndefined(f'Derivative type ({self.derivative_type}) is unknown')
-
-    def get_overrides(self, instrument: Instrument, parent: bool = False):
+# common_methods
+    @staticmethod
+    def get_overrides(
+            ticker: str,
+            exchange: str,
+            instrument: Instrument,
+            parent: bool = False
+        ):
         common = [
             'symbolIdentifier/type',
             'symbolIdentifier/identifier',
@@ -215,24 +285,23 @@ class DerivativeAdder:
             'DXFEED': [
                 'dxfeedProperties/useLongMaturityFormat',
                 'dxfeedProperties/suffix'
-            ],
-            'P2GATE': [
-                'symbolName'
             ]
         }
 
         http_feeds = [
             x[1] for x
-            in asyncio.run(self.sdbadds.get_list_from_sdb(SdbLists.GATEWAYS.value))
+            in asyncio.run(instrument.sdbadds.get_list_from_sdb(
+                SdbLists.GATEWAYS.value
+            ))
             if 'HTTP' in x[0]
         ]
         # as CBOE options are constantly balanced between gateways, CBOE folder doesn't have default routes,
         # so a little bit of help here by hardcoding DXFEED as main feed provider
-        if self.exchange == 'CBOE':
+        if exchange == 'CBOE':
             main_prov_name, main_feed_source = next(
                 x for x
                 in asyncio.run(
-                    self.sdbadds.get_list_from_sdb(
+                    instrument.sdbadds.get_list_from_sdb(
                         SdbLists.FEED_PROVIDERS.value
                     )
                 ) if x[0] == 'DXFEED'
@@ -241,7 +310,7 @@ class DerivativeAdder:
         else:
             if parent:
                 compiled_parent = asyncio.run(
-                    self.sdbadds.build_inheritance(
+                    instrument.sdbadds.build_inheritance(
                         [
                             instrument.compiled_parent,
                             instrument.instrument
@@ -260,7 +329,7 @@ class DerivativeAdder:
             main_prov_name = next((
                 x[0] for x
                 in asyncio.run(
-                    self.sdbadds.get_list_from_sdb(
+                    instrument.sdbadds.get_list_from_sdb(
                         SdbLists.FEED_PROVIDERS.value
                     )
                 )
@@ -269,8 +338,8 @@ class DerivativeAdder:
         payload = {
             'provider': main_prov_name,
             'prov_id': main_feed_source,
-            'instrument_type': self.sdbadds.tree_df.loc[
-                self.sdbadds.tree_df['_id'] == instrument.instrument['path'][1]
+            'derivative_type': instrument.sdbadds.tree_df.loc[
+                instrument.sdbadds.tree_df['_id'] == instrument.instrument['path'][1]
             ].iloc[0]['name'],
             'exchange_id': instrument.instrument.get(
                 'exchangeId',
@@ -279,13 +348,14 @@ class DerivativeAdder:
         }
         if not parent:
             payload.update({
-                'ticker': instrument.instrument.get('ticker')
+                'ticker': ticker,
+                'exchange': exchange
             })
         for source in feed_sources:
             prov_name = next((
                 x[0] for x
                 in asyncio.run(
-                    self.sdbadds.get_list_from_sdb(
+                    instrument.sdbadds.get_list_from_sdb(
                         SdbLists.FEED_PROVIDERS.value
                     )
                 )
@@ -308,7 +378,6 @@ class DerivativeAdder:
                         silent=True
                     )
                 )
-
         return payload
 
     def set_targets(
@@ -318,14 +387,22 @@ class DerivativeAdder:
         ) -> list[dict]:
 
         if not isinstance(self.series, Option):
-            target = self.get_overrides(self.series)
+            target = self.get_overrides(
+                self.ticker,
+                self.exchange,
+                self.series
+            )
             target['target_folder'] = self.series
             return [target]
         
         # options only
         elif not weekly or self.exchange == 'CBOE':
             # monthly options
-            target = self.get_overrides(self.series)
+            target = self.get_overrides(
+                self.ticker,
+                self.exchange,
+                self.series
+            )
             target['target_folder'] = self.series
             return [target]
 
@@ -342,7 +419,11 @@ class DerivativeAdder:
                 x for y in self.series.weekly_commons for x in y.weekly_folders
             ]
             for wf in week_options:
-                weekly_target = self.get_overrides(wf)
+                weekly_target = self.get_overrides(
+                    wf.ticker,
+                    wf.exchange,
+                    wf
+                )
                 weekly_target['target_folder'] = wf
                 weekly_targets.append(weekly_target)
             return weekly_targets
@@ -351,66 +432,127 @@ class DerivativeAdder:
                 f'{self.ticker}.{self.exchange} '
                 'weekly folders are not found in SDB and could not be set automatically'
             )
-        overrides = self.get_overrides(self.series)
+        overrides = self.get_overrides(
+            self.ticker,
+            self.exchange,
+            self.series
+        )
         weekly_templates = self.set_weekly_templates(overrides)
         weekly_common = self.series.create_weeklies(weekly_templates, common_name=create_weeklies)
         weekly_targets = self.make_weekly_targets(weekly_common, overrides, weekly_templates)
         return weekly_targets
 
-    def parse_available(self, target: dict = None) -> list[dict]:
+    @staticmethod
+    def parse_available(
+            target: dict = None,
+            set_series: bool = False,
+            croned: bool = False,
+
+            errormsg: str = None,
+            logger: logging.Logger = None
+        ) -> list[dict]:
+        if not errormsg:
+            errormsg = ''
+        good_to_add = {
+            'series': {},
+            'contracts': [],
+            'intermediate_series': {},
+            'errormsg': errormsg
+        }
+        if target.get('target_folder'):
+            ticker = target['target_folder'].ticker
+            exchange = target['target_folder'].exchange
+            spread_type=target['target_folder'].spread_type if target['derivative_type'] == 'SPREAD' else None
+
+        else:
+            ticker = target['ticker']
+            exchange = target['exchange']
+            if target['derivative_type'] == 'SPREAD':
+                if len(ticker.split('-')) < 2:
+                    spread_type = 'CALENDAR_SPREAD'
+                else:
+                    spread_type = 'SPREAD'
+            else:
+                spread_type = None
+        if not logger:
+            logger = logging.getLogger(
+                f'DerivativeAdder.parse_available({ticker}.{exchange})'
+            )
+
         feed_provider = target.get('provider')
         if not feed_provider:
-            self.logger.error(f"Cannot get feed_provider for {target}")
-            return {'series': {}, 'contracts': []}
-        if feed_provider == 'DXFEED':
-            parser = DF(engine=self.db_engine)
-        elif feed_provider == 'REUTERS':
-            parser = DS()
-        elif feed_provider == 'FTX':
-            parser = Ftx()
+            logger.error(f"Cannot get feed_provider for {target}")
+            return good_to_add
+        if feed_provider in Parser.__members__:
+            parser: ExchangeParser = Parser[feed_provider].value()
         else:
-            raise RuntimeError(f'Unknown feed provider: {feed_provider}')
+            raise RuntimeError(f'Unknown {feed_provider=}')
+        derivative_type = target.get('derivative_type')
         overrides_to_parse = {
             key.split('/')[-1]: val for key, val
             in target.get(feed_provider, {}).items()
         }
-        ticker = target['target_folder'].ticker
-        exchange = target['target_folder'].exchange
-        self.logger.info(f"Parsing {self.ticker}.{self.exchange} on {feed_provider}...")
-        if isinstance(target['target_folder'], Future):
-            series, contracts = parser.futures(
+            
+        logger.info(f"Parsing {ticker}.{exchange} on {feed_provider}...")
+        if derivative_type == 'FUTURE':
+            parsed_series, parsed_contracts = parser.futures(
                 f"{ticker}.{exchange}",
                 overrides=overrides_to_parse)
-        elif isinstance(target['target_folder'], Spread):
-            series, contracts = parser.spreads(
-                f"{self.ticker}.{self.exchange}",
+        elif derivative_type == 'SPREAD':
+            parsed_series, parsed_contracts = parser.spreads(
+                f"{ticker}.{exchange}",
                 overrides=overrides_to_parse)
-        elif isinstance(target['target_folder'], Option):
-            series, contracts = parser.options(
+        elif derivative_type in ['OPTION', 'OPTION ON FUTURE']:
+            parsed_series, parsed_contracts = parser.options(
                 f"{ticker}.{exchange}",
                 overrides=overrides_to_parse,
-                product=self.derivative_type
+                product=derivative_type
             )
         else:
-            return {'series': {}, 'contracts': []}
-        if contracts:
-            good_to_add = parser.transform_to_sdb(
-                {},
-                contracts,
-                product=self.derivative_type,
-                spread_type=target['target_folder'].spread_type if self.derivative_type == 'SPREAD' else None
-            )
-        else:
-            self.logger.warning(
+            return good_to_add
+        if not parsed_contracts:
+            logger.warning(
                 f"Didn't find anything for {ticker}.{exchange} on {feed_provider}"
             )
-            return {'series': {}, 'contracts': []}
-        if isinstance(target['target_folder'], Option) and feed_provider != 'REUTERS':
+            return good_to_add
+        good_to_add['intermediate_series'] = parsed_series
+        if set_series:
+            while True:
+                transformed = parser.transform_to_sdb(
+                    parsed_series,
+                    parsed_contracts,
+                    product=derivative_type,
+                    spread_type=spread_type
+                )
+                if transformed.get('series'):
+                    break
+                if not transformed.get('validation_errors'):
+                    logger.error('smth wrong with transform_to_sdb method')
+                    return None
+                if croned:
+                    errormsg += f"{ticker}.{exchange}: series validation has been failed:"
+                    for err in transformed.get('validation_errors'):
+                        errormsg += f"{'/'.join([str(x) for x in err['loc']])}: {err['msg']}" + '\n'
+                    return None
+                for err in transformed.get('validation_errors'):
+                    err_field = '/'.join([x for x in err['loc'] if '__' not in x])
+                    parsed_series.update({
+                        err_field: input(f"{err['msg']}. Please, fill the correct value for {err_field}: ")
+                    })
+        else:
+            transformed = parser.transform_to_sdb(
+                {},
+                parsed_contracts,
+                product=derivative_type,
+                spread_type=spread_type
+            )
+        good_to_add.update(transformed)
+        if derivative_type in ['OPTION', 'OPTION ON FUTURE'] and feed_provider != 'REUTERS':
             spm = target[feed_provider].get('strikePriceMultiplier')
             if spm:
                 for expiration in good_to_add['contracts']:
-                    self.multiply_strikes(expiration, spm)
-                    self.logger.info(
+                    DerivativeAdder.multiply_strikes(expiration, spm)
+                    logger.info(
                         f"parsed strikes for {expiration} have been multiplied by {1 / spm}"
                     )
         return good_to_add
@@ -514,9 +656,7 @@ class DerivativeAdder:
                 Spread
             ]
         ):
-        if target.update_expirations:
-            some_contract = [x for x in target.update_expirations][0]
-        elif target.new_expirations:
+        if target.new_expirations:
             some_contract = [x for x in target.new_expirations][0]
         elif target.contracts:
             some_contract = max(
@@ -575,8 +715,8 @@ class DerivativeAdder:
             self.series.instrument = EditInstrument(
                 f'{self.ticker}.{self.exchange}',
                 self.series.instrument,
-                instrument_type = self.derivative_type.split(' ')[0], # Mind 'CALENDAR SPREAD'!!
-                env=self.env
+                instrument_type = self.derivative_type.split(' ')[0],
+                env=self.sdb.env
             ).edit_instrument(highlight=highlighted)
         return True
 
@@ -681,9 +821,18 @@ class DerivativeAdder:
                     + pformat(part_report['update_error']) + '\n' if part_report.get('update_error') else ''
         return self.comment, self.errormsg
 
+    @staticmethod
+    def __set_new_destination(
+            ticker: str,
+            exchange: str,
+            derivative_type: str,
+            destination_id: str = None,
+            croned: bool = False,
 
-# new series actions
-    def setup_new_ticker(self, recreate: bool = False, parsed_data: list[dict] = None):
+            sdb: SymbolDB = None,
+            sdbadds: SDBAdditional = None,
+            logger: logging.Logger = None
+        ):
 
         def extend_path() -> list:
             MAPPING = {
@@ -697,33 +846,36 @@ class DerivativeAdder:
                     'CME_group': 'cme_opts.json'
                 }
             }
-            if self.exchange in ['CME', 'CBOT', 'NYMEX', 'COMEX']:
+            if exchange in ['CME', 'CBOT', 'NYMEX', 'COMEX']:
                 try:
-                    with open(f"{self.sdbadds.current_dir}/libs/mapping/{MAPPING[self.derivative_type]['CME_group']}", 'r') as f:
+                    with open(f"{sdbadds.current_dir}/libs/mapping/{MAPPING[derivative_type]['CME_group']}", 'r') as f:
                         cme_map = json.load(f)
                 except FileNotFoundError:
-                    self.logger.warning(
-                        f"{self.sdbadds.current_dir}/libs/mapping/{MAPPING[self.derivative_type]['CME_group']} "
+                    logger.warning(
+                        f"{sdbadds.current_dir}/libs/mapping/{MAPPING[derivative_type]['CME_group']} "
                         "file is not found! Pls select destination folder manually"
                     )
                     return []
                 except json.decoder.JSONDecodeError:
-                    self.logger.warning(
-                        f"{self.sdbadds.current_dir}/libs/mapping/{MAPPING[self.derivative_type]['CME_group']} "
+                    logger.warning(
+                        f"{sdbadds.current_dir}/libs/mapping/{MAPPING[derivative_type]['CME_group']} "
                         "is malformed json file"
                     )
                     return []
-                additional_path = cme_map.get(self.exchange, {}).get(self.ticker, {}).get('category')
+                additional_path = cme_map.get(exchange, {}).get(ticker, {}).get('category')
                 if additional_path:
                     return [additional_path]
                 else:
                     return []
-            elif isinstance(MAPPING[self.derivative_type].get(self.exchange), list):
-                return MAPPING[self.derivative_type][self.exchange]
+            elif isinstance(MAPPING[derivative_type].get(exchange), list):
+                return MAPPING[derivative_type][exchange]
             else:
                 return []
 
-
+        if not logger:
+            logger = logging.getLogger(
+                f'DerivativeAdder.__set_new_destination({ticker}.{exchange})'
+            )
         message = '''
         Ticker is not found in sdb, we are about to create new ticker folder.
         Select folder to go deeper into the tree, select the same folder again
@@ -732,11 +884,15 @@ class DerivativeAdder:
         # choose destination folder
 
         new_folder_destination = None
-        suggested_path = ['Root', self.derivative_type, self.exchange]
+        parent_folder = asyncio.run(sdb.get(destination_id)) if destination_id else None
+        if parent_folder and parent_folder.get('isAbstract'):
+            suggested_path: list[str] = parent_folder['path']
+        else:
+            suggested_path = ['Root', derivative_type, exchange]
         additional = extend_path()
         suggested_path.extend(additional)
-        if not self.croned:
-            new_folder_destination = self.sdbadds.browse_folders(
+        if not croned:
+            new_folder_destination = sdbadds.browse_folders(
                 suggested_path, message=message, only_folders=True
             )
         else:
@@ -744,208 +900,218 @@ class DerivativeAdder:
                 suggested_path[-1],
                 get_uuid_by_path(
                     suggested_path,
-                    self.sdbadds.tree_df
+                    sdbadds.tree_df
                 )
             )
             # follback to main folder if category folder does not exist
             if new_folder_destination[1] is None and additional:
-                suggested_path.pop(-1)
                 new_folder_destination = (
-                    suggested_path[-1],
+                    suggested_path[-2],
                     get_uuid_by_path(
                         suggested_path,
-                        self.sdbadds.tree_df
+                        sdbadds.tree_df
                     )
                 )
+        return new_folder_destination, suggested_path
 
-            # check if there are ticker folders here
-            heirs = asyncio.run(self.sdb.get_heirs(new_folder_destination[1], fields=['ticker']))
-            if len([x for x in heirs if x.get('ticker')]) < len(heirs)/2:
-                self.errormsg += f"{self.ticker}.{self.exchange}: Cannot set destination folder (suggested: {', '.join(suggested_path)})" + "\n"
-                return None
+    @staticmethod
+    def __set_feed_provider(
+            overrides: dict,
+            sdbadds: SDBAdditional
+        ):
+        message = '''
+        Feed provider is unknown. Please select one:
+        '''
+        feed_providers = asyncio.run(
+            sdbadds.get_list_from_sdb(
+                SdbLists.GATEWAYS.value,
+                id_only=False
+            )
+        )
+        selected = pick_from_list_tm(
+            sorted([x[0] for x in feed_providers]), 'providers', message
+        )
+        if selected is not None:
+            gateway = feed_providers[selected][1]
+            gateway['gateway'].update({
+                'enabled': True,
+                'allowFallback': True
+            })
+            feed_provider = feed_providers[selected][0].split(':')[0]
+            overrides.update({
+                'provider': feed_provider,
+                'prov_id': gateway['gateway']['providerId']
+            })
+            return gateway
+            
+# new series actions
+    @staticmethod
+    def setup_new_ticker(
+            ticker: str,
+            exchange: str,
+            derivative_type: str,
+            shortname: str = None,
+            destination_id: str = None,
+            recreate: bool = False,
+            croned: bool = False,
+            parsed_data: list[dict] = None,
+
+            sdb: SymbolDB = None,
+            sdbadds: SDBAdditional = None,
+            logger: logging.Logger = None,
+            errormsg: str = None
+        ):
+        if not errormsg:
+            errormsg = ''
+        if not logger:
+            logger = logging.getLogger(
+            f"DerivativeAdder.setup_new_ticker({ticker}.{exchange})"
+        )
+        # try to set destination for new ticker
+        new_folder_destination, suggested = DerivativeAdder.__set_new_destination(
+            ticker,
+            exchange,
+            derivative_type,
+            destination_id=destination_id,
+            croned=croned,
+
+            sdb=sdb,
+            sdbadds=sdbadds,
+            logger=logger
+        )
+        # check if it is ok and maybe correct it
         if not new_folder_destination:
-            self.logger.error('New folder destination is not set')
+            logger.error('New folder destination is not set')
             return None
-
+        # We don't like to add smth out of category if categories are present
+        heirs = asyncio.run(sdb.get_heirs(new_folder_destination[1], fields=['ticker']))
+        if len([x for x in heirs if x.get('ticker')]) < len(heirs)/2:
+            errormsg += (
+                f"{ticker}.{exchange}: "
+                f"Cannot set destination folder (suggested: {'→'.join(suggested)})" + "\n"
+            )
+            return None
         # you should choose the folder where series folder meant to be placed (generally the exchange folder)
         # but if you choose the old series folder I won't judge you, it's also ok:)
-        if new_folder_destination[0] == self.ticker:
-            old_folder = self.sdbadds.tree_df.loc[
-                self.sdbadds.tree_df['_id'] == new_folder_destination[1]
+        if new_folder_destination[0] == ticker:
+            old_folder = sdbadds.tree_df.loc[
+                sdbadds.tree_df['_id'] == new_folder_destination[1]
             ].iloc[0]
-            # old_folder = next(x for x in tree if x['_id'] == new_folder_destination[1])
-            destination_path = self.sdbadds.tree_df.loc[
-                self.sdbadds.tree_df['_id'] ==  old_folder['path'][-2]
+            destination_path = sdbadds.tree_df.loc[
+                sdbadds.tree_df['_id'] ==  old_folder['path'][-2]
             ].iloc[0]['path']
-            # destination_path = next(
-            #     x['path'] for x
-            #     in tree
-            #     if x['_id'] == old_folder['path'][-2]
-            # )
         else:
-            destination_path = self.sdbadds.tree_df.loc[
-                self.sdbadds.tree_df['_id'] == new_folder_destination[1]
+            destination_path = sdbadds.tree_df.loc[
+                sdbadds.tree_df['_id'] == new_folder_destination[1]
             ].iloc[0]['path']
 
         # check the derivative_type one more time
-        inherited_type = self.sdbadds.tree_df.loc[
-            self.sdbadds.tree_df['_id'] == destination_path[1]
+        inherited_type = sdbadds.tree_df.loc[
+            sdbadds.tree_df['_id'] == destination_path[1]
         ].iloc[0]['name']
 
         # inherited_type = next(x['name'] for x in tree if x['_id'] == destination_path[1])
-        if self.derivative_type == 'FUTURE':
-            if inherited_type != 'FUTURE':
-                self.logger.error(f"You should not place new futures here: {self.sdbadds.show_path(destination_path)}")
-                return None
-        elif inherited_type in ['OPTION', 'OPTION ON FUTURE']:
-            if self.derivative_type != inherited_type:
-                self.logger.info(f'Derivative type is set to {inherited_type}')
-                self.derivative_type = inherited_type
-        else:
-            self.logger.error(f"You should not place new options here: {self.sdbadds.show_path(destination_path)}")
+        if inherited_type in ['OPTION', 'OPTION ON FUTURE'] and derivative_type in ['OPTION', 'OPTION ON FUTURE']:
+            if derivative_type != inherited_type:
+                logger.info(f'Derivative type is set to {inherited_type}')
+                derivative_type = inherited_type
+        elif derivative_type != inherited_type:
+            logger.error(
+                f"You should not place new {derivative_type.lower()}s here: "
+                f"{sdbadds.show_path(destination_path)}"
+            )
             return None
-        #try to get inherited overrides
+
+        if derivative_type.replace(' ', '_') not in DerivativeType.__members__:
+            raise TypeUndefined(f'{derivative_type=} is unknown type')
+
+
+        # try to get inherited overrides
         parent = Instrument(
-            self.schema,
-            instrument=asyncio.run(self.sdb.get(destination_path[-1])),
-            env=self.env,
-            sdb=self.sdb,
-            sdbadds=self.sdbadds
+            instrument=asyncio.run(sdb.get(destination_path[-1])),
+            instrument_type=derivative_type,
+            env=sdb.env,
+            sdb=sdb,
+            sdbadds=sdbadds
         )
-        overrides = self.get_overrides(parent, parent=True)
-        overrides.update({'ticker': self.ticker})
+        overrides = DerivativeAdder.get_overrides(
+            ticker,
+            exchange,
+            parent,
+            parent=True
+        )
+        overrides.update({
+            'ticker': ticker,
+            'exchange': exchange
+        })
         feed_provider = overrides.get('provider')
         gateway = None
 
         # if no inherited feeds let's choose it
         if not feed_provider:
-            if self.croned:
-                self.logger.error(
+            if croned:
+                logger.error(
                     'Feed provider is not defined, cannot create new folder'
                 )
                 return None
-
-            message = '''
-            Feed provider is unknown. Please select one:
-            '''
-            feed_providers = asyncio.run(
-                self.sdbadds.get_list_from_sdb(
-                    SdbLists.GATEWAYS.value,
-                    id_only=False
+            gateway = DerivativeAdder.__set_feed_provider(overrides, sdbadds)
+            if not gateway:
+                logger.error(
+                    'Feed provider is not set, cannot create new folder'
                 )
-            )
-            selected = pick_from_list_tm(
-                sorted([x[0] for x in feed_providers]), 'providers', message
-            )
-            if selected is not None:
-                gateway = feed_providers[selected][1]
-                gateway['gateway'].update({
-                    'enabled': True,
-                    'allowFallback': True
-                })
-                feed_provider = feed_providers[selected][0].split(':')[0]
-                overrides.update({
-                    'provider': feed_provider,
-                    'prov_id': gateway['gateway']['providerId']
-                })
-                
-            else:
-                self.logger.error('Feed provider is not defined, cannot create new folder')
                 return None
-        
+
+
         # reuters with its reutersProperties is somewhat special
         if feed_provider == 'REUTERS':
-            overrides = self.set_reuters_overrides(overrides)
-            parser = DS()
-        elif feed_provider == 'DXFEED':
-            parser = DF(engine=self.db_engine)
-        elif feed_provider == 'FTX':
-            parser = Ftx()
-        else:
-            self.logger.error(f'Cannot set new ticker for {feed_provider} feed provider, sorry')
-            return None
-        if self.derivative_type == 'FUTURE':
-            parsed_series, parsed_contracts = parser.futures(
-                f'{self.ticker}.{self.exchange}',
-                overrides=overrides.get(feed_provider),
-                data=parsed_data
-            )
-        elif self.derivative_type in ['OPTION', 'OPTION ON FUTURE']:
-            parsed_series, parsed_contracts = parser.options(
-                f'{self.ticker}.{self.exchange}',
-                overrides=overrides.get(feed_provider),
-                product=self.derivative_type,
-                data=parsed_data
-            )
-        elif self.derivative_type == 'SPREAD':
-            parsed_series, parsed_contracts = parser.spreads(
-                f'{self.ticker}.{self.exchange}',
-                overrides=overrides.get(feed_provider),
-                data=parsed_data
-            )
-        overrides['DXFEED'] = {}
-        if not parsed_series:
-            self.logger.error(f'Nothing has been found for {self.ticker}.{self.exchange}')
-            return None
+            overrides = DerivativeAdder.set_reuters_overrides(overrides)
 
-        # if parsed data could not be validated we augment it with our own knowledge
-        while True:
-            transformed = parser.transform_to_sdb(
-                parsed_series,
-                parsed_contracts,
-                product=self.derivative_type
-            )
-            if transformed.get('series'):
-                break
-            if not transformed.get('validation_errors'):
-                self.logger.error('smth wrong with transform_to_sdb method')
-                return None
-            if self.croned:
-                self.errormsg += f"{self.ticker}.{self.exchange}: series validation has been failed:"
-                for err in transformed.get('validation_errors'):
-                    self.errormsg += f"{'/'.join([str(x) for x in err['loc']])}: {err['msg']}" + '\n'
-                return None
-            for err in transformed.get('validation_errors'):
-                err_field = '/'.join([x for x in err['loc'] if '__' not in x])
-                parsed_series.update({
-                    err_field: input(f"{err['msg']}. Please, fill the correct value for {err_field}: ")
-                })
+        parsed = DerivativeAdder.parse_available(
+            overrides,
+            set_series=True,
+            croned=croned,
+            errormsg=errormsg,
+            logger=logger
+        )
 
         # make a valid series folder with all these overrides
-        new_ticker_properties = transformed.get('series')
         if gateway:
-            new_ticker_properties.update({
+            parsed['series'].update({
                 'feeds/gateways': [gateway]
             })
-        contracts = transformed.get('contracts')
-        if parsed_series.get('strike_price_multiplier_'):
-            spm = parsed_series['strike_price_multiplier_']
-            overrides[feed_provider].update({
-                'strikePriceMultiplier': spm
-            })
-            for expiration in transformed['contracts']:
-                self.multiply_strikes(expiration, spm)
-                self.logger.info(f"parsed strikes for {expiration} have been multiplied by {1 / spm}")
-
-        shortname = new_ticker_properties.pop('shortName')
-        self.series = self.set_series(
-                shortname=shortname,
-                destination=destination_path[-1],
-                recreate=recreate,
-                reload_cache=False
-        )
-        for key, val in new_ticker_properties.items():
-            self.series.set_field_value(val, key.split('/'))
+        if not shortname:
+            shortname = parsed['series'].pop('shortName')
+        else:
+            parsed['series'].pop('shortName')
+        series_class: Union[Option, Future, Spread] = DerivativeType[derivative_type.replace(' ', '_')].value
+        series = series_class.from_scratch(
+            ticker,
+            exchange,
+            shortname=shortname,
+            parent_folder_id=destination_path[-1],
+            recreate=recreate,
+            reload_cache=False
+        ) # raises RuntimeError if not recreate and series exists in sdb
+        for key, val in parsed['series'].items():
+            series.set_field_value(val, key.split('/'))
         if overrides:
-            self.series.set_provider_overrides(
+            series.set_provider_overrides(
                 provider=feed_provider,
                 **overrides[feed_provider]
             )
 
+        if parsed['intermediate_series'].get('strike_price_multiplier_'):
+            spm = parsed['intermediate_series']['strike_price_multiplier_']
+            overrides.setdefault(feed_provider, {}).update({
+                'strikePriceMultiplier': spm
+            })
+            for c in parsed['contracts']:
+                DerivativeAdder.multiply_strikes(c, spm)
+
         # presence of currency_multiplier means that derivative is traded in fractional currency,
         # e.g. in US cents instead of US dollars, so we shoul adjust price multipliers both on feed and execution
         # as we always use only base currencies and never fractional ones
-        if parsed_series.get('currency_multiplier_'):
+        if parsed['intermediate_series'].get('currency_multiplier_'):
             feed_currency_override = {
                 'priceMultiplier': 0.01
             }
@@ -955,46 +1121,49 @@ class DerivativeAdder:
             series_feed_providers = [
                 next(
                     y[0] for y
-                    in asyncio.run(self.sdbadds.get_list_from_sdb(SdbLists.FEED_PROVIDERS.value))
+                    in asyncio.run(sdbadds.get_list_from_sdb(SdbLists.FEED_PROVIDERS.value))
                     if y[1] == x
                 ) for x
-                in self.series.compiled_parent.get('feeds', {}).get('providerOverrides')
+                in series.compiled_parent.get('feeds', {}).get('providerOverrides')
             ]
             series_broker_providers = [
                 next(
                     y[0] for y
-                    in asyncio.run(self.sdbadds.get_list_from_sdb(SdbLists.BROKER_PROVIDERS.value))
+                    in asyncio.run(sdbadds.get_list_from_sdb(SdbLists.BROKER_PROVIDERS.value))
                     if y[1] == x
                 ) for x
-                in self.series.compiled_parent.get('brokers', {}).get('providerOverridetes')
+                in series.compiled_parent.get('brokers', {}).get('providerOverridetes')
             ]
             for fp in series_feed_providers:
-                self.series.set_provider_overrides(
+                series.set_provider_overrides(
                     provider=fp,
                     **feed_currency_override
                 )
             for bp in series_broker_providers:
-                self.series.set_provider_overrides(
+                series.set_provider_overrides(
                     provider=bp,
                     **broker_currency_override
                 )
         overrides.update({
-            'target_folder': self.series
+            'target_folder': series
         })
-        parsed = {
-            'contracts': contracts
-        }
         return overrides, parsed
 
-    def set_reuters_overrides(self, overrides: dict = None, weeklies=False):
+    @staticmethod
+    def set_reuters_overrides(
+            ticker: str,
+            exchange: str,
+            derivative_type: str,
+            overrides: dict = None,
+            weeklies=False
+        ):
+        dscope = DscopeParser()
         if overrides is None:
             overrides = {}
         if weeklies:
             ticker = input('Type weekly ticker template: ')
             if not ticker:
                 return overrides
-        else:
-            ticker = self.ticker    
         overrides.update({'ticker': ticker})
         while True:
             base = input("ric base (the part preceeding expiration code): ")
@@ -1003,7 +1172,7 @@ class DerivativeAdder:
             suffix = input(
                 "ric suffix (the part after expiration code. Press enter if none): "
             )
-            if self.derivative_type in ['OPTION', 'OPTION ON FUTURE']:
+            if derivative_type in ['OPTION', 'OPTION ON FUTURE']:
                 separator = input(
                     "option separator (the part that separates expiration from strike. Press enter if none): "
                 )
@@ -1024,8 +1193,8 @@ class DerivativeAdder:
                         'suffix': suffix.replace(sym, i),
                         'optionSeparator': separator.replace(sym, i),
                     }
-                    search = self.ds.options(
-                        f"{ticker.replace(sym, i)}.{self.exchange}",
+                    search = dscope.options(
+                        f"{ticker.replace(sym, i)}.{exchange}",
                         overrides=srch_pld
                     )
                     if search.get('contracts') and weeklies:
@@ -1037,15 +1206,15 @@ class DerivativeAdder:
                         if len(search['contracts']) > 3:
                             to_print.append(f"and {len(search['contracts']) - 3} more expirations")
                         pprint(f"Found contracts: {to_print}")
-            elif self.derivative_type == 'FUTURE':
+            elif derivative_type == 'FUTURE':
                 separator = None
                 print('Test search...')
                 srch_pld = {
                     'base': base,
                     'suffix': suffix,
                 }
-                search = self.ds.futures(
-                    f"{ticker}.{self.exchange}",
+                search = dscope.futures(
+                    f"{ticker}.{exchange}",
                     overrides=srch_pld
                 )
                 if search.get('contracts'):
@@ -1083,8 +1252,8 @@ class DerivativeAdder:
 
 
 # option methods
+    @staticmethod
     def multiply_strikes(
-            self,
             expiration: dict,
             multiplier: float = 1
         ):
