@@ -571,38 +571,6 @@ class ValidationLists:
         exec_to_route,
         feed_perms
     ) = results.result()
-
-
-    # accounts = asyncio.run(
-    #     sdbadds.get_list_from_sdb(SdbLists.ACCOUNTS.value, id_only=False)
-    # )
-    # gateways = asyncio.run(
-    #     sdbadds.get_list_from_sdb(SdbLists.GATEWAYS.value, id_only=False)
-    # )
-    # broker_providers = asyncio.run(
-    #     sdbadds.get_list_from_sdb(SdbLists.BROKER_PROVIDERS.value)
-    # )
-    # feed_providers = asyncio.run(
-    #     sdbadds.get_list_from_sdb(SdbLists.FEED_PROVIDERS.value)
-    # )
-    # currencies = asyncio.run(
-    #     sdbadds.get_list_from_sdb(SdbLists.CURRENCIES.value)
-    # )
-    # exchanges = asyncio.run(
-    #     sdbadds.get_list_from_sdb(SdbLists.EXCHANGES.value, id_only=False)
-    # )
-    # exec_schemes = asyncio.run(
-    #     sdbadds.get_list_from_sdb(SdbLists.EXECSCHEMES.value)
-    # )
-    # sections = asyncio.run(
-    #     sdbadds.get_list_from_sdb(SdbLists.SECTIONS.value, id_only=False)
-    # )
-    # schedules = asyncio.run(
-    #     sdbadds.get_list_from_sdb(SdbLists.SCHEDULES.value)
-    # )
-    # exec_to_route = asyncio.run(
-    #     sdbadds.load_execution_to_route()
-    # )
     market_data_groups = [x['marketDataGroup'] for x in feed_perms]
     asset_classes = [
         'EQ',
@@ -1707,32 +1675,6 @@ class Account(BaseModel):
         alias='constraints',
         title='constraints'
     )
-    # @validator('provider_id', allow_reuse=True)
-    # def check_provider_id(cls, provider_id):
-    #     if provider_id not in [x[1]['account']['providerId'] for x in ValidationLists.accounts]:
-    #         raise ValueError(f'{provider_id} is not valid provider id')
-    #     return provider_id
-
-    # @validator('gateway_id', allow_reuse=True)
-    # def check_gateway_id(cls, gateway_id):
-    #     if gateway_id not in [x[1]['account']['gatewayId'] for x in ValidationLists.accounts]:
-    #         raise ValueError(f'{gateway_id} is not valid gateway id')
-    #     return gateway_id
-
-    # @validator('execution_scheme_id', allow_reuse=True)
-    # def check_execution_scheme(cls, scheme):
-    #     if scheme not in [x[1] for x in ValidationLists.exec_schemes]:
-    #         raise ValueError(f'{scheme} is not valid execution scheme id')
-    #     return scheme
-    
-    # @root_validator
-    # def check_trading_route(cls, values: dict):
-
-    #     fb = values.get('allow_fallback')
-    #     scheme = values.get('execution_scheme_id')
-    #     if fb is not None and scheme is None:
-    #         raise ValueError('Execution scheme is required')
-    #     return values
 
 class Accounts(BaseModel):
     account_id: str = Field(
@@ -1747,6 +1689,12 @@ class Accounts(BaseModel):
 
     @root_validator(allow_reuse=True)
     def check_account(cls, values: dict):
+        """
+        · find account in sdb accounts
+        · check if accountId, providerId and gatewayId make together consistent set
+        · check if executionSchemeId is needed
+        · check if executionSchemeId correspond to accountId
+        """
         existing_account = next((
             x for x
             in ValidationLists.accounts
