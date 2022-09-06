@@ -287,7 +287,13 @@ class SDBAdditional:
                 self.instrument_cache[existing_num] = deepcopy(instr)
 
 
-    def browse_folders(self, input_path: list = None, message: str = None, only_folders: bool = False, allowed: list = None) -> str:
+    def browse_folders(
+            self,
+            input_path: list = None,
+            message: str = None,
+            only_folders: bool = False,
+            allowed: list = None
+        ) -> tuple[str, str]:
         """
         method to navigate through the symboldb tree in interactive fashion
         :param input_path: the point where to start browsing, path of an instrument or '.'
@@ -320,23 +326,46 @@ class SDBAdditional:
                 else:
                     heirs[num]['prefix'] = f"{state} {indent}·"
             if only_folders:
-                count_instruments = len([x for x in all_heirs if not x.get('isAbstract')])
+                # count_instruments = len([x for x in all_heirs if not x.get('isAbstract')])
                 heirs.append({
                     'prefix': f"  {indent}",
-                    'name': f"({count_instruments} instruments are here)",
+                    'name': f"(some instruments are here)",
                     '_id': parents[-1]['_id']
                 })
             for p in reversed(parents):
                 heirs.insert(0, p)
             heirs.append({'name': '..', '_id': '..', 'prefix': ''})
 
+        def filter_heirs(
+                row,
+                parent_id,
+                allowed: list = None,
+                only_folders: bool = False
+            ) -> bool:
+            if len(row['path']) > 1 and row['path'][-2] == parent_id:
+                if allowed and row['name'] not in allowed:
+                    return False
+                if only_folders and row['isAbstract'] is not True:
+                    return False
+                return True
+            return False
+
         parents = []
         if not allowed:
             allowed = []
         if not input_path:
             input_path = []
-        tree = asyncio.run(self.load_tree(fields=['expiryTime', 'expiry']))
-        parents.append(deepcopy(next(x for x in tree if len(x['path']) == 1)))
+        asyncio.run(self.load_tree(fields=['expiryTime'], return_dict=False))
+        find_root = self.tree_df[self.tree_df['name'] == 'Root']
+        
+        root = find_root[
+            find_root.apply(
+                lambda x: len(x['path']) == 1,
+                axis=1
+            )
+        ].iloc[0].to_dict()
+
+        parents.append(root)
         parents[0].update({
             'prefix': ''
         })
@@ -344,7 +373,9 @@ class SDBAdditional:
         if input_path and input_path[0] in ['.', 'Root']:
             input_path.pop(0)
         initial_path = deepcopy(input_path)
+        search_df = self.tree_df
         while True:
+            filter_allowed = None
             is_trading = parents[-1].get('isTrading')
             expiry_time = parents[-1].get('expiryTime')
             # go through the given path: pass the items one by one to the pick_from_list_tm
@@ -357,41 +388,61 @@ class SDBAdditional:
                 and len(parents) - 1 == len(initial_path)
                 and not next((
                     x for num, x
-                    in initial_path
+                    in enumerate(initial_path)
                     if x not in parents[num+1]['name']
-                    ), False)
+                    ), False) # ???? O__o
                 ):
-                all_heirs = sorted(
-                    [
-                        deepcopy(x) for x
-                        in tree
-                        if len(x['path']) > 1
-                        and x['path'][-2] == parents[-1]['_id']
-                        and x['name'] in allowed
-                    ],
-                    key=lambda e: e['name']
+                filter_allowed = allowed
+            if only_folders or len(input_path) > 1:
+                search_df = self.tree_df[self.tree_df['isAbstract'] == True]
+            all_heirs_df = search_df[
+                search_df.apply(
+                    lambda x: filter_heirs(
+                        x,
+                        parents[-1]['_id'],
+                        allowed=filter_allowed,
+                        only_folders=only_folders
+                    ),
+                    axis=1
                 )
-            else:
-                all_heirs = sorted(
-                    [
-                        deepcopy(x) for x
-                        in tree
-                        if len(x['path']) > 1
-                        and x['path'][-2] == parents[-1]['_id']
-                    ],
-                    key=lambda e: e['name']
-                )
+            ]
+                # all_heirs = sorted(
+                #     [
+                #         deepcopy(x) for x
+                #         in tree
+                #         if len(x['path']) > 1
+                #         and x['path'][-2] == parents[-1]['_id']
+                #         and x['name'] in allowed
+                #     ],
+                #     key=lambda e: e['name']
+                # )
+            # else:
+            #     all_heirs_df = self.tree_df[
+            #         self.tree_df.apply(
+            #             lambda x: filter_heirs(x, parents[-1]['_id']),
+            #             axis=1
+            #         )
+            #     ]
+
+                # all_heirs = sorted(
+                #     [
+                #         deepcopy(x) for x
+                #         in tree
+                #         if len(x['path']) > 1
+                #         and x['path'][-2] == parents[-1]['_id']
+                #     ],
+                #     key=lambda e: e['name']
+                # )
             # let's inherit isTrading and expiryTime
-            for h in all_heirs:
+            heirs = sorted(
+                all_heirs_df.to_dict('records'),
+                key=lambda e: e['name']
+            )
+            for h in heirs:
                 if h.get('isTrading') is None:
                     h['isTrading'] = is_trading
                 if h.get('expiryTime') is None:
                     h['expiryTime'] = expiry_time
-            # show only folders if requested
-            if only_folders:
-                heirs = [x for x in all_heirs if x.get('isAbstract')]
-            else:
-                heirs = all_heirs
             
             # add some computor graphics
             decorate(parents, heirs)
