@@ -714,6 +714,11 @@ class Option(Derivative):
                 'diff': diff
             }
         series = self._set_target_folder(week_num, ticker)
+        if series is None:
+            self.logger.error(
+                f"Series folder is not set ({self=}, {week_num=}), expiration is not added"
+            )
+            return {}
         if series.allowed_expirations:
             symbolic = self._maturity_to_symbolic(maturity)
 
@@ -761,7 +766,6 @@ class Option(Derivative):
         maturity = self.format_maturity(maturity)
         if week_num is True:
             week_num = int((exp_date.day - 1)/7) + 1
-        # series = self._set_target_folder(week_num, ticker)
         if self.week_number:
             if week_num and week_num != self.week_number:
                 self.logger.error(
@@ -849,6 +853,51 @@ class Option(Derivative):
             series.new_expirations.remove(new_contract)
         series.new_expirations.append(new_contract)
         return {'created': new_contract.contract_name}
+
+    def refresh_strikes(
+            self,
+            exp_date: Union[str, dt.date, dt.datetime],
+            strikes: dict,
+            maturity: str = None,
+            hard: bool = False,
+            force: bool = False,
+            week_num: Union[bool, int] = None,
+            ticker: str = None
+        ):
+        exp_date = self.normalize_date(exp_date)
+        maturity = self.format_maturity(maturity)
+        if week_num is True:
+            week_num = int((exp_date.day - 1)/7) + 1
+        if self.week_number:
+            if week_num and week_num != self.week_number:
+                self.logger.error(
+                    f"You are trying to find {week_num=} expiration inside {self} instance. "
+                    f"Please call this method either from Monthly instance or {week_num} week instance"
+                )
+                return {}
+        existing_exp, series = self.find_expiration(
+            exp_date,
+            maturity,
+            week_num=week_num,
+            ticker=ticker
+        )
+        if existing_exp is None:
+            self.logger.warning(
+                f"{self.series_name}: expiration {exp_date=}, {maturity=}, {week_num=}, {ticker=} "
+                "is not found, no strikes have been updated"
+            )
+            return None, None, None, None
+        added, removed, preserved = series.contracts[existing_exp].refresh_strikes(
+            strikes,
+            force=force,
+            hard=hard,
+
+        )
+        if removed is None or removed.get('not_updated'):
+            self.logger.warning(
+                f"{series.contracts[existing_exp].contract_name}: strikes are not updated!"
+            )
+        return series.contracts[existing_exp], added, removed, preserved
 
     def set_underlying(self, symbol_id) -> bool:
         # check if symbol_id is not an uuid
