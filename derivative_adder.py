@@ -120,6 +120,8 @@ class DerivativeAdder:
                     f"{derivative_type=} is invalid"
                 )
 
+    def __repr__(self):
+        return f"DerivativeAdder({self.series=}, {self.allowed_expirations=}, {self.max_timedelta=}, {self.croned=})"
 
     @property
     def logger(self):
