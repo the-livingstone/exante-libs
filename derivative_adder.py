@@ -642,9 +642,16 @@ class DerivativeAdder:
             parsed_contracts: list[dict],
             skip_if_exists: bool = True
         ):
+        additional = {
+            'skip_if_exists': skip_if_exists
+        }
+        if isinstance(target, Option):
+            additional.update({
+                'week_num': target.week_number
+            })
         for contract in parsed_contracts:
             try:
-                target.add_payload(contract, skip_if_exists=skip_if_exists)
+                target.add_payload(contract, **additional)
             except Exception as e:
                 self.logger.warning(f"{e.__class__.__name__}: expiration {contract['name']} is not added")
 
