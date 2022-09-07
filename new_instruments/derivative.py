@@ -193,6 +193,7 @@ class Derivative(Instrument):
             bo: BackOffice = None,
             sdb: SymbolDB = None,
             sdbadds: SDBAdditional = None,
+            tree_df: DataFrame = None,
             # init parameters
             reload_cache: bool = True,
             **kwargs
@@ -202,6 +203,7 @@ class Derivative(Instrument):
             bo,
             sdb,
             sdbadds,
+            tree_df,
             env,
             reload_cache=reload_cache
         ).get_instances
@@ -223,6 +225,9 @@ class Derivative(Instrument):
             option_type=kwargs.get('option_type'),
             calendar_type=kwargs.get('calendar_type')
         )
+
+    def __repr__(self):
+        return f"Derivative({self.ticker}.{self.exchange}, {self.instrument_type})"
 
     @staticmethod
     def _set_parent_folder(
@@ -261,18 +266,14 @@ class Derivative(Instrument):
             reload_cache: bool = True,
             env: str = 'prod'
         ):
-        if not sdb:
-            sdb = SymbolDB(env)
-        if tree_df is None or tree_df.empty:
-            sdbadds = SDBAdditional(env)
-            asyncio.run(
-                sdbadds.load_tree(
-                    fields=['expiryTime'],
-                    reload_cache=reload_cache,
-                    return_dict=False
-                )
-            )
-            tree_df = sdbadds.tree_df
+        bo, sdb, sdbadds, tree_df = InitThemAll(
+            bo=None,
+            sdb=sdb,
+            sdbadds=None,
+            tree_df=tree_df,
+            env=env,
+            reload_cache=reload_cache
+        ).get_instances
         if parent_tree and parent_folder_id:
             instrument = next((
                 x for x
@@ -320,18 +321,14 @@ class Derivative(Instrument):
             parent_tree: list[dict] = None,
             env: str = 'prod'
         ):
-        if not sdb:
-            sdb = SymbolDB(env)
-        if tree_df is None or tree_df.empty:
-            sdbadds = SDBAdditional(env)
-            asyncio.run(
-                sdbadds.load_tree(
-                    fields=['expiryTime'],
-                    reload_cache=reload_cache,
-                    return_dict=False
-                )
-            )
-            tree_df = sdbadds.tree_df
+        bo, sdb, sdbadds, tree_df = InitThemAll(
+            bo=None,
+            sdb=sdb,
+            sdbadds=None,
+            tree_df=tree_df,
+            env=env,
+            reload_cache=reload_cache
+        ).get_instances
         same_name = tree_df.loc[
             (tree_df['name'] == ticker)
             & (tree_df['isAbstract'] == True)

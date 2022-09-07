@@ -4,6 +4,7 @@ import logging
 import json
 from copy import copy, deepcopy
 from deepdiff import DeepDiff
+from pandas import DataFrame
 from libs.async_symboldb import SymbolDB
 from libs.backoffice import BackOffice
 from libs.async_sdb_additional import SDBAdditional
@@ -32,6 +33,7 @@ class Future(Derivative):
             bo: BackOffice = None,
             sdb: SymbolDB = None,
             sdbadds: SDBAdditional = None,
+            tree_df: DataFrame = None,
             env: str = 'prod'
         ):
         self.ticker = ticker
@@ -45,6 +47,7 @@ class Future(Derivative):
             bo,
             sdb,
             sdbadds,
+            tree_df,
             env,
             reload_cache=False
         ).get_instances
@@ -59,6 +62,7 @@ class Future(Derivative):
             bo=bo,
             sdb=sdb,
             sdbadds=sdbadds,
+            tree_df=tree_df,
             reload_cache=False
         )
         if reference is None:
@@ -94,6 +98,7 @@ class Future(Derivative):
             bo: BackOffice = None,
             sdb: SymbolDB = None,
             sdbadds: SDBAdditional = None,
+            tree_df: DataFrame = None,
             reload_cache: bool = True,
             env: str = 'prod'
         ):
@@ -101,6 +106,7 @@ class Future(Derivative):
             bo,
             sdb,
             sdbadds,
+            tree_df,
             env,
             reload_cache=reload_cache
         ).get_instances
@@ -133,6 +139,7 @@ class Future(Derivative):
             bo=bo,
             sdb=sdb,
             sdbadds=sdbadds,
+            tree_df=tree_df,
             env=env
         )
 
@@ -148,6 +155,7 @@ class Future(Derivative):
             bo: BackOffice = None,
             sdb: SymbolDB = None,
             sdbadds: SDBAdditional = None,
+            tree_df: DataFrame = None,
             reload_cache: bool = True,
             env: str = 'prod',
             **kwargs
@@ -156,6 +164,7 @@ class Future(Derivative):
             bo,
             sdb,
             sdbadds,
+            tree_df,
             env,
             reload_cache=reload_cache,
         ).get_instances
@@ -208,6 +217,7 @@ class Future(Derivative):
             bo=bo,
             sdb=sdb,
             sdbadds=sdbadds,
+            tree_df=tree_df,
             env=env
         )
 
@@ -219,6 +229,7 @@ class Future(Derivative):
             bo: BackOffice = None,
             sdb: SymbolDB = None,
             sdbadds: SDBAdditional = None,
+            tree_df: DataFrame = None,
             reload_cache: bool = True,
             env: str = 'prod'
         ):
@@ -226,6 +237,7 @@ class Future(Derivative):
             bo,
             sdb,
             sdbadds,
+            tree_df,
             env,
             reload_cache=reload_cache
         ).get_instances
@@ -272,6 +284,7 @@ class Future(Derivative):
             bo=bo,
             sdb=sdb,
             sdbadds=sdbadds,
+            tree_df=tree_df,
             env=env
         )
 

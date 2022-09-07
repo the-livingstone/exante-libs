@@ -39,6 +39,7 @@ class Spread(Derivative):
             bo: BackOffice = None,
             sdb: SymbolDB = None,
             sdbadds: SDBAdditional = None,
+            tree_df: pd.DataFrame = None,
             env: str = 'prod'
         ):
         self.env = env
@@ -51,6 +52,7 @@ class Spread(Derivative):
             bo,
             sdb,
             sdbadds,
+            tree_df,
             env,
             reload_cache=False
         ).get_instances
@@ -78,6 +80,7 @@ class Spread(Derivative):
             bo=bo,
             sdb=sdb,
             sdbadds=sdbadds,
+            tree_df=tree_df,
             reload_cache=False,
             calendar_type=self.calendar_type
         )
@@ -115,6 +118,7 @@ class Spread(Derivative):
             bo: BackOffice = None,
             sdb: SymbolDB = None,
             sdbadds: SDBAdditional = None,
+            tree_df: pd.DataFrame = None,
             reload_cache: bool = True,
             env: str = 'prod'
         ):
@@ -122,6 +126,7 @@ class Spread(Derivative):
             bo,
             sdb,
             sdbadds,
+            tree_df,
             env,
             reload_cache=reload_cache,
         ).get_instances
@@ -154,6 +159,7 @@ class Spread(Derivative):
             bo=bo,
             sdb=sdb,
             sdbadds=sdbadds,
+            tree_df=tree_df,
             env=env
         )
 
@@ -170,6 +176,7 @@ class Spread(Derivative):
             bo: BackOffice = None,
             sdb: SymbolDB = None,
             sdbadds: SDBAdditional = None,
+            tree_df: pd.DataFrame = None,
             reload_cache: bool = True,
             env: str = 'prod',
             **kwargs
@@ -178,6 +185,7 @@ class Spread(Derivative):
             bo,
             sdb,
             sdbadds,
+            tree_df,
             env,
             reload_cache=reload_cache
         ).get_instances
@@ -231,6 +239,7 @@ class Spread(Derivative):
             bo=bo,
             sdb=sdb,
             sdbadds=sdbadds,
+            tree_df=tree_df,
             env=env
         )
         if spread.spread_type == 'CALENDAR_SPREAD' and calendar_type == 'REVERSE':
@@ -251,6 +260,7 @@ class Spread(Derivative):
             bo: BackOffice = None,
             sdb: SymbolDB = None,
             sdbadds: SDBAdditional = None,
+            tree_df: pd.DataFrame = None,
             reload_cache: bool = True,
             env: str = 'prod',
         ):
@@ -258,6 +268,7 @@ class Spread(Derivative):
             bo,
             sdb,
             sdbadds,
+            tree_df,
             env,
             reload_cache=reload_cache
         ).get_instances
@@ -310,6 +321,7 @@ class Spread(Derivative):
             bo=bo,
             sdb=sdb,
             sdbadds=sdbadds,
+            tree_df=tree_df,
             env=env
         )
 
@@ -970,6 +982,7 @@ class SpreadExpiration(Instrument):
             env=spread.env,
             sdb=spread.sdb,
             sdbadds=spread.sdbadds,
+            tree_df=spread.tree_df,
             reload_cache=reload_cache
         )
         for field, val in kwargs.items():

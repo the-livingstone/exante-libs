@@ -306,6 +306,7 @@ class Instrument:
             bo: BackOffice = None,
             sdb: SymbolDB = None,
             sdbadds: SDBAdditional = None,
+            tree_df: DataFrame = None,
             reload_cache: bool = False,
 
             **kwargs
@@ -315,6 +316,7 @@ class Instrument:
             bo,
             sdb,
             sdbadds,
+            tree_df,
             env,
             reload_cache=reload_cache
         ).get_instances
@@ -355,6 +357,8 @@ class Instrument:
             instrument = asyncio.run(sdb.get(instrument))
         self.set_instrument(instrument, parent)
 
+    def __repr__(self):
+        return f"Instrument({self.instrument_type}, {self.schema.__name__})"
 
     @staticmethod
     def set_instrument_type_by_schema(
@@ -410,12 +414,18 @@ class Instrument:
             raise RuntimeError(
                 f'Instrument type {instrument_type} is unknown'
             )
+
     @staticmethod
-    def get_part(instr, path=[]):
-        try:
-            return reduce(operator.getitem, path, instr)
-        except KeyError:
-            return None
+    def get_part(instr, path: list):
+        def safe_getitem(part, key):
+            if isinstance(part, dict) and key in part:
+                return operator.getitem(part, key)
+            elif isinstance(part, (list, str)) and key in range(len(part)):
+                return operator.getitem(part, key)
+            else:
+                return None
+        
+        return reduce(safe_getitem, path, instr)
 
     @staticmethod
     def format_maturity(input_data) -> str:

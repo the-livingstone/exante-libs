@@ -39,6 +39,7 @@ class Option(Derivative):
         bo: BackOffice = None,
         sdb: SymbolDB = None,
         sdbadds: SDBAdditional = None,
+        tree_df: DataFrame = None,
         env: str = 'prod'
     ):
         self.ticker = ticker
@@ -54,6 +55,7 @@ class Option(Derivative):
             bo,
             sdb,
             sdbadds,
+            tree_df,
             env,
             reload_cache=False
         ).get_instances
@@ -68,6 +70,7 @@ class Option(Derivative):
             bo=bo,
             sdb=sdb,
             sdbadds=sdbadds,
+            tree_df=tree_df,
             reload_cache=False
         )
         if reference is None:
@@ -107,6 +110,7 @@ class Option(Derivative):
             bo: BackOffice = None,
             sdb: SymbolDB = None,
             sdbadds: SDBAdditional = None,
+            tree_df: DataFrame = None,
             reload_cache: bool = True,
             env: str = 'prod'
         ):
@@ -114,6 +118,7 @@ class Option(Derivative):
             bo,
             sdb,
             sdbadds,
+            tree_df,
             env,
             reload_cache=reload_cache
         ).get_instances
@@ -160,6 +165,7 @@ class Option(Derivative):
             bo=bo,
             sdb=sdb,
             sdbadds=sdbadds,
+            tree_df=tree_df,
             env=env
         )
 
@@ -178,6 +184,7 @@ class Option(Derivative):
             bo: BackOffice = None,
             sdb: SymbolDB = None,
             sdbadds: SDBAdditional = None,
+            tree_df: DataFrame = None,
             reload_cache: bool = True,
             env: str = 'prod',
             **kwargs
@@ -186,6 +193,7 @@ class Option(Derivative):
             bo,
             sdb,
             sdbadds,
+            tree_df,
             env,
             reload_cache=reload_cache
         ).get_instances
@@ -277,6 +285,7 @@ class Option(Derivative):
             bo=bo,
             sdb=sdb,
             sdbadds=sdbadds,
+            tree_df=tree_df,
             env=env
         )
 
@@ -288,6 +297,7 @@ class Option(Derivative):
             bo: BackOffice = None,
             sdb: SymbolDB = None,
             sdbadds: SDBAdditional = None,
+            tree_df: DataFrame = None,
             reload_cache: bool = True,
             env: str = 'prod'
         ):
@@ -295,6 +305,7 @@ class Option(Derivative):
             bo,
             sdb,
             sdbadds,
+            tree_df,
             env,
             reload_cache=reload_cache
         ).get_instances
@@ -341,6 +352,7 @@ class Option(Derivative):
             bo=bo,
             sdb=sdb,
             sdbadds=sdbadds,
+            tree_df=tree_df,
             env=env
         )
 
