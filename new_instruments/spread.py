@@ -873,7 +873,8 @@ class Spread(Derivative):
         update_expirations = [
             x for x
             in self.contracts
-            if x.get_diff()
+            if x.expiration >= dt.date.today()
+            and x.get_diff()
         ]
 
         if dry_run:

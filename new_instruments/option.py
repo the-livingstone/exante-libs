@@ -1039,7 +1039,8 @@ class Option(Derivative):
             update_expirations = [
                 x for x
                 in target.contracts
-                if x.get_diff()
+                if x.expiration >= dt.date.today()
+                and x.get_diff()
             ]
             # Check if series folder has been changed
             diff = DeepDiff(target.reference, target.instrument)
@@ -1634,7 +1635,7 @@ class OptionExpiration(Instrument):
         for side in ['PUT', 'CALL']:
             added = [
                 x['strikePrice'] for x
-                in self.instrument['strikePrices'][side]
+                in self.instrument.get('strikePrices', {}).get(side, [])
                 if x.get('isAvailable')
                 and x['strikePrice'] not in [
                     y['strikePrice'] for y
@@ -1646,7 +1647,7 @@ class OptionExpiration(Instrument):
                 strikes_diff.setdefault('added', {}).setdefault(side, []).extend(added)
             removed = [
                     x['strikePrice'] for x
-                    in self.reference['strikePrices'][side]
+                    in self.instrument.get('strikePrices', {}).get(side, [])
                     if x.get('isAvailable')
                     and x['strikePrice'] not in [
                         y['strikePrice'] for y
