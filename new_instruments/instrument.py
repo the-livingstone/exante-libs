@@ -37,6 +37,7 @@ class InitThemAll:
             bo: BackOffice = None,
             sdb: SymbolDB = None,
             sdbadds: SDBAdditional = None,
+            tree_df: DataFrame = None,
             env: str = 'prod',
             reload_cache: bool = True,
             test: bool = False
@@ -45,14 +46,18 @@ class InitThemAll:
         self.sdb = sdb if sdb else SymbolDB(self.env)
         self.bo = bo if bo else BackOffice(env=self.env)
         self.sdbadds = sdbadds if sdbadds else SDBAdditional(self.env, sdb=sdb, test=test)
-        asyncio.run(
-            self.sdbadds.load_tree(
-                fields=['expiryTime'],
-                reload_cache=reload_cache,
-                return_dict=False
+        if tree_df:
+            self.sdbadds.tree_df = tree_df
+            self.tree_df = tree_df
+        else:
+            asyncio.run(
+                self.sdbadds.load_tree(
+                    fields=['expiryTime'],
+                    reload_cache=reload_cache,
+                    return_dict=False
+                )
             )
-        )
-        self.tree_df = self.sdbadds.tree_df
+            self.tree_df = self.sdbadds.tree_df
     
     @property
     def get_instances(self):
