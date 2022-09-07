@@ -339,13 +339,10 @@ class SDBAdditional:
         def filter_heirs(
                 row,
                 parent_id,
-                allowed: list = None,
-                only_folders: bool = False
+                allowed: list = None
             ) -> bool:
             if len(row['path']) > 1 and row['path'][-2] == parent_id:
                 if allowed and row['name'] not in allowed:
-                    return False
-                if only_folders and row['isAbstract'] is not True:
                     return False
                 return True
             return False
@@ -400,39 +397,11 @@ class SDBAdditional:
                     lambda x: filter_heirs(
                         x,
                         parents[-1]['_id'],
-                        allowed=filter_allowed,
-                        only_folders=only_folders
+                        allowed=filter_allowed
                     ),
                     axis=1
                 )
             ]
-                # all_heirs = sorted(
-                #     [
-                #         deepcopy(x) for x
-                #         in tree
-                #         if len(x['path']) > 1
-                #         and x['path'][-2] == parents[-1]['_id']
-                #         and x['name'] in allowed
-                #     ],
-                #     key=lambda e: e['name']
-                # )
-            # else:
-            #     all_heirs_df = self.tree_df[
-            #         self.tree_df.apply(
-            #             lambda x: filter_heirs(x, parents[-1]['_id']),
-            #             axis=1
-            #         )
-            #     ]
-
-                # all_heirs = sorted(
-                #     [
-                #         deepcopy(x) for x
-                #         in tree
-                #         if len(x['path']) > 1
-                #         and x['path'][-2] == parents[-1]['_id']
-                #     ],
-                #     key=lambda e: e['name']
-                # )
             # let's inherit isTrading and expiryTime
             heirs = sorted(
                 all_heirs_df.to_dict('records'),
