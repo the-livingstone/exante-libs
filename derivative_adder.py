@@ -75,6 +75,7 @@ class DerivativeAdder:
 
             sdb: SymbolDB = None,
             sdbadds: SDBAdditional = None,
+            tree_df: DataFrame = None,
             db_engine: Engine = None,
             env: str = 'prod'
         ):
@@ -90,7 +91,7 @@ class DerivativeAdder:
         ) = InitThemAll(
             sdb=sdb,
             sdbadds=sdbadds,
-            reload_cache=False,
+            tree_df=tree_df,
             env=env
         ).get_instances
         self.croned = croned
@@ -139,6 +140,7 @@ class DerivativeAdder:
 
             sdb: SymbolDB = None,
             sdbadds: SDBAdditional = None,
+            tree_df: DataFrame = None,
             db_engine: Engine = None,
             env='prod'
         ):
@@ -150,6 +152,7 @@ class DerivativeAdder:
         ) = InitThemAll(
             sdb=sdb,
             sdbadds=sdbadds,
+            tree_df=tree_df,
             reload_cache=reload_cache,
             env=env
         ).get_instances
@@ -204,6 +207,7 @@ class DerivativeAdder:
             croned: bool = False,
             sdb: SymbolDB = None,
             sdbadds: SDBAdditional = None,
+            tree_df: DataFrame = None,
             db_engine: Engine = None,
             env='prod'
         ):
@@ -215,6 +219,7 @@ class DerivativeAdder:
         ) = InitThemAll(
             sdb=sdb,
             sdbadds=sdbadds,
+            tree_df=tree_df,
             reload_cache=reload_cache,
             env=env
         ).get_instances
@@ -236,6 +241,7 @@ class DerivativeAdder:
 
             sdb=sdb,
             sdbadds=sdbadds,
+            tree_df=tree_df,
             logger=logger,
             errormsg=errormsg
         )
@@ -251,6 +257,7 @@ class DerivativeAdder:
 
             sdb=sdb,
             sdbadds=sdbadds,
+            tree_df=tree_df,
             db_engine=db_engine,
             env=env
         )
@@ -965,6 +972,7 @@ class DerivativeAdder:
 
             sdb: SymbolDB = None,
             sdbadds: SDBAdditional = None,
+            tree_df: DataFrame = None,
             logger: logging.Logger = None,
             errormsg: str = None
         ):
@@ -1001,20 +1009,20 @@ class DerivativeAdder:
         # you should choose the folder where series folder meant to be placed (generally the exchange folder)
         # but if you choose the old series folder I won't judge you, it's also ok:)
         if new_folder_destination[0] == ticker:
-            old_folder = sdbadds.tree_df.loc[
-                sdbadds.tree_df['_id'] == new_folder_destination[1]
+            old_folder = tree_df.loc[
+                tree_df['_id'] == new_folder_destination[1]
             ].iloc[0]
-            destination_path = sdbadds.tree_df.loc[
-                sdbadds.tree_df['_id'] ==  old_folder['path'][-2]
+            destination_path = tree_df.loc[
+                tree_df['_id'] ==  old_folder['path'][-2]
             ].iloc[0]['path']
         else:
-            destination_path = sdbadds.tree_df.loc[
-                sdbadds.tree_df['_id'] == new_folder_destination[1]
+            destination_path = tree_df.loc[
+                tree_df['_id'] == new_folder_destination[1]
             ].iloc[0]['path']
 
         # check the derivative_type one more time
-        inherited_type = sdbadds.tree_df.loc[
-            sdbadds.tree_df['_id'] == destination_path[1]
+        inherited_type = tree_df.loc[
+            tree_df['_id'] == destination_path[1]
         ].iloc[0]['name']
 
         # inherited_type = next(x['name'] for x in tree if x['_id'] == destination_path[1])
@@ -1039,7 +1047,8 @@ class DerivativeAdder:
             instrument_type=derivative_type,
             env=sdb.env,
             sdb=sdb,
-            sdbadds=sdbadds
+            sdbadds=sdbadds,
+            tree_df=tree_df
         )
         overrides = DerivativeAdder.get_overrides(
             ticker,
@@ -1097,7 +1106,11 @@ class DerivativeAdder:
             shortname=shortname,
             parent_folder_id=destination_path[-1],
             recreate=recreate,
-            reload_cache=False
+            reload_cache=False,
+
+            sdb=sdb,
+            sdbadds=sdbadds,
+            tree_df=tree_df
         ) # raises RuntimeError if not recreate and series exists in sdb
         for key, val in parsed['series'].items():
             series.set_field_value(val, key.split('/'))
