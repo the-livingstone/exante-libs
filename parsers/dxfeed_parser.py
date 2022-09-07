@@ -771,10 +771,12 @@ class Parser(DxFeed, ExchangeParser):
         else:
             col_suffix = f':{suffix}' if suffix else ''
 
-        if product == 'FUTURE' and payload['exchange'] == 'EUREX':
+        if overrides.get('useLongMaturityFormat') is True:
             maturity_type = r'\d{6}' if self.engine else '??????'
-        elif product == 'OPTION' and payload['exchange'] == 'CBOE':
+        elif product == 'OPTION' and payload['exchange'] in ['CBOE', 'EUREX']:
             maturity_type = r'\d{6}' if self.engine else '??????'
+        # elif product == 'FUTURE' and payload['exchange'] == 'EUREX':
+        #     maturity_type = r'\d{6}' if self.engine else '??????'
         else:
             maturity_type = r'[FGHJKMNQUVXZ]\d{2}' if self.engine else '???'
 
