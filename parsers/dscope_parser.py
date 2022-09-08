@@ -3,7 +3,7 @@ import datetime as dt
 import logging
 import pandas as pd
 import re
-from typing import Dict, List, Optional, Union
+from typing import Optional, Union
 
 from libs.parsers import (
     FractionCurrencies,
