@@ -76,7 +76,6 @@ class DerivativeAdder:
             sdb: SymbolDB = None,
             sdbadds: SDBAdditional = None,
             tree_df: DataFrame = None,
-            db_engine: Engine = None,
             env: str = 'prod'
         ):
         self.errormsg = ''
@@ -100,7 +99,6 @@ class DerivativeAdder:
         self.exchange = exchange
         self.allowed_expirations = allowed_expirations
         self.max_timedelta = max_timedelta
-        self.db_engine = db_engine
         self.series = series
         if series:
             if isinstance(series, Option):
@@ -143,7 +141,6 @@ class DerivativeAdder:
             sdb: SymbolDB = None,
             sdbadds: SDBAdditional = None,
             tree_df: DataFrame = None,
-            db_engine: Engine = None,
             env='prod'
         ):
         (
@@ -186,7 +183,6 @@ class DerivativeAdder:
 
             sdb=sdb,
             sdbadds=sdbadds,
-            db_engine=db_engine,
             env=env
         )
 
@@ -210,7 +206,6 @@ class DerivativeAdder:
             sdb: SymbolDB = None,
             sdbadds: SDBAdditional = None,
             tree_df: DataFrame = None,
-            db_engine: Engine = None,
             env='prod'
         ):
         (
@@ -260,7 +255,6 @@ class DerivativeAdder:
             sdb=sdb,
             sdbadds=sdbadds,
             tree_df=tree_df,
-            db_engine=db_engine,
             env=env
         )
         drv.new_ticker_parsed = parsed
@@ -456,6 +450,7 @@ class DerivativeAdder:
             target: dict = None,
             set_series: bool = False,
             croned: bool = False,
+            db_engine: Engine = None,
 
             errormsg: str = None,
             logger: logging.Logger = None
@@ -492,8 +487,13 @@ class DerivativeAdder:
         if not feed_provider:
             logger.error(f"Cannot get feed_provider for {target}")
             return good_to_add
+        init_parser = {}
+        if feed_provider == 'DXFEED':
+            init_parser.update({
+                'engine': db_engine
+            })
         if feed_provider in Parser.__members__:
-            parser: ExchangeParser = Parser[feed_provider].value()
+            parser: ExchangeParser = Parser[feed_provider].value(**init_parser)
         else:
             raise RuntimeError(f'Unknown {feed_provider=}')
         derivative_type = target.get('derivative_type')
