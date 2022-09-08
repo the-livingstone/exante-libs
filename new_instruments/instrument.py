@@ -46,7 +46,7 @@ class InitThemAll:
         self.sdb = sdb if sdb else SymbolDB(self.env)
         self.bo = bo if bo else BackOffice(env=self.env)
         self.sdbadds = sdbadds if sdbadds else SDBAdditional(self.env, sdb=sdb, test=test)
-        if tree_df:
+        if tree_df is not None and not tree_df.empty:
             self.sdbadds.tree_df = tree_df
             self.tree_df = tree_df
         else:
