@@ -125,6 +125,7 @@ class DerivativeAdder:
     def logger(self):
         return logging.getLogger(f"{self.__class__.__name__}")
 
+# constructors
     @classmethod
     def from_sdb(
             cls,
@@ -192,7 +193,8 @@ class DerivativeAdder:
             ticker: str,
             exchange: str,
             derivative: str,
-            shortname: str,
+
+            shortname: str = None,
             parent_folder_id: str = None,
             option_type: str = None,
             calendar_type: str = None,
@@ -203,6 +205,7 @@ class DerivativeAdder:
             max_timedelta: int = None,
             reload_cache: bool = True,
             croned: bool = False,
+
             sdb: SymbolDB = None,
             sdbadds: SDBAdditional = None,
             tree_df: DataFrame = None,
@@ -837,6 +840,7 @@ class DerivativeAdder:
                     + pformat(part_report['update_error']) + '\n' if part_report.get('update_error') else ''
         return self.comment, self.errormsg
 
+# new series actions
     @staticmethod
     def __set_new_destination(
             ticker: str,
@@ -960,7 +964,6 @@ class DerivativeAdder:
             })
             return gateway
             
-# new series actions
     @staticmethod
     def setup_new_ticker(
             ticker: str,
@@ -1271,7 +1274,6 @@ class DerivativeAdder:
                 'reutersProperties/tradeRic/optionSeparator': separator
             })
         return overrides
-
 
 # option methods
     @staticmethod
