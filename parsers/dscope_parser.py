@@ -12,9 +12,7 @@ from libs.parsers import (
     Datascope,
     Months
 )
-from libs.async_sdb_additional import SDBAdditional
-from libs.sdb_instruments import Future, Instrument, Option, Stock
-from libs.sdb_instruments.instrument import get_part
+from libs.new_instruments import Future, Instrument, Option, InitThemAll
 from pydantic import BaseModel, Field, root_validator, validator, ValidationError
 
 
@@ -221,7 +219,14 @@ class Parser(Datascope, ExchangeParser):
 
     def __init__(self):
         super().__init__()
-        self.sdbadds = SDBAdditional()
+        (
+            self.bo,
+            self.sdb,
+            self.sdbadds,
+            self.tree_df
+        ) = InitThemAll(
+            env='prod'
+        ).get_instances
         self.provider_id = next((
             x[1] for x
             in asyncio.run(
@@ -262,7 +267,7 @@ class Parser(Datascope, ExchangeParser):
                     underlying_futures_folder = next((
                         x for x in all_exchange_futures
                         if x['isAbstract']
-                        and get_part(
+                        and Instrument.get_part(
                             x, [
                                 'feeds',
                                 'providerOverrides',
@@ -304,11 +309,27 @@ class Parser(Datascope, ExchangeParser):
     def __create_search_list(self, series: str, product: str, overrides: dict = None) -> dict:
         try:
             if product == 'Futures':
-                instrument = Future(*series.split('.')[:2])
+                instrument = Future.from_sdb(
+                    *series.split('.')[:2],
+
+                    bo=self.bo,
+                    sdb=self.sdb,
+                    sdbadds=self.sdbadds,
+                    tree_df=self.tree_df,
+                    env='prod'
+                )
             elif product in ['Options', 'FuturesOnOptions']:
-                instrument = Option(*series.split('.')[:2])
+                instrument = Option.from_sdb(
+                    *series.split('.')[:2],
+
+                    bo=self.bo,
+                    sdb=self.sdb,
+                    sdbadds=self.sdbadds,
+                    tree_df=self.tree_df,
+                    env='prod'
+                    )
             else:
-                instrument = Instrument(*series.split('.')[:2])
+                raise NotImplementedError(f'unknown {product=}')
         except Exception:
             self.logger.error(f"{series} is not found in SDB. You should provide identifiers in overrides arg")
             return {}
