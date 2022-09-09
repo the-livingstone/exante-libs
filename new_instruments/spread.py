@@ -326,12 +326,7 @@ class Spread(Derivative):
         )
 
     def __set_contracts(self, series_tree: list[dict]):
-        contracts: list[SpreadExpiration] = [
-            SpreadExpiration.from_dict(self, instrument=x, reference=x) for x
-            in series_tree
-            if x['path'][:-1] == self.instrument['path']
-            and not x['isAbstract']
-        ]
+        contracts = []
         gap_folders = []
         if self.spread_type in ['CALENDAR', 'CALENDAR_SPREAD']:
             gap_folders = [
@@ -341,13 +336,28 @@ class Spread(Derivative):
                 and x['isAbstract']
                 and re.match(r'\d{1,2} month', x['name'])
             ]
-            for gf in gap_folders:
-                contracts.extend([
-                    SpreadExpiration.from_dict(self, instrument=x, reference=x) for x
-                    in series_tree
-                    if x['path'][:-1] == gf['path']
-                    and not x['isAbstract']
-                ])
+        for parent_folder in [self.instrument] + gap_folders:
+            contract_dicts = [
+                x for x
+                in series_tree
+                if x['path'][:-1] == parent_folder['path']
+                and not x['isAbstract']
+            ]
+            for item in contract_dicts:
+                try:
+                    contracts.append(
+                        SpreadExpiration.from_dict(self, instrument=item, reference=item)
+                    )
+                except Exception as e:
+                    # Don't bother with old shit
+                    expiration_date = self.sdb.sdb_to_date(item.get('expiry', {}))
+                    if expiration_date and dt.date.today() - expiration_date < dt.timedelta(days=1100): # ~3 years
+                        raise e
+                    self.logger.info(
+                        f"Cannot initialize contract {item['name']=}, {item['_id']=}."
+                        "Anyway, it's too old to worry about"
+                    )
+
         return contracts, gap_folders
 
     def __set_gap_folders(self):

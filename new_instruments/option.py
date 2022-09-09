@@ -462,12 +462,28 @@ class Option(Derivative):
         return parent_folder_id, option_type
 
     def __set_contracts(self, series_tree: list[dict], week_number: int = 0):
-        contracts = [
-            OptionExpiration.from_dict(self, instrument=x, reference=x) for x
+        contracts = []
+        contract_dicts = [
+            x for x
             in series_tree
             if x['path'][:-1] == self.instrument['path']
             and not x['isAbstract']
         ]
+        for item in contract_dicts:
+            try:
+                contracts.append(
+                    OptionExpiration.from_dict(self, instrument=item, reference=item)
+                )
+            except Exception as e:
+                # Don't bother with old shit
+                expiration_date = self.sdb.sdb_to_date(item.get('expiry', {}))
+                if expiration_date and dt.date.today() - expiration_date < dt.timedelta(days=1100): # ~3 years
+                    raise e
+                self.logger.info(
+                    f"Cannot initialize contract {item['name']=}, {item['_id']=}."
+                    "Anyway, it's too old to worry about"
+                )
+
         # common weekly folders where single week folders are stored
         # in most cases only one is needed but there are cases like EW.CME
         if not week_number:
