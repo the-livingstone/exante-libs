@@ -74,12 +74,9 @@ def convert_maturity(
         else:
             return maturity_symbolic
     elif isinstance(maturity_symbolic, (dt.date, dt.datetime)):
-        day = f"0{maturity_symbolic.day}" if maturity_symbolic.day < 10 else str(maturity_symbolic.day)
-        month = f"0{maturity_symbolic.month}" if maturity_symbolic.month < 10 else str(maturity_symbolic.month)
         if day:
-            return f"{maturity_symbolic.year}-{month}-{day}"
-        else:
-            return f"{maturity_symbolic.year}-{month}"
+            return f"{maturity_symbolic.year}-{maturity_symbolic.month:0>2}-{maturity_symbolic.day:0>2}"
+        return f"{maturity_symbolic.year}-{maturity_symbolic.month:0>2}"
     elif isinstance(maturity_symbolic, str):
         if maturity_symbolic.isdecimal() and len(maturity_symbolic) == 6:
             return f"{maturity_symbolic[:4]}-{maturity_symbolic[4:]}"
@@ -96,7 +93,7 @@ def convert_maturity(
         mmy_year = int(f"202{maturity_symbolic[-1]}")
         while dt.date(mmy_year, mmy_month, 1).year < dt.date.today().year:
             mmy_year += 10
-        return f"{mmy_year}-0{mmy_month}" if mmy_month < 10 else f"{mmy_year}-{mmy_month}"
+        return f"{mmy_year}-{mmy_month:0>2}"
 
 def normalize_date(date_input: Union[str, dt.date, dt.datetime, dict], time: str = None):
     if isinstance(date_input, dict):

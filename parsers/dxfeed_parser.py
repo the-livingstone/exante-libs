@@ -103,15 +103,10 @@ def dxfeed_maturity_to_sdb(dxfeed: str): # w/o day
             continue
         if regex == long:
             month_num = int(match.group('maturity')[2:4])
-            if not match.group('suffix') and int(match.group('maturity')[-2:]) < 10:
+            if not match.group('suffix'):
                 return (
                     match.group('ticker'),
-                    f"{match.group('maturity')[-1]}{Months(month_num).name}20{match.group('maturity')[:2]}"
-                )
-            elif not match.group('suffix'):
-                return (
-                    match.group('ticker'),
-                    f"{match.group('maturity')[-2:]}{Months(month_num).name}20{match.group('maturity')[:2]}"
+                    f"{match.group('maturity')[-2:].lstrip('0')}{Months(month_num).name}20{match.group('maturity')[:2]}"
                 )
             else:
                 return (
@@ -125,11 +120,9 @@ def dxfeed_maturity_to_sdb(dxfeed: str): # w/o day
     return dxfeed, None
 
 def date_dict_to_str(sdb_dict: dict) -> str:
-    date_str = f"{sdb_dict['year']}-{sdb_dict['month']}" if sdb_dict['month'] > 9 \
-        else f"{sdb_dict['year']}-0{sdb_dict['month']}"
+    date_str = f"{sdb_dict['year']}-{sdb_dict['month']:0>2}"
     if sdb_dict.get('day'):
-        date_str += f"-{sdb_dict['day']}" if sdb_dict['day'] > 9 \
-            else f"-0{sdb_dict['day']}"
+        date_str += f"-{sdb_dict['day']:0>2}"
     return date_str
 
 

@@ -434,11 +434,9 @@ class Instrument:
         from literally every possible input
         """
         if isinstance(input_data, dict):
-            maturity = f"{input_data['year']}-0{input_data['month']}" if input_data['month'] < 10\
-                else f"{input_data['year']}-{input_data['month']}"
+            maturity = f"{input_data['year']}-{input_data['month']:0>2}"
             if input_data.get('day'):
-                maturity += f"-0{input_data['day']}" if input_data['day'] < 10\
-                    else f"-{input_data['day']}"
+                maturity += f"-{input_data['day']:0>2}"
             return maturity
         elif isinstance(input_data, str):
             # 2021-08-01, 20210801, 2021-8-1, 2021-8, 2021-08 
@@ -447,15 +445,10 @@ class Instrument:
                 input_data
             )
             if match:
-                month = match.group('month') if len(match.group('month')) == 2\
-                    else f"0{match.group('month')}"
-                maturity = f"{match.group('year')}-{month}"
-                if len(match.group('day')) == 2:
-                    return f"{maturity}-{match.group('day')}"
-                elif len(match.group('day')) == 1:
-                    return f"{maturity}-0{match.group('day')}"
-                else:
-                    return maturity
+                maturity = f"{match.group('year')}-{match.group('month'):0>2}"
+                if match.group('day'):
+                    return f"{maturity}-{match.group('day'):0>2}"
+                return maturity
             # Q21, Q2021, 8-2021, 08-21, 082021
             match = re.match(
                 r"(?P<month>(0|1)?\d|[FGHJKMNQUVXZ])(-)?(?P<year>(20)?\d{2})$",
@@ -463,22 +456,18 @@ class Instrument:
             )
             if match:
                 if match.group('month').isdecimal():
-                    month = match.group('month') if len(match.group('month')) == 2\
-                        else f"0{match.group('month')}"
+                    month = f"{match.group('month'):0>2}"
                 else:
                     month_num = Months[match.group('month')].value
-                    month = str(month_num) if month_num > 9 else f"0{month_num}"
-                year = match.group('year') if len(match.group('year')) == 4\
-                    else f"20{match.group('year')}"
-                return f"{year}-{month}"
+                    month = f"{match.group('month'):0>2}"
+                return f"20{match.group('year')[-2:]}-{month}"
             # Q1
             match = re.match(
                 r"(?P<month>[FGHJKMNQUVXZ])(-)?(?P<year>\d)$",
                 input_data
             )
             if match:
-                month_num = Months[match.group('month')].value
-                month = str(month_num) if month_num > 9 else f"0{month_num}"
+                month = f"{Months[match.group('month')].value:0>2}"
                 year = int(f"202{match.group('year')}")
                 while year < dt.datetime.now().year:
                     year += 10
@@ -489,13 +478,9 @@ class Instrument:
                 input_data
             )
             if match:
-                day = match.group('day') if len(match.group('day')) == 2\
-                    else f"0{match.group('day')}"
-                literal = Months[match.group('month')].value
-                month = str(literal) if literal > 9 else f"0{literal}"
-                year = match.group('year') if len(match.group('year')) == 4\
-                    else f"20{match.group('year')}"
-                return f"{year}-{month}-{day}"
+                day = f"{match.group('day'):0>2}"
+                month = f"{Months[match.group('month')].value:0>2}"
+                return f"20{match.group('year')[-2:]}-{month}-{day}"
             # 01-08-2021
             match = re.match(
                 r"(?P<day>\d{2})-(?P<month>\d{2})-(?P<year>\d{4})$",
@@ -847,13 +832,11 @@ class Instrument:
         # Chicago with day
         match = re.match(r'(?P<day>\d{1,2})?(?P<month>[FGHJKMNQUVXZ])(?P<year>\d{4})$', maturity)
         if match:
-            month = Months[match.group('month')].value
-            month_str = str(month) if month >= 10 else f"0{month}"
+            month = f"{Months[match.group('month')].value:0>2}"
             if match.group('day'):
-                day_str = match.group('day') if len(match.group('day')) == 2 else f"0{match.group('day')}"
-                return f"{match.group('year')}-{month_str}-{day_str}"
-            else:
-                return f"{match.group('year')}-{month_str}"
+                day = f"{match.group('day'):0>2}"
+                return f"{match.group('year')}-{month}-{day}"
+            return f"{match.group('year')}-{month}"
 
     def get_routes(self, compiled=False, default=False) -> list:
         if default:

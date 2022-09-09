@@ -764,14 +764,12 @@ class SdbDate(BaseModel):
     @root_validator(allow_reuse=True)
     def check_date(cls, values: dict):
         day = values.get('day') if values.get('day') else 1
-        strday = str(day) if day > 9 else f'0{day}'
-        strmonth = str(values.get('month')) if values.get('month') > 9 else f"0{values.get('month')}"
-        dt.date.fromisoformat(f"{values.get('year')}-{strmonth}-{strday}")
+        try:
+            dt.date.fromisoformat(f"{values['year']}-{values['month']:0>2}-{values['day']:0>2}")
+        except Exception:
+            raise ValueError(f"Wrong date: {values['year']=}, {values['month']=}, {day=}")
         if values.get('time'):
-            if len(values['time'].split(':')[0]) == 1:
-                dt.time.fromisoformat(f"0{values['time']}")
-            else:
-                dt.time.fromisoformat(values.get('time'))
+            dt.time.fromisoformat(f"{values['time']:0>8}")
         return values
 
 class AdvancedSdbDate(BaseModel):
@@ -781,11 +779,11 @@ class AdvancedSdbDate(BaseModel):
 
     @root_validator(allow_reuse=True)
     def check_date(cls, values: dict):
-        day = values.get('day') if values.get('day') else 1
-        if isinstance(values.get('year'), int) and isinstance(values.get('month'), int) and isinstance(day, int):
-            strday = str(day) if day > 9 else f'0{day}'
-            strmonth = str(values.get('month')) if values.get('month') > 9 else f"0{values.get('month')}"
-            dt.date.fromisoformat(f"{values.get('year')}-{strmonth}-{strday}")
+        day = values['day'] if values.get('day') else 1
+        try:
+            dt.date.fromisoformat(f"{values['year']}-{values['month']:0>2}-{values['day']:0>2}")
+        except Exception:
+            raise ValueError(f"Wrong date: {values['year']=}, {values['month']=}, {day=}")
         return values
 
 class Identifiers(BaseModel):
@@ -2838,13 +2836,8 @@ class OptionSchema(CommonSchema):
             items['expiry'].month,
             items['expiry'].day
         )
-        if items['expiry'].time:
-            if len(items['expiry'].time.split(':')[0]) == 1:
-                time_expiry = f"0{items['expiry'].time}"
-            else:
-                time_expiry = items['expiry'].time
-        else:
-            time_expiry = '00:00:00'
+        
+        time_expiry = f"{items['expiry'].time:0>8}" if items['expiry'].time else '23:59:59'
         dt_expiry = dt.datetime.combine(
             date_expiry,
             dt.time.fromisoformat(time_expiry)
@@ -2856,13 +2849,7 @@ class OptionSchema(CommonSchema):
             raise ValueError(f'{udl_name} is not tradable')
         elif compiled.get('expiry'):
             udl_date = sdb.sdb_to_date(compiled['expiry'])
-            if compiled['expiry'].get('time'):
-                if len(compiled['expiry']['time'].split(':')[0]) == 1:
-                    udl_time = f"0{compiled['expiry']['time']}"
-                else:
-                    udl_time = compiled['expiry']['time']
-            else:
-                udl_time = '00:00:00'
+            udl_time = f"{compiled['expiry']['time']:0>8}" if compiled['expiry'].get('time') else '23:59:59'
             udl_expiry = dt.datetime.combine(
                 udl_date,
                 dt.time.fromisoformat(udl_time)
@@ -2878,13 +2865,7 @@ class OptionSchema(CommonSchema):
             items['expiry'].month,
             items['expiry'].day
         )
-        if items['expiry'].time:
-            if len(items['expiry'].time.split(':')[0]) == 1:
-                time_expiry = f"0{items['expiry'].time}"
-            else:
-                time_expiry = items['expiry'].time
-        else:
-            time_expiry = '00:00:00'
+        time_expiry = f"{items['expiry'].time:0>8}" if items['expiry'].time else '23:59:59'
         dt_expiry = dt.datetime.combine(
             date_expiry,
             dt.time.fromisoformat(time_expiry)
@@ -2897,13 +2878,7 @@ class OptionSchema(CommonSchema):
                 items['last_trading'].month,
                 items['last_trading'].day
             )
-            if items['last_trading'].time:
-                if len(items['last_trading'].time.split(':')[0]) == 1:
-                    time_last_trading = f"0{items['last_trading'].time}"
-                else:
-                    time_last_trading = items['last_trading'].time
-            else:
-                time_last_trading = '00:00:00'
+            time_last_trading = f"{items['last_trading'].time:0>8}" if items['last_trading'].time else '23:59:59'
             dt_last_trading = dt.datetime.combine(
                 date_last_trading,
                 dt.time.fromisoformat(time_last_trading)
@@ -2916,13 +2891,7 @@ class OptionSchema(CommonSchema):
                 items['last_available'].month,
                 items['last_available'].day
             )
-            if items['last_available'].time:
-                if len(items['last_available'].time.split(':')[0]) == 1:
-                    time_last_available = f"0{items['last_available'].time}"
-                else:
-                    time_last_available = items['last_available'].time
-            else:
-                time_last_available = '00:00:00'
+            time_last_available = f"{items['last_available'].time:0>8}" if items['last_available'].time else '23:59:59'
             dt_last_available = dt.datetime.combine(
                 date_last_available,
                 dt.time.fromisoformat(time_last_available)

@@ -602,10 +602,7 @@ class DerivativeAdder:
             for exp in self.allowed_expirations:
                 translate_expiration = str()
                 if exp[0] in Months.__members__:
-                    if Months[exp[0]].value < 10:
-                        translate_expiration = f"20{exp[-2:]}-0{Months[exp[0]].value}"
-                    else:
-                        translate_expiration = f"20{exp[-2:]}-{Months[exp[0]].value}"
+                    translate_expiration = f"20{exp[-2:]}-{Months[exp[0]].value:0>2}"
                 elif exp[0].isdecimal():
                     if int(exp[0]) > 1 or len(exp) == 3 or exp[1] == '-':
                         translate_expiration = f"20{exp[-2:]}-0{exp[0]}"

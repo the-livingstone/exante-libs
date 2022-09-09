@@ -783,7 +783,7 @@ class Spread(Derivative):
             new_folder.pop(udl_field)
         new_folder['path'].pop(-1)
 
-        str_gap = str(gap) if gap > 10 else f'0{gap}'
+        str_gap = f'{gap:0>2}'
         new_folder['name'] = re.sub(r'\d{1,2}', str_gap, new_folder['name'])
         sibling_months = int(re.search(r'\d{1,2}', sibling_folder['name']).group())
         sibling_leggap = next((
@@ -838,8 +838,7 @@ class Spread(Derivative):
                 gap_folder = next((
                     x for x
                     in self.gap_folders
-                    if (re.search(rf'0{gap_folder_filler[1]}', x) and gap_folder_filler < 10)
-                    or (re.search(rf'{gap_folder_filler[1]}', x) and gap_folder_filler >= 10)
+                    if re.search(rf'{gap_folder_filler[1]:0>2}', x)
                 ), None)
                 if not gap_folder:
                     self.logger.error(
