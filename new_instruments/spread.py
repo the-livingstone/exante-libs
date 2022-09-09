@@ -353,6 +353,8 @@ class Spread(Derivative):
                     expiration_date = self.sdb.sdb_to_date(item.get('expiry', {}))
                     if expiration_date and dt.date.today() - expiration_date < dt.timedelta(days=1100): # ~3 years
                         raise e
+                    message = f"{self.ticker}.{self.exchange}: {e.__class__.__name__}: {e}"
+                    self.logger.info(message)
                     self.logger.info(
                         f"Cannot initialize contract {item['name']=}, {item['_id']=}."
                         "Anyway, it's too old to worry about"
