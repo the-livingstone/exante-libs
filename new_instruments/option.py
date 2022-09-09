@@ -81,7 +81,10 @@ class Option(Derivative):
 
         self.new_expirations: list[OptionExpiration] = []
         self.series_tree = series_tree
-        self.contracts, self.weekly_commons = self.__set_contracts(series_tree)
+        self.contracts, self.weekly_commons = self.__set_contracts(
+            series_tree,
+            week_number=week_number
+        )
         self._align_expiry_la_lt(self.contracts)
 
     @property
