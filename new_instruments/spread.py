@@ -360,7 +360,7 @@ class Spread(Derivative):
                         "Anyway, it's too old to worry about"
                     )
 
-        return contracts, gap_folders
+        return sorted(contracts), gap_folders
 
     def __set_gap_folders(self):
         leg_futures: list[FutureExpiration] = []
@@ -500,6 +500,42 @@ class Spread(Derivative):
             )
             return None, None
         return None, self
+
+    def get_product_expiration(
+            self,
+            expiration: Union[
+                str,
+                dt.date,
+                dt.datetime
+            ] = None,
+            maturity: str = None,
+            uuid: str = None
+        ):
+        num, series = self.find_product_expiration(
+            expiration,
+            maturity=maturity,
+            uuid=uuid
+            )
+        return series.contracts[num] if num is not None and series is not None else None
+
+    def get_calendar_expiration(
+            self,
+            expiration: Union[
+                str,
+                dt.date,
+                dt.datetime
+            ] = None,
+            near_maturity: str = None,
+            far_maturity: str = None,
+            uuid: str = None
+        ):
+        num, series = self.find_calendar_expiration(
+            expiration,
+            near_maturity=near_maturity,
+            far_maturity=far_maturity,
+            uuid=uuid
+            )
+        return series.contracts[num] if num is not None and series is not None else None
 
     def add_payload(
             self,

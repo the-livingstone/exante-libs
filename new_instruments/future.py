@@ -312,7 +312,7 @@ class Future(Derivative):
                     f"Cannot initialize contract {item['name']=}, {item['_id']=}."
                     "Anyway, it's too old to worry about"
                 )
-        return contracts
+        return sorted(contracts)
 
     def find_expiration(
             self,
@@ -370,7 +370,24 @@ class Future(Derivative):
             return None, None
         # if nothing is found, search in future.contracts
         return None, self
-    
+
+    def get_expiration(
+            self,
+            expiration: Union[
+                str,
+                dt.date,
+                dt.datetime
+            ] = None,
+            maturity: str = None,
+            uuid: str = None
+        ):
+        num, series = self.find_expiration(
+            expiration,
+            maturity=maturity,
+            uuid=uuid
+            )
+        return series.contracts[num] if num is not None and series is not None else None
+
     def add_payload(
             self,
             payload: dict,

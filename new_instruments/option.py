@@ -504,7 +504,7 @@ class Option(Derivative):
             ]
         else:
             weekly_commons = []
-        return contracts, weekly_commons
+        return sorted(contracts), weekly_commons
 
     def find_expiration(
             self,
@@ -583,6 +583,27 @@ class Option(Derivative):
             return None, None
         else:
             return None, self
+
+    def get_expiration(
+            self,
+            expiration: Union[
+                str,
+                dt.date,
+                dt.datetime
+            ] = None,
+            maturity: str = None,
+            week_num: Union[int, bool] = None,
+            ticker: str = None,
+            uuid: str = None
+        ):
+        num, series = self.find_expiration(
+            expiration,
+            maturity=maturity,
+            week_num=week_num,
+            ticker=ticker,
+            uuid=uuid
+            )
+        return series.contracts[num] if num is not None and series is not None else None
 
     def _set_target_folder(
             self,
