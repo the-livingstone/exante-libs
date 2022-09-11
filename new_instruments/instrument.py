@@ -458,8 +458,7 @@ class Instrument:
                 if match.group('month').isdecimal():
                     month = f"{match.group('month'):0>2}"
                 else:
-                    month_num = Months[match.group('month')].value
-                    month = f"{match.group('month'):0>2}"
+                    month = f"{Months[match.group('month')].value:0>2}"
                 return f"20{match.group('year')[-2:]}-{month}"
             # Q1
             match = re.match(
