@@ -915,6 +915,10 @@ class Parser(DxFeed, ExchangeParser):
                 self.logger.warning(
                     f"contract data {d.get('SYMBOL')} is invalid: {pformat(valerr.errors())}"
                 )
+            except Exception as e:
+                self.logger.warning(
+                    f"{e.__class__.__name__} {e}: contract data {d.get('SYMBOL')} is invalid"
+                )
 
         data_df = pd.DataFrame(contracts)
         series_data.update({
@@ -969,9 +973,12 @@ class Parser(DxFeed, ExchangeParser):
                     ).dict()
                 )
             except ValidationError as valerr:
-
                 self.logger.warning(
                     f"contract data {d.get('SYMBOL')} is invalid: {pformat(valerr.errors())}"
+                )
+            except Exception as e:
+                self.logger.warning(
+                    f"{e.__class__.__name__} {e}: contract data {d.get('SYMBOL')} is invalid"
                 )
         data_df = pd.DataFrame(formatted_data)
         if data_df.empty:
@@ -1086,9 +1093,12 @@ class Parser(DxFeed, ExchangeParser):
                     ).dict()
                 )
             except ValidationError as valerr:
-
                 self.logger.warning(
                     f"contract data {d.get('SYMBOL')} is invalid: {pformat(valerr.errors())}"
+                )
+            except Exception as e:
+                self.logger.warning(
+                    f"{e.__class__.__name__} {e}: contract data {d.get('SYMBOL')} is invalid"
                 )
         data_df = pd.DataFrame(contracts)
         if data_df.empty:
