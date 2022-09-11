@@ -471,6 +471,7 @@ class Option(Derivative):
             in series_tree
             if x['path'][:-1] == self.instrument['path']
             and not x['isAbstract']
+            and x.get('isTrading') is not False
         ]
         for item in contract_dicts:
             try:

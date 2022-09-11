@@ -342,6 +342,7 @@ class Spread(Derivative):
                 in series_tree
                 if x['path'][:-1] == parent_folder['path']
                 and not x['isAbstract']
+                and x.get('isTrading') is not False
             ]
             for item in contract_dicts:
                 try:
