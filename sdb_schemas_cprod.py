@@ -769,9 +769,13 @@ class AdvancedSdbDate(BaseModel):
 
     @root_validator(allow_reuse=True)
     def check_date(cls, values: dict):
-        day = values.get('day') if values.get('day') else 1
-        if isinstance(values.get('year'), int) and isinstance(values.get('month'), int) and isinstance(day, int):
-            dt.date.fromisoformat(f"{values['year']}-{values['month']:0>2}-{day:0>2}")
+        if not isinstance(values.get('day'), Template) \
+            and not isinstance(values.get('month'), Template) \
+            and not isinstance(values.get('year'), Template):
+
+            day = values.get('day') if values.get('day') else 1
+            if isinstance(values.get('year'), int) and isinstance(values.get('month'), int) and isinstance(day, int):
+                dt.date.fromisoformat(f"{values['year']}-{values['month']:0>2}-{day:0>2}")
         return values
 
 class Identifiers(BaseModel):
