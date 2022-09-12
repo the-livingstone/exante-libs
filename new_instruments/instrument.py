@@ -324,22 +324,22 @@ class Instrument:
         # set schema
         if schema:
             self.schema = schema
-            self.instrument_type = self.set_instrument_type_by_schema(
+            self.instrument_type = self.__set_instrument_type_by_schema(
                 schema
             )
         else:
             if instrument_type == 'SPREAD':
                 self.schema = set_schema[env]['SPREAD']
-                self.instrument_type = self.set_instrument_type(
+                self.instrument_type = self.__set_instrument_type(
                     instrument_type
                 )
             elif instrument_type:
-                self.instrument_type = self.set_instrument_type(
+                self.instrument_type = self.__set_instrument_type(
                     instrument_type
                 )
                 self.schema = set_schema[env][self.instrument_type.value]
             elif instrument:
-                self.instrument_type = self.set_instrument_type_by_payload(
+                self.instrument_type = self.__set_instrument_type_by_payload(
                     instrument,
                     self.sdbadds
                 )
@@ -361,7 +361,7 @@ class Instrument:
         return f"Instrument({self.instrument_type}, {self.schema.__name__})"
 
     @staticmethod
-    def set_instrument_type_by_schema(
+    def __set_instrument_type_by_schema(
             schema: BaseModel
         ) -> InstrumentTypes:
         if isinstance(schema, sdb_schemas.SpreadSchema):
@@ -386,7 +386,7 @@ class Instrument:
             )
 
     @staticmethod
-    def set_instrument_type_by_payload(
+    def __set_instrument_type_by_payload(
             payload: dict,
             sdbadds: SDBAdditional
         ) -> InstrumentTypes:
@@ -399,7 +399,7 @@ class Instrument:
             )
 
     @staticmethod
-    def set_instrument_type(
+    def __set_instrument_type(
             instrument_type: str
         ) -> InstrumentTypes:
         if instrument_type == 'OPTION ON FUTURE':
@@ -506,7 +506,6 @@ class Instrument:
                 return None
             except AttributeError:
                 return None
-
 
 
     @property
