@@ -765,7 +765,7 @@ class SdbDate(BaseModel):
     def check_date(cls, values: dict):
         day = values.get('day') if values.get('day') else 1
         try:
-            dt.date.fromisoformat(f"{values['year']}-{values['month']:0>2}-{values['day']:0>2}")
+            dt.date.fromisoformat(f"{values['year']}-{values['month']:0>2}-{day:0>2}")
         except Exception:
             raise ValueError(f"Wrong date: {values['year']=}, {values['month']=}, {day=}")
         if values.get('time'):
@@ -781,7 +781,7 @@ class AdvancedSdbDate(BaseModel):
     def check_date(cls, values: dict):
         day = values['day'] if values.get('day') else 1
         try:
-            dt.date.fromisoformat(f"{values['year']}-{values['month']:0>2}-{values['day']:0>2}")
+            dt.date.fromisoformat(f"{values['year']}-{values['month']:0>2}-{day:0>2}")
         except Exception:
             raise ValueError(f"Wrong date: {values['year']=}, {values['month']=}, {day=}")
         return values
