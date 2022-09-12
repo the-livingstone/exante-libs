@@ -289,7 +289,7 @@ class Future(Derivative):
         )
 
     def __set_contracts(self, series_tree: list[dict]):
-        contracts = []
+        contracts: list[FutureExpiration] = []
         contract_dicts = [
             x for x
             in series_tree

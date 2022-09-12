@@ -465,7 +465,7 @@ class Option(Derivative):
         return parent_folder_id, option_type
 
     def __set_contracts(self, series_tree: list[dict], week_number: int = 0):
-        contracts = []
+        contracts: list[OptionExpiration] = []
         contract_dicts = [
             x for x
             in series_tree

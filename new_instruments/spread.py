@@ -326,7 +326,7 @@ class Spread(Derivative):
         )
 
     def __set_contracts(self, series_tree: list[dict]):
-        contracts = []
+        contracts: list[SpreadExpiration] = []
         gap_folders = []
         if self.spread_type in ['CALENDAR', 'CALENDAR_SPREAD']:
             gap_folders = [
