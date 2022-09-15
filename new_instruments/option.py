@@ -1060,6 +1060,7 @@ class Option(Derivative):
             return {'error': 'Call post_to_sdb() method only from main series instance (not weeklies)'}
         report = {}
         try_again_series = False
+        self.instrument = self.reduce_instrument()
         diff = DeepDiff(self.reference, self.instrument)
         # Create folder if need
         if not self.instrument.get('_id'):
@@ -1101,6 +1102,7 @@ class Option(Derivative):
                 and x.get_diff()
             ]
             # Check if series folder has been changed
+            target.instrument = target.reduce_instrument()
             diff = DeepDiff(target.reference, target.instrument)
             if diff:
                 target.update(diff, dry_run)

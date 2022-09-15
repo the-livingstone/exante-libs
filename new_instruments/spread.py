@@ -906,6 +906,7 @@ class Spread(Derivative):
         update_result = ''
         report = {}
         try_again_series = False
+        self.instrument = self.reduce_instrument()
         diff = DeepDiff(self.reference, self.instrument)
         # Create folder if need
         if not self.instrument.get('_id'):
