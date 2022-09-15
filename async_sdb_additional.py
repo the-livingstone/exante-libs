@@ -982,7 +982,13 @@ class SDBAdditional:
         ), None)
         return sym_type
 
-    async def get_list_from_sdb(self, list_name, id_only=True, additional_fields=[]) -> list:
+    async def get_list_from_sdb(
+            self,
+            list_name: str,
+            id_only: bool = True,
+            additional_fields: list = None,
+            force_reload: bool = False
+        ) -> list:
         """
         Method to get list from sdb entities as pairs of their names and ids
         :param list_name: what list to get, possible values:
@@ -1035,13 +1041,13 @@ class SDBAdditional:
                 if not sdb_lists[l]:
                     update_cache.append(l)
             gather = [
-                self.sdb.get_exchanges() if not self.sdb_exchs else dummy(self.sdb_exchs),
-                self.sdb.get_execution_schemes() if not self.sdb_execs else dummy(self.sdb_execs),
-                self.sdb.get_broker_accounts() if not self.sdb_accs else dummy(self.sdb_accs),
-                self.sdb.get_feed_gateways() if not self.sdb_gws else dummy(self.sdb_gws),
-                self.sdb.get_schedules() if not self.sdb_scheds else dummy(self.sdb_scheds),
-                self.sdb.get_currencies() if not self.sdb_currencies else dummy(self.sdb_currencies),
-                self.sdb.get_sections() if not self.sdb_sections else dummy(self.sdb_sections)
+                self.sdb.get_exchanges() if not self.sdb_exchs or force_reload else dummy(self.sdb_exchs),
+                self.sdb.get_execution_schemes() if not self.sdb_execs or force_reload else dummy(self.sdb_execs),
+                self.sdb.get_broker_accounts() if not self.sdb_accs or force_reload else dummy(self.sdb_accs),
+                self.sdb.get_feed_gateways() if not self.sdb_gws or force_reload else dummy(self.sdb_gws),
+                self.sdb.get_schedules() if not self.sdb_scheds or force_reload else dummy(self.sdb_scheds),
+                self.sdb.get_currencies() if not self.sdb_currencies or force_reload else dummy(self.sdb_currencies),
+                self.sdb.get_sections() if not self.sdb_sections or force_reload else dummy(self.sdb_sections)
             ]
             (
                 self.sdb_exchs,
@@ -1066,6 +1072,8 @@ class SDBAdditional:
                     await self.__write_cache(uc, sdb_lists[uc])
         
         await check_cache()
+        if not additional_fields:
+            additional_fields = []
         if list_name == SdbLists.CURRENCIES.value:
             # check_cache('currencies')
             fields = ['_id', '_id'] + additional_fields
