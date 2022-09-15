@@ -8,7 +8,7 @@ import operator
 import logging
 from pandas import DataFrame
 from pprint import pformat
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, root_validator, validator
 from pydantic.error_wrappers import ValidationError
 import re
 from typing import Union
@@ -18,7 +18,7 @@ from libs.async_sdb_additional import SDBAdditional, Months, SdbLists
 from libs.backoffice import BackOffice
 from libs import sdb_schemas_cprod as cdb_schemas
 from libs import sdb_schemas as sdb_schemas
-from libs.sdb_schemas import type_mapping
+from libs.sdb_schemas import ValidationLists, type_mapping
 
 class InstrumentTypes(Enum):
     BOND = 'BOND'
@@ -62,6 +62,50 @@ class InitThemAll:
     @property
     def get_instances(self):
         return self.bo, self.sdb, self.sdbadds, self.tree_df
+
+class SetSectionId(BaseModel):
+    exchange_id: str = Field(
+        alias='exchangeId'
+    )
+    schedule_id: str = Field(
+        alias='scheduleId'
+    )
+    section_id: str = Field(
+        alias='sectionId'
+    )
+
+    @validator('schedule_id')
+    def check_schedule_id(cls, item):
+        if item not in [x[1] for x in ValidationLists.schedules]:
+            raise ValueError(f'{item} is invalid schedule id')
+        return item
+
+    @validator('exchange_id')
+    def check_exchange_id(cls, item):
+        if item not in [x[1] for x in ValidationLists.exchanges]:
+            raise ValueError(f'{item} is invalid exchange id')
+        return item
+
+    @root_validator(pre=True)
+    def set_section_id(cls, values: dict):
+        if not values.get('scheduleId'):
+            raise ValueError("scheduleId is not set")
+        if not values.get('exchangeId'):
+            raise ValueError("exchangeId is not set")
+        section = next((
+            x for x
+            in ValidationLists.sections
+            if x[2] == values['exchangeId']
+            and x[3] == values['scheduleId']
+        ), None)
+        if not section:
+            raise ValueError(
+                f"section with exchangeId {values['exchangeId']}, scheduleId {values['scheduleId']} "
+                "is not found in SymbolDB"
+            )
+        values['section_id'] = section[1]
+        return values
+
 
 EXPIRY_BEFORE_MATURITY = ['VIX']
 
@@ -507,6 +551,26 @@ class Instrument:
             except AttributeError:
                 return None
 
+    @staticmethod
+    def _maturity_to_symbolic(maturity: str) -> str:
+        if maturity is None:
+            return None
+        # YYYY-MM
+        match = re.match(r'(?P<year>\d{4})-(?P<month>\d{2})$', maturity)
+        if match:
+            return f"{Months(int(match.group('month'))).name}{match.group('year')}"
+        # YYYY-MM-DD
+        match = re.match(r'(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})$', maturity)
+        if match:
+            return f"{int(match.group('day'))}{Months(int(match.group('month'))).name}{match.group('year')}"
+        # Chicago with day
+        match = re.match(r'(?P<day>\d{1,2})?(?P<month>[FGHJKMNQUVXZ])(?P<year>\d{4})$', maturity)
+        if match:
+            month = f"{Months[match.group('month')].value:0>2}"
+            if match.group('day'):
+                day = f"{match.group('day'):0>2}"
+                return f"{match.group('year')}-{month}-{day}"
+            return f"{match.group('year')}-{month}"
 
     @property
     def logger(self):
@@ -546,12 +610,35 @@ class Instrument:
         ))
         self.tree_df = self.sdbadds.tree_df
 
+    def validate_instrument(self):
+        if self.compiled_parent:
+            compiled_instrument = asyncio.run(self.sdbadds.build_inheritance(
+                [self.compiled_parent, self.instrument], include_self=True
+            ))
+        else:
+            compiled_instrument = asyncio.run(self.sdbadds.build_inheritance(
+                self.instrument, include_self=True
+            ))
+        try:
+            self.schema(**compiled_instrument)
+            return True
+        except ValidationError as valerr:
+            if self.instrument.get('isAbstract') is False:
+                self.logger.error(valerr)
+            else:
+                self.logger.info(valerr)
+                return True
+            return {
+                'validation_errors': valerr.errors()
+            }
+
     def post_instrument(self, dry_run: bool = False):
         if self.instrument.get('_id'):
             diff = DeepDiff(self.instrument, asyncio.run(self.sdb.get(self.instrument['_id'])))
             if diff:
                 self.logger.info(f"{self.instrument['name']}: following changes have been made:")
                 self.logger.info(pformat(diff))
+                set_sec = self.set_section_id(dry_run)
                 validation = self.validate_instrument()
                 if validation is True:
                     if not dry_run:
@@ -563,6 +650,7 @@ class Instrument:
                 else:
                     return validation
         else:
+            set_sec = self.set_section_id(dry_run)
             validation = self.validate_instrument()
             if validation is True:
                 if not dry_run:
@@ -574,6 +662,68 @@ class Instrument:
             else:
                 return validation
         return response
+
+    def create_new_section(
+            self,
+            exchange_id: str,
+            schedule_id: str,
+            dry_run: bool = False
+        ):
+        exchange_name = next((x[0] for x in ValidationLists.exchanges if x[1] == exchange_id), None)
+        schedule_name = next((x[0] for x in ValidationLists.schedules if x[1] == schedule_id), None)
+        if exchange_name and schedule_name:
+            new_section = {
+                "exchangeId": exchange_id,
+                "name": f"[{exchange_name}] {schedule_name}",
+                "scheduleId": schedule_id,
+                'description': ' '
+            }
+            if dry_run:
+                return {'_id': '<<new_sectionId>>'}
+            response = asyncio.run(self.sdb.post_section(new_section))
+            if response.get('_id'):
+                ValidationLists.sections = asyncio.run(
+                    self.sdbadds.get_list_from_sdb(
+                        SdbLists.SECTIONS.value,
+                        id_only=False,
+                        force_reload=True
+                    )
+                )
+            return response
+        return {}
+
+    def set_section_id(self, dry_run: bool = False):
+        compiled = asyncio.run(self.sdbadds.build_inheritance(
+            [
+                self.compiled_parent,
+                self.instrument
+            ],
+            include_self=True
+        ))
+        try:
+            validated = SetSectionId(**compiled)
+            self.instrument['sectionId'] = validated.section_id
+            return True
+        except ValidationError as valerr:
+            errors = [v['msg'] for v in valerr.errors()]
+            no_section = next((
+                x for x
+                in errors
+                if "is not found in SymbolDB" in x
+            ), None)
+            if not no_section:
+                self.logger.error(pformat(valerr.errors()))
+                return False
+            self.logger.warning(no_section)
+            result = self.create_new_section(
+                compiled['exchangeId'],
+                compiled['scheduleId'],
+                dry_run
+            )
+            if result.get('_id'):
+                self.instrument['sectionId'] = result['_id']
+                return True
+            return False
 
     def get_field_properties(self, path: list = [], **kwargs) -> dict:
         try:
@@ -745,6 +895,37 @@ class Instrument:
                     self.logger.warning(f"{'/'.join(path)} is not a valid path")
         return payload
 
+    def get_routes(self, compiled=False, default=False) -> list:
+        if default:
+            routes = self.compiled_parent.get('brokers', {}).get('accounts', [])
+        elif compiled:
+            routes = asyncio.run(
+                self.sdbadds.build_inheritance(
+                    self.instrument,
+                    include_self=True
+                )
+            ).get('brokers', {}).get('accounts', [])
+        else:
+            routes = self.instrument.get('brokers', {}).get('accounts', [])
+        result = []
+        for r in routes:
+            route_name = next((
+                x[0] for x
+                in asyncio.run(
+                    self.sdbadds.get_list_from_sdb(SdbLists.ACCOUNTS.value)
+                )
+                if x[1] == r['accountId']
+            ), None)
+            route_payload = {
+                key: val for key, val in r['account'].items()
+                if key not in ['providerId', 'gatewayId']
+            }
+            if not route_name:
+                self.logger.error(f'Smth is wrong, cannot get name for route: {r}')
+                return None
+            result.append((route_name, route_payload))
+        return result
+
     def __check_n_create(self, path: list, **kwargs):
         '''
         checks if the field with given path exists in the instrument,
@@ -815,76 +996,3 @@ class Instrument:
                 # should not be anything beyond that so terminate
                 return None
             part = self.get_part(self.instrument, path[:num+1])
-
-    def _maturity_to_symbolic(self, maturity: str) -> str:
-        if maturity is None:
-            return None
-        # YYYY-MM
-        match = re.match(r'(?P<year>\d{4})-(?P<month>\d{2})$', maturity)
-        if match:
-            return f"{Months(int(match.group('month'))).name}{match.group('year')}"
-        # YYYY-MM-DD
-        match = re.match(r'(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})$', maturity)
-        if match:
-            return f"{int(match.group('day'))}{Months(int(match.group('month'))).name}{match.group('year')}"
-        # Chicago with day
-        match = re.match(r'(?P<day>\d{1,2})?(?P<month>[FGHJKMNQUVXZ])(?P<year>\d{4})$', maturity)
-        if match:
-            month = f"{Months[match.group('month')].value:0>2}"
-            if match.group('day'):
-                day = f"{match.group('day'):0>2}"
-                return f"{match.group('year')}-{month}-{day}"
-            return f"{match.group('year')}-{month}"
-
-    def get_routes(self, compiled=False, default=False) -> list:
-        if default:
-            routes = self.compiled_parent.get('brokers', {}).get('accounts', [])
-        elif compiled:
-            routes = asyncio.run(
-                self.sdbadds.build_inheritance(
-                    self.instrument,
-                    include_self=True
-                )
-            ).get('brokers', {}).get('accounts', [])
-        else:
-            routes = self.instrument.get('brokers', {}).get('accounts', [])
-        result = []
-        for r in routes:
-            route_name = next((
-                x[0] for x
-                in asyncio.run(
-                    self.sdbadds.get_list_from_sdb(SdbLists.ACCOUNTS.value)
-                )
-                if x[1] == r['accountId']
-            ), None)
-            route_payload = {
-                key: val for key, val in r['account'].items()
-                if key not in ['providerId', 'gatewayId']
-            }
-            if not route_name:
-                self.logger.error(f'Smth is wrong, cannot get name for route: {r}')
-                return None
-            result.append((route_name, route_payload))
-        return result
-
-    def validate_instrument(self):
-        if self.compiled_parent:
-            compiled_instrument = asyncio.run(self.sdbadds.build_inheritance(
-                [self.compiled_parent, self.instrument], include_self=True
-            ))
-        else:
-            compiled_instrument = asyncio.run(self.sdbadds.build_inheritance(
-                self.instrument, include_self=True
-            ))
-        try:
-            self.schema(**compiled_instrument)
-            return True
-        except ValidationError as valerr:
-            if self.instrument.get('isAbstract') is False:
-                self.logger.error(valerr)
-            else:
-                self.logger.info(valerr)
-                return True
-            return {
-                'validation_errors': valerr.errors()
-            }
