@@ -610,6 +610,171 @@ class Instrument:
         ))
         self.tree_df = self.sdbadds.tree_df
 
+    def reduce_instrument(self) -> dict:
+        preserve = [
+            'gatewayId',
+            'accountId',
+            'providerId',
+            'path',
+            'executionSchemeId',
+            'isAbstract'
+        ]
+
+        def process_dict(child: dict, sibling: dict):
+            difference = {}
+            if not sibling:
+                # omit empty (unset) values, but take care of zero, as it's not an empty value!
+                # also keep in mind that if key is not inherited, its default value is 'False'
+                # hence we can safely ignore 'key == False' in child
+                difference.update({
+                    key: val for key, val in child.items()
+                    if key in preserve
+                    or child.get(key) is not None
+                    or child.get(key) is not False
+                })
+                return difference
+            for key, val in child.items():
+                if key in preserve:
+                    difference.update({key: val})
+                elif key not in sibling:
+                    if val is not None and val is not False: # key not in sibling and val is not empty
+                        difference.update({key: val})
+                elif val == sibling[key]:
+                    if key in ['account', 'gateway']:
+                        payload = go_deeper(val, sibling[key])
+                        if payload: # should not ever fall out of here, but anyway
+                            difference.update({key: payload})
+                elif isinstance(val, (dict, list)): # val is dict or list
+                    payload = go_deeper(val, sibling[key])
+                    if payload:
+                        difference.update({key: payload})
+                else: # child[key] != sibling[key]
+                    # compare if template corresponds to compiled value
+                    if isinstance(val, str) and isinstance(sibling[key], dict) and sibling[key].get('base'):
+                        sibling[key] = sibling[key]['base'] # ??????
+                    if isinstance(val, str) and isinstance(sibling[key], dict) and sibling[key].get('$template'):
+                        sibling_val = self.sdbadds.lua_compile(self.instrument, sibling[key].get('$template'))
+                        if val != sibling_val:
+                            difference.update({key: val})
+                    elif val is not None: # eliminate empty values
+                        difference.update({key: val})
+            return difference
+
+        def process_list_of_dicts(child: list[dict], sibling: list[dict]):
+            # assume that all entries in list are the same type
+            # firsly let's flatten the dicts
+            # we will use these artificial items to catch differencies in order or/and
+            # content and then call the real items to be compared and reduced
+            if not (child[0].get('account') or child[0].get('gateway')):
+                if len(child) != len(sibling):
+                    return child
+                for num, i in enumerate(child):
+                    if i != sibling[num]:
+                        return child
+                return None
+            reduced_list = []
+            flatten_child = []
+            flatten_sibling = []
+            for chi in child:
+                flatten_chi = {}
+                for chi_v in chi.values():
+                    if isinstance(chi_v, str):
+                        flatten_chi['route_id'] = chi_v
+                    elif isinstance(chi_v, dict):
+                        flatten_chi.update(chi_v)
+                flatten_child.append(flatten_chi)
+            for sib in sibling:
+                flatten_sib = {}
+                for sib_v in sib.values():
+                    if isinstance(sib_v, str):
+                        flatten_sib['route_id'] = sib_v
+                    elif isinstance(sib_v, dict):
+                        flatten_sib.update(sib_v)
+                flatten_sibling.append(flatten_sib)
+            # now let's compare dicts next to each other with following considerations:
+            # · if both lists all the same, we write nothing (easy)
+            # · if there's some difference we write down all items from first
+            #   to the last that have changes (to preserve the order)
+            # · if child n-th route doesn't match with sibling n-th route
+            #   we seek this route in sibling and if found pop (x) it out of list:
+            #   c:  s: →    c:  s: →    c:  s:
+            #   C   A       C   A       C  (d)
+            #   A   B       A   B       A   A
+            #   B   C       B  (x)      B   B
+            #   D   D       D   D       D   D
+            #   
+            #   and insert the dummy (d) to the n-th place in sibling
+            # · we stop to write on the last route with difference
+
+            # firstly let's align lists and place the dummies
+            while True: # the cycle breaks when order of flatten_sibling is the same
+                moved = None
+                for i in range(len(flatten_child)):
+                    if len(flatten_sibling) < i + 1 \
+                        or flatten_child[i]['route_id'] != flatten_sibling[i]['route_id']:
+                        moved = i
+                        break
+                if moved is None:
+                    break
+                flatten_child[moved].update({'moved': True})
+                # try to find a match if any and pop it out
+                match = next((num for num, x
+                        in enumerate(flatten_sibling)
+                        if x['route_id'] == flatten_child[moved]['route_id']), None)
+                if match: # move sibling to meet the child order
+                    flatten_sibling.insert(moved, flatten_sibling.pop(match))
+                else: # place the dummy if child member is new
+                    flatten_sibling.insert(moved, {'route_id': flatten_child[moved]['route_id']})
+            stop_write = None
+            # now let's catch the differencies
+            if len(flatten_child) > len(flatten_sibling):
+                stop_write = len(flatten_child)-1
+                # should not happen, but anyway
+            else:
+                # if the only difference is order, we will catch it
+                # thanks to new item in child {'moved': True}
+                # after the cycle is finished stop_write
+                # gets the index of the last child item that has to be written
+                for i in range(len(flatten_child)):
+                    for key in flatten_child[i]:
+                        if flatten_child[i][key] != flatten_sibling[i].get(key):
+                            # here we avoid to catch when child's key is False and no such key in sibling
+                            if flatten_child[i][key] == False and not flatten_sibling[i].get(key):
+                                continue
+                            else:
+                                stop_write = i
+                                break
+            if stop_write is not None:
+                for j in range(stop_write + 1):
+                    sibling_to_compare = next((x for x in sibling
+                        if flatten_child[j]['route_id'] in x.values()), None)
+                    reduced_member = go_deeper(child[j], sibling_to_compare)
+                    if reduced_member:
+                        reduced_list.append(reduced_member)
+            return reduced_list if reduced_list else None
+
+
+        def go_deeper(child, sibling):
+            if isinstance(child, dict):
+                return process_dict(child, sibling)
+            elif isinstance(child, list) and len(child) > 0:
+                if not sibling: # nothing to inherit
+                    return child
+                if all(isinstance(x, list) for x in child):
+                    list_of_lists = []
+                    for num, i in enumerate(child):
+                        list_of_lists.append(go_deeper(i, sibling[num]))
+                    return list_of_lists
+                elif all(isinstance(x, dict) for x in child):
+                    return process_list_of_dicts(child, sibling)
+                elif set(child) != set(sibling):
+                    return child
+            elif not sibling or child != sibling:
+                return child
+                    
+        reduced_instrument = go_deeper(self.instrument, self.compiled_parent)
+        return reduced_instrument
+
     def validate_instrument(self):
         if self.compiled_parent:
             compiled_instrument = asyncio.run(self.sdbadds.build_inheritance(
