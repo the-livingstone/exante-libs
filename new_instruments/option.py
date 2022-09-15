@@ -312,13 +312,17 @@ class Option(Derivative):
             env,
             reload_cache=reload_cache
         ).get_instances
-        check_path = get_uuid_by_path(
-                payload.get('path', []),
-                tree_df
-            )
-        if not check_path:
+        if len(payload['path']) < 3:
             raise NoInstrumentError(f"Bad path: {payload.get('path')}")
-        if payload['path'][1] != get_uuid_by_path(['Root', 'FUTURE'], tree_df):
+        check_parent_df = tree_df[tree_df['_id'] == payload['path'][-1]]
+        if check_parent_df.empty:
+            raise NoInstrumentError(f"Bad path: {payload.get('path')}")
+        if not check_parent_df.iloc[0]['path'] == payload['path']:
+            raise NoInstrumentError(f"Bad path: {sdbadds.show_path(payload.get('path'))}")
+        if payload['path'][1] not in [
+            get_uuid_by_path(['Root', 'OPTION'], tree_df),
+            get_uuid_by_path(['Root', 'OPTION ON FUTURE'], tree_df)
+            ]:
             raise NoInstrumentError(f"Bad path: {sdbadds.show_path(payload.get('path'))}")
 
         if payload.get('_id') and payload['path'][-1] == payload['_id']:
@@ -338,7 +342,6 @@ class Option(Derivative):
             raise NoInstrumentError(f"Bad {parent_folder_id=}")
         reference, series_tree = Derivative._find_series(
             ticker,
-            exchange,
             parent_folder_id,
             sdb=sdb,
             tree_df=tree_df,
