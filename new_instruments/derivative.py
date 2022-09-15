@@ -482,6 +482,7 @@ class Derivative(Instrument):
                 )
 
     def create(self, dry_run: bool = False):
+        set_sec = self.set_section_id(dry_run)
         if dry_run:
             print(f"Dry run. New folder {self.instrument['name']} to create:")
             pp(self.instrument)
@@ -512,6 +513,7 @@ class Derivative(Instrument):
     def update(self, diff: dict = None, dry_run: bool = False):
         self.logger.info(f'{self.ticker}.{self.exchange}: following changes have been made:')
         self.logger.info(pformat(diff))
+        set_sec = self.set_section_id(dry_run)
         if dry_run:
             print(f"Dry run. The folder {self.instrument['name']} to update:")
             pp(diff)
