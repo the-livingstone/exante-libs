@@ -831,6 +831,16 @@ class DerivativeAdder:
                     for new in part_report['created']:
                         self.comment += f'* {new}' + '\n'
                     self.comment += '\n'
+                if part_report.get('to_create'):
+                    self.comment += 'Dry run, expirations to create:\n'
+                    for new in part_report['to_create']:
+                        self.comment += f'* {new}' + '\n'
+                    self.comment += '\n'
+                if part_report.get('to_update'):
+                    self.comment += 'Dry run, expirations to update:\n'
+                    for upd in part_report['to_update']:
+                        self.comment += f'* {upd}' + '\n'
+                    self.comment += '\n'
                 self.errormsg += f"{self.series.ticker}.{self.series.exchange} create error:" \
                     + pformat(part_report['create_error']) + '\n' if part_report.get('create_error') else ''
                 self.errormsg += f"{self.series.ticker}.{self.series.exchange} update error:" \
