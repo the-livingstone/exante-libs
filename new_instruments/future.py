@@ -600,16 +600,13 @@ class Future(Derivative):
             self.logger.info(f"{self.series_name}.*: No changes have been made")
 
         # Create expirations
-        if dry_run:
-            if self.new_expirations:
-                print(f"Dry run, new expirations to create:")
-                pp([x.contract_name for x in self.new_expirations])
-            if update_expirations:
-                print(f"Dry run, expirations to update:")
-                pp([x.contract_name for x in update_expirations])
-            return {}
-
-        if self.new_expirations:
+        if self.new_expirations and dry_run:
+            print(f"Dry run, new expirations to create:")
+            pp([x.contract_name for x in self.new_expirations])
+            report.setdefault(self.series_name, {}).update({
+                'to_create': [x.contract_name for x in self.new_expirations]
+            })
+        elif self.new_expirations:
             create_result = asyncio.run(self.sdb.batch_create(
                 input_data=[x.instrument for x in self.new_expirations]
             ))
@@ -626,7 +623,13 @@ class Future(Derivative):
                 report.setdefault(self.series_name, {}).update({
                     'created': [x.contract_name for x in self.new_expirations]
                 })
-        if update_expirations:
+        if update_expirations and dry_run:
+            print(f"Dry run, new expirations to create:")
+            pp([x.contract_name for x in update_expirations])
+            report.setdefault(self.series_name, {}).update({
+                'to_update': [x.contract_name for x in update_expirations]
+            })
+        elif update_expirations:
             update_result = asyncio.run(self.sdb.batch_update(
                 input_data=[x.instrument for x in update_expirations]
             ))
@@ -643,7 +646,7 @@ class Future(Derivative):
                 report.setdefault(self.series_name, {}).update({
                     'updated': [x.contract_name for x in update_expirations],
                 })
-        if report and try_again_series:
+        if report and try_again_series and not dry_run:
             response = asyncio.run(self.sdb.update(self.instrument))
             if response.get('message'):
                 self.logger.error(f'instrument {self.ticker} is not updated:')
