@@ -137,6 +137,9 @@ class FutureSchema(BaseModel):
         'USD',
         const=True
     )
+    contractMultiplier: float = Field(
+        1
+    )
 
     @root_validator(pre=True)
     def normalize_derivative(cls, values: dict):
