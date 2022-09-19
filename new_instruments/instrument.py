@@ -624,20 +624,17 @@ class Instrument:
             difference = {}
             if not sibling:
                 # omit empty (unset) values, but take care of zero, as it's not an empty value!
-                # also keep in mind that if key is not inherited, its default value is 'False'
-                # hence we can safely ignore 'key == False' in child
                 difference.update({
                     key: val for key, val in child.items()
                     if key in preserve
                     or child.get(key) is not None
-                    or child.get(key) is not False
                 })
                 return difference
             for key, val in child.items():
                 if key in preserve:
                     difference.update({key: val})
                 elif key not in sibling:
-                    if val is not None and val is not False: # key not in sibling and val is not empty
+                    if val is not None: # key not in sibling and val is not empty
                         difference.update({key: val})
                 elif val == sibling[key]:
                     if key in ['account', 'gateway']:
