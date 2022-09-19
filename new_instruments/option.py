@@ -1113,7 +1113,7 @@ class Option(Derivative):
                     if not new.instrument.get('underlyingId', {}).get('id'):
                         self.logger.warning(f"Underlying for {new.contract_name} is not set!")
             if target.new_expirations and dry_run:
-                print(f"Dry run, expirations to update:")
+                print(f"Dry run, new expirations to create:")
                 pp([x.contract_name for x in target.new_expirations])
 
                 report.setdefault(target.series_name, {}).update({

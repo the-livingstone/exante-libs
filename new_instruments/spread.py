@@ -966,7 +966,7 @@ class Spread(Derivative):
                     'created': [x.contract_name for x in self.new_expirations]
                 })
         if update_expirations and dry_run:
-            print(f"Dry run, new expirations to create:")
+            print(f"Dry run, expirations to update:")
             pp([x.contract_name for x in update_expirations])
             report.setdefault(self.series_name, {}).update({
                 'to_update': [x.contract_name for x in update_expirations]
