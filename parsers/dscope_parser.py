@@ -391,7 +391,7 @@ class Parser(Datascope, ExchangeParser):
                 f"{overrides['base']}*{overrides.get('suffix', '')}",
                 exchange_codes=rt_codes,
                 only_active=True,
-                search_type='Isin'
+                search_type='Ric'
             )
             if x['Identifier'] in [item['Identifier'] for item in raw_search]
             or raw_search.append(x)
