@@ -174,7 +174,7 @@ class SymbolDB:
                         return await response.json(content_type=None)
                     else:
                         response.raise_for_status()
-            except TimeoutError:
+            except asyncio.exceptions.TimeoutError:
                 self.logger.warning(f'Response has been timeouted')
                 return await None
             except Exception as e:
