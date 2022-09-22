@@ -772,6 +772,8 @@ class Parser(DxFeed, ExchangeParser):
         #     maturity_type = r'\d{6}' if self.engine else '??????'
         else:
             maturity_type = r'[FGHJKMNQUVXZ]\d{2}' if self.engine else '???'
+        if payload['exchange'] == 'EUREX' and product in ['OPTION ON FUTURE', 'OPTION']:
+            product = 'OPTION'
 
         if product == 'STOCK':
             search_str = db_template[product].format(
