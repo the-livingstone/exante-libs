@@ -587,7 +587,8 @@ class ValidationLists:
         'IR',
         'ME',
         'OT',
-        'FX'
+        'FX',
+        'CU'
     ]
     coupon_types = [
         'VARIABLE',
