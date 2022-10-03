@@ -133,6 +133,7 @@ class DerivativeAdder:
             exchange,
             derivative: str,
 
+            parent_folder_id: str = None,
             weekly: bool = False,
             allowed_expirations: list = None,
             max_timedelta: int = None,
@@ -162,6 +163,7 @@ class DerivativeAdder:
         series = series_class.from_sdb(
             ticker,
             exchange,
+            parent_folder_id=parent_folder_id,
 
             bo=bo,
             sdb=sdb,
