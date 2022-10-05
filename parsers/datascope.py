@@ -32,9 +32,23 @@ class Datascope:
     url = {
         'base': 'https://selectapi.datascope.refinitiv.com/RestApi/v1',
         'auth': '/Authentication/RequestToken',
+
         'equity': '/Search/EquitySearch',
         'future_and_option': '/Search/FuturesAndOptionsSearch',
+        'benchmark': '/Search/BenchmarkSearch',
+        'cmo_abs': '/Search/CmoAbsSearch',
+        'commodity': '/Search/CommoditySearch',
+        'entity': '/Search/EntitySearch',
+        'fund': '/Search/FundSearch',
         'instrument': '/Search/InstrumentSearch',
+        'gov_corp': '/Search/GovCorpSearch',
+        'loan': '/Search/LoanSearch',
+        'mifid_subclass': '/Search/MifidSubclassSearch',
+        'mortgage': '/Search/MortgageSearch',
+        'otcs': '/Search/OtcsSearch',
+        'us_municipal': '/Search/UsMunicipalSearch',
+
+
         'extraction': '/Extractions/ExtractWithNotes',
         'instrument_lists': '/Extractions/InstrumentLists',
         'report_templates': '/Extractions/TickHistoryIntradaySummariesReportTemplates',
@@ -182,12 +196,12 @@ class Datascope:
         if api == 'extraction':
             payload = {'ExtractionRequest': data}
             res_type = 'Contents'
-        elif api in ['instrument', 'equity', 'future_and_option']:
-            payload = {'SearchRequest': data}
-            res_type = 'value'
         elif api in ['instrument_lists', 'schedules']:
             payload = data
             res_type = None
+        else:
+            payload = {'SearchRequest': data}
+            res_type = 'value'
 
         url = self.url['base'] + self.url[api]
         if entity_id:
@@ -290,6 +304,211 @@ class Datascope:
             'PreferredIdentifierType': search_type
         }
         return self.__post(data=data, api='instrument')
+
+    def advanced_search(
+            self,
+            search_types: list = None,
+            asset_category_codes: list = None,
+            asset_status: str = 'Active',
+            company_name: str = None,
+            currency_codes: list = None,
+            domicile_codes: list = None,
+            exchange_codes: list = None,
+            gics_codes: list = None,
+            identifier: str = None,
+            identifier_type: str = None,
+            org_id: str = None,
+            preferred_identifier_type: str = 'Ric',
+            sub_type_codes: list = None,
+            ticker: str = None,
+            fund_name: str = None,
+            description: str = None,
+            futures_and_options_type=None,
+            underlying_ric: str = None,
+            exercise_style: str = None,
+            callable: bool = None,
+            convertable: bool = None,
+            extendable: bool = None
+        ):
+        """
+        AssetCategoryCodes:
+            BFU Bond Future
+            BOP Bond Option
+            CEF Closed-End Fund
+            CCS Commodity Cash
+            CMF Commodity Future
+            CIX Commodity Index
+            CSP Commodity Spread
+            CON Convertible
+            CNI Convertible Index
+            CPR Convertible Preference
+            CPI Corp Index
+            CRD Credit Default Swap
+            CIN Currency Index
+            DRC Depository Receipt
+            DIR Domestic Interest Rate
+            ECS Energy Cash
+            EFU Energy Future
+            ENI Energy Index
+            ESO Energy Spot
+            ESP Energy Spread
+            EQU Equity
+            ECL Equity Closed Fund
+            EQI Equity Index
+            EMS Equity Market Statistics
+            EIF Equity/Index Future
+            EIO Equity/Index Option
+            EIS Equity/Index Spread
+            EIW Equity/Index Warrant
+            ETF Exchange Traded Fund
+            FRX FOREX
+            FIN Fixed Income
+            FMS Fixed Income Market Statistics
+            FRB Fixed Rate Bond
+            FLT Floater
+            FNI Fund Index
+            GIN Govt Index
+            HDF Hedge Fund
+            ILB Index Linked Bond
+            INF Insurance Fund
+            IMB Interest At Maturity Bond
+            IRF Interest Rate Future
+            MCB Multi Coupon Bond
+            OPF Open-End Fund
+            ORD Ordinary
+            PAR Participation
+            PNF Pension Fund
+            PFA Pfandbriefe
+            PRF Preference
+            RTS Rights
+            ZCB Zero Coupon Bond
+            UNC Unclassified
+            UNT Units
+
+        IdentifierType
+            ArgentineAfipCode AFIP
+            BIC BIC
+            BridgeSymbol BridgeSymbol
+            ChainRIC Chain RIC
+            ChinaCode ChinaCode
+            Cik CIK
+            Cin CIN
+            CommonCode CommonCode
+            CompanyRegistrationN CompanyRegistrationNumber
+            Cusip CUSIP
+            Duns DUNS
+            FacilityId Facility ID
+            FileCode FileCode
+            FundLipperId Fund Lipper ID
+            FundServ FundSERV
+            Isin ISIN
+            ISMA ISMA
+            Lei LEI
+            LIN LIN
+            LipperID LipperID
+            LocalCode LocalCode
+            MIC MIC
+            NONE N/A
+            OCCCode OCC Code
+            OPOL OPOL
+            ORC ORC
+            OrgId OrgID
+            Pid Perm ID
+            PidQ Perm ID(Quote)
+            Pix Expandable Perm ID
+            PpnCusip PPN CUSIP
+            PrimaryRegulatorId Primary Regulator Id
+            RcpId RCPID
+            Ric RIC
+            RICRoot RIC Root
+            Sedol Sedol
+            SICC SICC
+            Sicovam Sicovam
+            Sym Trading Symbol
+            TAG TAG
+            TaxFileId Tax File Id
+            Ticker TICKER
+            UnderlyingRIC Underlying RIC
+            UserDefined User Defined
+            Valoren Valoren
+            Wertpapier Wertpapier
+            ZPage ZPage
+
+        SubTypeCodes
+            CDFN Closed Fund
+            CVPR Convertible Preference
+            DPRC Depository Receipts
+            UNKN Equity of unknown type
+            FIDX Financial Index
+            HYBD Hybrid
+            OPFN Open Fund
+            ODSH Ordinary shares
+            PART Participation
+            PFSH Preference shares
+            RGHT Rights
+            UNIT Units
+            WRNT Warrants
+
+        FuturesAndOptionsType
+            Futures
+            FuturesOnOptions
+            Options
+
+        ExerciseStyle
+            American
+            European
+            
+        """
+        data = {
+            'AssetCategoryCodes': asset_category_codes,
+            'AssetStatus': asset_status,
+            'CompanyName': company_name,
+            'CurrencyCodes': currency_codes,
+            'DomicileCodes': domicile_codes,
+            'ExchangeCodes': exchange_codes,
+            'GicsCodes': gics_codes,
+            'Identifier': identifier,
+            'IdentifierType': identifier_type,
+            'OrgId': org_id,
+            'PreferredIdentifierType': preferred_identifier_type,
+            'SubTypeCodes': sub_type_codes,
+            'Ticker': ticker,
+            'FundName': fund_name,
+            'Description': description,
+            'FuturesAndOptionsType': futures_and_options_type,
+            'UnderlyingRic': underlying_ric,
+            'ExerciseStyle': exercise_style,
+            'Callable': callable,
+            'Convertable': convertable,
+            'Extendable': extendable
+        }
+        data = {key: val for key, val in data.items() if val is not None}
+        result = []
+        if not search_types:
+            search_types = [
+                'equity',
+                'future_and_option',
+                'benchmark',
+                'cmo_abs',
+                'commodity',
+                'entity',
+                'fund',
+                'instrument',
+                'gov_corp',
+                'loan',
+                'mifid_subclass',
+                'mortgage',
+                'otcs',
+                'us_municipal'
+            ]
+        for st in search_types:
+            st_result = self.__post(data=data, api=st)
+            if st_result and not isinstance(st_result[0], KeyError):
+                result.extend(st_result)
+
+        return result
+
+
 
     def equity(self, identifier, ticker=None, currency: list = None, exchange_codes: list = None,
                base_type='Ric', search_type='Ric', only_active=True, asset_category: list = None):
