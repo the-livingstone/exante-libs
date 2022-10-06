@@ -22,6 +22,16 @@ from libs.new_instruments import (
 )
 
 class Balancer:
+    """
+    Usage:
+    · Init class with feed type. Currently supported: CBOE, DXFEED
+    · call least_busy_feed()
+
+    args:
+    · blacklist — list or path to file (lines or json) of gateway names to exclude
+    · env — environment
+    """
+
     def __init__(self, feed_type: str, blacklist = None, env: str = 'prod'):
         self.mon = Monitor(env)
         self.demo_mon = Monitor('demo')
@@ -44,15 +54,15 @@ class Balancer:
                 'DXFEED: CBOE-TEST'
             ]
 
-        self.feed_gateways = self.get_feed_gateways(feed_type)
-        self.demo_gateways = self.get_feed_gateways(feed_type, demo=True)
-        self.match_feeds_to_modules()
+        self.feed_gateways = self.__get_feed_gateways(feed_type)
+        self.demo_gateways = self.__get_feed_gateways(feed_type, demo=True)
+        self.__match_feeds_to_modules()
     
     @property
     def logger(self):
         return logging.getLogger(f"{self.__class__.__name__}")
 
-    def match_feeds_to_modules(self):
+    def __match_feeds_to_modules(self):
         feeds = asyncio.run(
             self.sdbadds.get_list_from_sdb(
                 SdbLists.GATEWAYS.value,
@@ -86,7 +96,7 @@ class Balancer:
             and x[2].split('.')[0] not in self.blacklist
         ]
     
-    def get_feed_gateways(self, feed_type: str, demo=False):
+    def __get_feed_gateways(self, feed_type: str, demo=False):
         if feed_type == 'CBOE':
             provider = 'dxfeed' if not demo else 'delay'
             regexp = re.compile(rf'gw-feed-{provider}-cboe')
@@ -115,15 +125,12 @@ class Balancer:
 
         return result
 
-    def least_busy_feed(self, demo=False):
+    def least_busy_feed(self):
+        """
+        :return: dict of main, backup and demo gateways
+        """
         # path = ['connections', 'symboldb (feed gateway)', 'symbols']
         path = ['connections', 'symboldb (feed gateway instrument)', 'objects']
-        # for feedname in feeds:
-        #     module_name = mapper[self.feed_info(feedname)[-1]]
-        #     symbols = self.mon.indicator_status(module_name, path)['state']['description'].split()[0]
-        #     symbols = int(symbols)
-        #     result[feedname] = symbols
-        gateway_load = {}
         for module in self.feeds:
             try:
                 load = int(
@@ -183,6 +190,31 @@ class Balancer:
         }
 
 class Derivative(Instrument):
+    """
+    usage:
+    do not init this class directly, use Future, Option or Spread constructors instead
+    
+    attrs:
+    · ticker — derivative ticker. For product spreads it is combined ticker of products, e.g.: KE-ZC
+    · exchange — derivative exchange. Should be tha same as third level folder name (e.g. Root → FUTURE → CME)
+    · instrument_type — one of sdb available types http://symboldb.prod.zorg.sh/editor/#/types
+    · instrument — sdb document of instrument
+    · reference — unchanging copy of sdb instrument to compare if any changes were provided hence instrument should be updated
+      empty dict in case of new instrument
+    · bo, sdb, sdbadds — BackOffice, SymbolDB (async), SDBAdditional (async) class instances respectively
+    · tree_df — sdb tree DataFrame with limited fields
+    · set_la, set_lt — flags showing if lastAvailableDate and lastTradingDate should be set on every contract.
+      False if don't set, time string (e.g. 12:00:00) otherwise
+    · parent_folder — third level or deeper folder dict, containing series (e.g Root → FUTURE → CME or Root → FUTURE → CME → Equity)
+    · parent_folder_id — _id of parent_folder
+    · series_tree — list of full documents of all series folder heirs
+      (including weekly folders and month gap folders if any) + series folder document
+    · parent_tree — monthly series series_tree related to weekly series
+    · contracts — list of existing expirations objects (i.e. could be retreived from sdb)
+    · new_expirations — list of yet non-existent expirations objects to post to sdb
+    · allowed_expirations — list of expirations allowed to create (symbolic like Z2022 or iso-date like 2022-12-12)
+
+    """
     def __init__(
             self,
             ticker: str,
@@ -235,6 +267,12 @@ class Derivative(Instrument):
             sdb: SymbolDB = None,
             env = 'prod'
         ):
+        """
+        :param parent_folder: instrument document dict or instrument _id
+        :param sdb: SymbolDB (async) class instance
+        :param env: environment
+        :return: pair of instrument _id and instrument document dict
+        """
         if not sdb:
             sdb = SymbolDB(env)
         if isinstance(parent_folder, str):
@@ -266,6 +304,17 @@ class Derivative(Instrument):
             reload_cache: bool = True,
             env: str = 'prod'
         ):
+        """
+        use for option series only
+        :param ticker: series ticker (monthly or weekly)
+        :param parent_folder_id: _id of third level or deeper folder, containing series
+        :param parent_tree: series_tree of monthly series related to weekly series
+        :param sdb: SymbolDB (async) class instance
+        :param tree_df: sdb tree DataFrame
+        :param reload_cache: reload tree_df if tree_df was not passed as param
+        :param env: environment
+        :return: pair of series instrument dict and series_tree 
+        """
         bo, sdb, sdbadds, tree_df = InitThemAll(
             bo=None,
             sdb=sdb,
@@ -318,9 +367,18 @@ class Derivative(Instrument):
             sdb: SymbolDB = None,
             tree_df: DataFrame = None,
             reload_cache: bool = True,
-            parent_tree: list[dict] = None,
             env: str = 'prod'
         ):
+        """
+        use for future and spread series
+        :param ticker: series ticker (monthly or weekly)
+        :param parent_folder_id: _id of third level or deeper folder, containing series
+        :param sdb: SymbolDB (async) class instance
+        :param tree_df: sdb tree DataFrame
+        :param reload_cache: reload tree_df if tree_df was not passed as param
+        :param env: environment
+        :return: pair of series instrument dict and series_tree 
+        """
         bo, sdb, sdbadds, tree_df = InitThemAll(
             bo=None,
             sdb=sdb,
@@ -347,13 +405,7 @@ class Derivative(Instrument):
         if instrument.get('message') and instrument.get('description'):
             raise RuntimeError('sdb_tree is out of date')
         # works for options to reduce sdb requests
-        if parent_tree:
-            series_tree = [
-                x for x
-                in parent_tree
-                if instrument['_id'] in x['path']
-            ]
-        elif instrument:
+        if instrument:
             series_tree = asyncio.run(
                 sdb.get_heirs(
                     instrument['_id'],
@@ -374,6 +426,15 @@ class Derivative(Instrument):
             parent_folder: dict,
             **kwargs
         ) -> dict:
+        """
+        creates minimal series instrument dict with given ticker, exchange, shortname and path of parent folder.
+        Not sufficient to use, should be supplemented with instrument_type-related fields
+        :param ticker:
+        :param exchange:
+        :param shortname:
+        :param parent_folder: dict of direct parent, where series should be placed
+        :return: series document
+        """
         record = {
             'isAbstract': True,
             'name': ticker,
@@ -393,6 +454,12 @@ class Derivative(Instrument):
             feed_type: str,
             env: str = 'prod'
         ) -> list[dict]:
+        """
+        use for options only
+        :param feed_type: currently supported types: CBOE, DXFEED
+        :param env: environment
+        :return: list of fully configured feed gateways to paste into feeds/gateways section of least loaded gateways according to the monitor
+        """
         b = Balancer(feed_type=feed_type, env=env)
         feed_set = b.least_busy_feed()
         if not (feed_set.get('main') and feed_set.get('backup') and feed_set.get('demo')):
@@ -428,6 +495,10 @@ class Derivative(Instrument):
         ]
 
     def _align_expiry_la_lt(self, contracts):
+        """
+        sets lastAvailableDate and lastTradingDate on every contract if self.set_la and self.set_lt are not False
+        :param contracts: list of existing contracts or new_expirations
+        """
         compiled = asyncio.run(
             self.sdbadds.build_inheritance(
                 [self.compiled_parent, self.instrument],
@@ -482,6 +553,13 @@ class Derivative(Instrument):
                 )
 
     def create(self, dry_run: bool = False):
+        """
+        creates self.instrument in sdb if not dry_run,
+        appends _id to self.instrument document,
+        appends self.instrument to self.tree_df,
+        sets self.reference as deepcopy of self.instrument
+        :param dry_run: do not post to sdb, print the document
+        """
         set_sec = self.set_section_id(dry_run)
         if dry_run:
             print(f"Dry run. New folder {self.instrument['name']} to create:")
@@ -504,13 +582,18 @@ class Derivative(Instrument):
             in self.instrument.items()
             if key in self.tree_df.columns
         }], index=[self.instrument['_id']])
-        pd.concat([self.tree_df, new_record])
+        self.tree_df = pd.concat([self.tree_df, new_record])
         self.tree_df.replace({np.nan: None})
-        # self.tree.append(new_record)
 
         self.reference = deepcopy(self.instrument)
 
     def update(self, diff: dict = None, dry_run: bool = False):
+        """
+        updates self.instrument in sdb if not dry_run,
+        sets sectionId if needed
+        :param diff: diff of self.instrument to self.reference to print if dry_run
+        :param dry_run: do not post to sdb, print the document
+        """
         self.logger.info(f'{self.ticker}.{self.exchange}: following changes have been made:')
         self.logger.info(pformat(diff))
         set_sec = self.set_section_id(dry_run)
@@ -524,6 +607,9 @@ class Derivative(Instrument):
             self.logger.info(pformat(response))
 
     def clean_up_times(self):
+        """
+        removes time from lastAvailableDate and lastTradingDate, presuming that it is set on series document and should be inherited
+        """
         contracts = asyncio.run(self.sdb.get_heirs(self.instrument['_id'], full=True))
         to_upd = []
         for c in contracts:
