@@ -355,7 +355,6 @@ class Derivative(Instrument):
                 parent_folder_id,
                 sdb=sdb,
                 tree_df=tree_df,
-                parent_tree=parent_tree,
                 env=env
             )
         return instrument, series_tree
