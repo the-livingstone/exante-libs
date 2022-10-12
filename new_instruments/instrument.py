@@ -864,7 +864,8 @@ class Instrument:
         ))
         try:
             validated = SetSectionId(**compiled)
-            self.instrument['sectionId'] = validated.section_id
+            if compiled.get('sectionId') != validated.section_id:
+                self.instrument['sectionId'] = validated.section_id
             return True
         except ValidationError as valerr:
             errors = [v['msg'] for v in valerr.errors()]
