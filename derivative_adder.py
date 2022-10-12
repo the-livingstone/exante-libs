@@ -50,6 +50,7 @@ class DerivativeType(Enum):
     OPTION_ON_FUTURE = Option
     FUTURE = Future
     SPREAD = Spread
+    CALENDAR_SPREAD = Spread
 
 class Parser(Enum):
     DXFEED = DxfeedParser
