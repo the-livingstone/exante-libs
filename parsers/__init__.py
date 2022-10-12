@@ -1,5 +1,5 @@
-from .datascope import Datascope, DatascopeAuthError
-from .dxfeed import DxFeed
+from ..cp_apis.datascope import Datascope, DatascopeAuthError
+from ..cp_apis.dxfeed import DxFeed
 from .exchange_parser_base import (
     Months,
     CallMonths,

@@ -1,99 +1,12 @@
 import datetime as dt
-import json
-import logging
-import re
 from typing import Optional, Union
 import pandas as pd
 from pydantic import BaseModel, Field, ValidationError, root_validator
-import requests
 from pprint import pformat, pp
 
-from tenacity import (
-    retry,
-    retry_if_exception_type,
-    stop_after_attempt,
-    wait_fixed
-)
+from libs.cp_apis.ftx import Ftx
 
 from libs.parsers.cprod_exchange_parser_base import ExchangeParser
-
-
-class Ftx:
-    url = 'https://ftx.com/api'
-    default_cred_file = '/etc/support/auth/ftx.json'
-
-    def __init__(self, cred_file: str = default_cred_file):
-        with open(cred_file, 'r') as f:
-            self.creds = json.load(f)
-
-        self.session = requests.Session()
-        self.session.mount(self.url, requests.adapters.HTTPAdapter())
-
-    @property
-    def logger(self):
-        return logging.getLogger(f"{self.__class__.__name__}")
-
-
-    @retry(
-        retry=retry_if_exception_type((
-            requests.exceptions.ConnectionError,
-            requests.exceptions.Timeout,
-            requests.exceptions.ConnectTimeout,
-            requests.exceptions.ReadTimeout
-        )),
-        stop=stop_after_attempt(10),
-        wait=wait_fixed(10)
-    )
-    def __request(self, method, handle: str, jdata: dict = None, **params):
-        # headers = {
-        #     'FTX-KEY': self.creds['api_key']
-        # }
-        # ts = int(time.time() * 1000)
-        # signature_payload = f'{ts}{method}/{handle}'
-        # if jdata:
-        #     signature_payload += str(jdata)
-        # signature = hmac.new(
-        #     self.creds['api_secret'].encode(),
-        #     signature_payload.encode(),
-        #     'sha256'
-        # ).hexdigest()
-        # headers['FTX-SIGN'] = signature
-        # headers['FTX-TS'] = str(ts)
-        try:
-            response = method(f"{self.url}/{handle}", params=params, json=jdata) # headers=headers)
-            if response.ok:
-                return response
-            else:
-                self.logger.error(
-                    f"Error code {response.status_code} while requesting"
-                    "\n"
-                    f"{response.url}"
-                    "\n"
-                    f"{response.text}"
-                )
-        except Exception as e:
-            self.logger.error(f"{e.__class__.__name__}: {e}")
-            raise e
-                
-    def get(self, handle, params=None):
-        """
-        wrapper method for requests.get
-        :param handle: backoffice api handle
-        :param params: additional parameters to pass with this request
-        :return: json received from api
-        """
-        return self.__request(method=self.session.get, handle=handle, params=params)
-
-    def search_futures(
-            self,
-            ticker: str = None
-        ):
-        search = self.get('futures').json().get('result')
-        if ticker:
-            return [x for x in search if x.get('underlying') == ticker]
-        else:
-            return search
-
 
 class FutureSchema(BaseModel):
     ticker: str
@@ -160,8 +73,6 @@ class FutureSchema(BaseModel):
         return values
 
 class Parser(Ftx, ExchangeParser):
-    def __init__(self, cred_file='/etc/support/auth/ftx.json'):
-        super().__init__(cred_file)
 
     def futures(
             self,
@@ -173,7 +84,7 @@ class Parser(Ftx, ExchangeParser):
         contracts = []
         series_data = {}
         ticker, _ = series.split('.')[:2]
-        data = self.search_futures(ticker)
+        data = self.search_future(ticker)
         for d in data:
             try:
                 contracts.append(FutureSchema(**d).dict())
