@@ -1120,6 +1120,7 @@ class Option(Derivative):
                     'to_create': [x.contract_name for x in target.new_expirations]
                 })
             elif target.new_expirations:
+                self.wait_for_sdb()
                 create_result = asyncio.run(self.sdb.batch_create(
                     input_data=[x.instrument for x in target.new_expirations]
                 ))
@@ -1150,6 +1151,7 @@ class Option(Derivative):
                     'to_update': [x.contract_name for x in update_expirations]
                 })
             elif update_expirations:
+                self.wait_for_sdb()
                 update_result = asyncio.run(self.sdb.batch_update(
                     input_data=[x.instrument for x in update_expirations]
                 ))
@@ -1167,6 +1169,7 @@ class Option(Derivative):
                         'updated': [x.contract_name for x in update_expirations]
                     })
         if report and try_again_series and not dry_run:
+            self.wait_for_sdb()
             response = asyncio.run(self.sdb.update(self.instrument))
             if response.get('message'):
                 self.logger.error(f'instrument {self.ticker} is not updated:')
@@ -1869,6 +1872,7 @@ class WeeklyCommon(Instrument):
                 f"<<new {self.option.ticker}.{self.option.exchange} {self.payload['name']} id>>"
             )
         elif self.option.instrument.get('_id'):
+            self.wait_for_sdb()
             create = asyncio.run(self.sdb.create(self.payload))
             if not create.get('_id'):
                 self.option.logger.error(pformat(create))
@@ -1897,6 +1901,7 @@ class WeeklyCommon(Instrument):
             print(f"Dry run. The folder {self.payload['name']} to update:")
             pp(diff)
             return {}
+        self.wait_for_sdb()
         response = asyncio.run(self.sdb.update(self.payload))
         if response.get('message'):
             self.option.logger.warning(

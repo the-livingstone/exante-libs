@@ -1,6 +1,7 @@
 import asyncio
 from copy import deepcopy
 import datetime as dt
+from time import sleep
 from deepdiff import DeepDiff
 from enum import Enum
 from functools import reduce
@@ -824,6 +825,18 @@ class Instrument:
             else:
                 return validation
         return response
+
+    def wait_for_sdb(self, wait_time: int = 10):
+        while True:
+            tasks = asyncio.run(self.sdb.get_tasks())
+            if not tasks:
+                break
+            task_queue = [x for x in tasks if x['state'] == 'queued']
+            if len(task_queue) < 5:
+                break
+            self.logger.info('Waiting for sdb...')
+            sleep(wait_time)
+
 
     def create_new_section(
             self,

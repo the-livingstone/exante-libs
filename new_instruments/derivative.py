@@ -11,14 +11,11 @@ from pandas import DataFrame
 from libs.backoffice import BackOffice
 from libs.monitor import Monitor
 from libs.async_symboldb import SymbolDB
-from libs.async_sdb_additional import SDBAdditional, Months, SdbLists
+from libs.async_sdb_additional import SDBAdditional, SdbLists
 from pprint import pformat, pp
 from libs.new_instruments import (
     Instrument,
-    InitThemAll,
-    InstrumentTypes,
-    get_uuid_by_path,
-    NoInstrumentError
+    InitThemAll
 )
 
 class Balancer:
@@ -566,6 +563,7 @@ class Derivative(Instrument):
             self.instrument['path'].append(f"<<new {self.ticker}.{self.exchange} folder id>>")
             self.reference = deepcopy(self.instrument)
             return None
+        self.wait_for_sdb()
         create = asyncio.run(self.sdb.create(self.instrument))
         if not create.get('_id'):
             self.logger.error(pformat(create))
@@ -600,6 +598,7 @@ class Derivative(Instrument):
             print(f"Dry run. The folder {self.instrument['name']} to update:")
             pp(diff)
             return {}
+        self.wait_for_sdb()
         response = asyncio.run(self.sdb.update(self.instrument))
         if response.get('message'):
             print(f'Instrument {self.ticker} is not updated, we\'ll try again after expirations are done')
@@ -621,6 +620,6 @@ class Derivative(Instrument):
                 updated = True
             if updated:
                 to_upd.append(c)
-        
+        self.wait_for_sdb()
         asyncio.run(self.sdb.batch_update(to_upd))
 

@@ -842,6 +842,7 @@ class Spread(Derivative):
             pp(new_folder)
             return None
         else:
+            self.wait_for_sdb()
             create = asyncio.run(self.sdb.create(new_folder))
             if not create.get('_id'):
                 self.logger.error(pformat(create))
@@ -855,7 +856,7 @@ class Spread(Derivative):
                 in new_folder.items()
                 if key in self.tree_df.columns
             }], index=[new_folder['_id']])
-            pd.concat([self.tree_df, new_record])
+            self.tree_df = pd.concat([self.tree_df, new_record])
             self.tree_df.replace({np.nan: None})
         return new_folder
 
@@ -949,6 +950,7 @@ class Spread(Derivative):
                 'to_create': [x.contract_name for x in self.new_expirations]
             })
         elif self.new_expirations:
+            self.wait_for_sdb()
             create_result = asyncio.run(self.sdb.batch_create(
                 input_data=[x.instrument for x in self.new_expirations]
             ))
@@ -972,6 +974,7 @@ class Spread(Derivative):
                 'to_update': [x.contract_name for x in update_expirations]
             })
         elif update_expirations:
+            self.wait_for_sdb()
             update_result = asyncio.run(self.sdb.batch_update(
                 input_data=[x.instrument for x in update_expirations]
             ))
@@ -989,6 +992,7 @@ class Spread(Derivative):
                     'updated': [x.contract_name for x in update_expirations],
                 })
         if report and try_again_series and not dry_run:
+            self.wait_for_sdb()
             response = asyncio.run(self.sdb.update(self.instrument))
             if response.get('message'):
                 self.logger.error(f'instrument {self.ticker} is not updated:')

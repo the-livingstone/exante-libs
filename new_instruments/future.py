@@ -21,6 +21,22 @@ from libs.new_instruments import (
 )
 
 class Future(Derivative):
+    """
+    usage:
+    · if series exists in sdb and it's totally or mostly ok:
+        use from_sdb constructor
+    · if series does not exist in sdb and you have params to create it:
+        use from_scratch constructor
+    · if series does not exist in sdb and you have fully defined dict of document to create (including path):
+        use from_dict constructor
+    · if series exists in sdb and it should be recreated dropping all old settings:
+        use from_scratch or from_dict constructor with recreate=True
+
+    attrs:
+    there are no specific attrs for Future, take a look on common attrs in Derivative class
+    """
+
+
     def __init__(
             self,
             # series parameters
@@ -102,6 +118,21 @@ class Future(Derivative):
             reload_cache: bool = True,
             env: str = 'prod'
         ):
+        """
+        retreives Future series from sdb,
+        raises NoExchangeError if exchange does not exist in sdb,
+        raises NoInstrumentError if ticker is not found for given exchange
+        :param ticker:
+        :param exchange:
+        :param parent_folder_id: specify in case of ambiguous results of finding series or series located not in Root → FUTURE folder,
+            feel free to leave empty
+        :param bo: BackOffice class instance
+        :param sdb: SymbolDB (async) class instance
+        :param sdbadds: SDBAdditional class instance
+        :param tree_df: sdb tree DataFrame
+        :param reload_cache: load fresh tree_df if tree_df is not given in params
+        :param env: environment
+        """
         bo, sdb, sdbadds, tree_df = InitThemAll(
             bo,
             sdb,
@@ -160,6 +191,27 @@ class Future(Derivative):
             env: str = 'prod',
             **kwargs
         ):
+        """
+        creates new series document with given ticker, shortname and other fields as kwargs,
+        raises NoExchangeError if exchange does not exist in sdb,
+        raises NoInstrumentError if bad parent_folder_id was given,
+        raises RuntimeError if series exists in sdb and recreate=False
+        :param ticker:
+        :param exchange:
+        :param shortname:
+        :param parent_folder_id: specify if new series should be placed in destination that is not the third level folder
+            (i.e. other than Root → FUTURE → <<exchange>>)
+        :param recreate: if series exists in sdb drop all settings and replace it with newly created document
+        :param bo: BackOffice class instance
+        :param sdb: SymbolDB (async) class instance
+        :param sdbadds: SDBAdditional class instance
+        :param tree_df: sdb tree DataFrame
+        :param reload_cache: load fresh tree_df if tree_df is not given in params
+        :param env: environment
+        :param kwargs: fields, that could be validated via sdb_schemas
+            deeper layer fields could be pointed using path divided by '/' e.g. {'identifiers/ISIN': value} 
+
+        """
         bo, sdb, sdbadds, tree_df = InitThemAll(
             bo,
             sdb,
@@ -233,6 +285,25 @@ class Future(Derivative):
             reload_cache: bool = True,
             env: str = 'prod'
         ):
+        """
+        >>> CONTINUE EDITING FROM HERE
+        creates new series document with given ticker, shortname and other fields as kwargs,
+        raises NoExchangeError if exchange does not exist in sdb,
+        raises NoInstrumentError if bad path is given in payload,
+        raises RuntimeError if series exists in sdb and recreate=False
+        :param shortname:
+        :param recreate: if series exists in sdb drop all settings and replace it with newly created document
+        :param bo: BackOffice class instance
+        :param sdb: SymbolDB (async) class instance
+        :param sdbadds: SDBAdditional class instance
+        :param tree_df: sdb tree DataFrame
+        :param reload_cache: load fresh tree_df if tree_df is not given in params
+        :param env: environment
+        :param kwargs: fields, that could be validated via sdb_schemas
+            deeper layer fields could be pointed using path divided by '/' e.g. {'identifiers/ISIN': value} 
+
+        """
+
         bo, sdb, sdbadds, tree_df = InitThemAll(
             bo,
             sdb,
@@ -259,7 +330,7 @@ class Future(Derivative):
         # get exchange folder _id from path (Root -> Future -> EXCHANGE), check its name in tree_df
         exchange_df = tree_df[tree_df['_id'] == payload['path'][2]]
         if exchange_df.empty:
-            raise NoInstrumentError(
+            raise NoExchangeError(
                 f"Bad path: exchange folder with _id {payload['path'][2]} is not found"
             )
         exchange = exchange_df.iloc[0]['name']
@@ -607,6 +678,7 @@ class Future(Derivative):
                 'to_create': [x.contract_name for x in self.new_expirations]
             })
         elif self.new_expirations:
+            self.wait_for_sdb()
             create_result = asyncio.run(self.sdb.batch_create(
                 input_data=[x.instrument for x in self.new_expirations]
             ))
@@ -630,6 +702,7 @@ class Future(Derivative):
                 'to_update': [x.contract_name for x in update_expirations]
             })
         elif update_expirations:
+            self.wait_for_sdb()
             update_result = asyncio.run(self.sdb.batch_update(
                 input_data=[x.instrument for x in update_expirations]
             ))
@@ -647,6 +720,7 @@ class Future(Derivative):
                     'updated': [x.contract_name for x in update_expirations],
                 })
         if report and try_again_series and not dry_run:
+            self.wait_for_sdb()
             response = asyncio.run(self.sdb.update(self.instrument))
             if response.get('message'):
                 self.logger.error(f'instrument {self.ticker} is not updated:')
