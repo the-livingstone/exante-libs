@@ -668,7 +668,7 @@ class SDBAdditional:
         if not exchange_name or not instrument_type:
             return None
         if instrument_type in ['FX_SPOT', 'FOREX']:
-            fx_additional = ['baseCurrency', 'currency']
+            fx_additional = ['baseCurrency', 'currency', 'maturityName']
             if not any(x in required_fields for x in fx_additional):
                 required_fields.update(asyncio.run(self.get_inherited_value(
                     instrument,
