@@ -615,9 +615,13 @@ class SDBAdditional:
 
     def compile_expiry_time(self, instrument, compiled=False, cache=None):
         if not compiled:
-            compiled_instrument = asyncio.run(self.build_inheritance(instrument, include_self=True, cache=cache))
+            required_fields = asyncio.run(self.get_inherited_value(
+                instrument,
+                fields=['scheduleId', 'expiry'],
+                cache=cache
+            ))
         else:
-            compiled_instrument = instrument
+            required_fields = instrument
         schedule_tz = next((
             x[2] for x
             in asyncio.run(
@@ -626,16 +630,16 @@ class SDBAdditional:
                     additional_fields=['timezone']
                 )
             )
-            if x[1] == compiled_instrument.get('scheduleId')
+            if x[1] == required_fields['scheduleId']
         ), None)
-        expiration_date = self.sdb.sdb_to_date(compiled_instrument.get('expiry', {}))
+        expiration_date = self.sdb.sdb_to_date(required_fields['expiry'])
         if not schedule_tz or not expiration_date:
             return None
         localized_exp = pytz.timezone(schedule_tz).localize(
             dt.datetime.combine(
                 expiration_date,
                 dt.time.fromisoformat(
-                    compiled_instrument['expiry'].get('time', '00:00:00')
+                    required_fields['expiry'].get('time', '23:59:59')
                 )
             )
         )
@@ -646,63 +650,89 @@ class SDBAdditional:
         if isinstance(instrument, dict) and instrument.get('isAbstract'):
             return None
         if not compiled:
-            compiled_instrument = asyncio.run(self.build_inheritance(instrument, include_self=True, cache=cache))
+            required_fields = asyncio.run(self.get_inherited_value(
+                instrument,
+                fields=['type', 'ticker', 'exchangeId', 'isAbstract'],
+                cache=cache
+            ))
         else:
-            compiled_instrument = instrument
-        if compiled_instrument.get('isAbstract'):
+            required_fields = instrument
+        if required_fields.get('isAbstract'):
             return None
         exchange_name = next((
             x[0] for x
             in asyncio.run(self.get_list_from_sdb(SdbLists.EXCHANGES.value))
-            if x[1] == compiled_instrument.get('exchangeId')
+            if x[1] == required_fields.get('exchangeId')
         ), None)
-        instrument_type = compiled_instrument.get('type')
+        instrument_type = required_fields.get('type')
         if not exchange_name or not instrument_type:
             return None
         if instrument_type in ['FX_SPOT', 'FOREX']:
-            ticker = f"{compiled_instrument.get('baseCurrency')}/{compiled_instrument.get('currency')}"
+            fx_additional = ['baseCurrency', 'currency']
+            if not any(x in required_fields for x in fx_additional):
+                required_fields.update(asyncio.run(self.get_inherited_value(
+                    instrument,
+                    fields=fx_additional,
+                    cache=cache
+                )))
+            ticker = f"{required_fields.get('baseCurrency')}/{required_fields.get('currency')}"
         else:
-            ticker = compiled_instrument.get('ticker')
+            ticker = required_fields.get('ticker')
         symbol_id = f"{ticker}.{exchange_name}"
         if instrument_type in ['FX_SPOT', 'FOREX', 'BOND', 'CFD', 'FUND', 'STOCK']:
             pass
         elif instrument_type == 'CALENDAR_SPREAD':
+            spread_additional = ['nearMaturityDate', 'farMaturityDate', 'spreadType']
+            if not any(x in required_fields for x in spread_additional):
+                required_fields.update(asyncio.run(self.get_inherited_value(
+                    instrument,
+                    fields=spread_additional,
+                    cache=cache
+                )))
             try:
                 near_symbolic = (
-                    f"{Months(compiled_instrument['nearMaturityDate']['month']).name}"
-                    f"{compiled_instrument['nearMaturityDate']['year']}"
+                    f"{Months(required_fields['nearMaturityDate']['month']).name}"
+                    f"{required_fields['nearMaturityDate']['year']}"
                 )
                 far_symbolic = (
-                    f"{Months(compiled_instrument['farMaturityDate']['month']).name}"
-                    f"{compiled_instrument['farMaturityDate']['year']}"
+                    f"{Months(required_fields['farMaturityDate']['month']).name}"
+                    f"{required_fields['farMaturityDate']['year']}"
                 )
             except KeyError:
                 return None
-            if compiled_instrument.get('spreadType') == 'FORWARD':
+            if required_fields.get('spreadType') == 'FORWARD':
                 symbol_id += ".CS/"
-            elif compiled_instrument.get('spreadType') == 'REVERSE':
+            elif required_fields.get('spreadType') == 'REVERSE':
                 symbol_id += f".RS/"
             else:
                 return None
             symbol_id += f"{near_symbolic}-{far_symbolic}"
         else:
+            fut_opt_additional = ['maturityDate', 'maturityName']
+            if not any(x in required_fields for x in fut_opt_additional):
+                required_fields.update(asyncio.run(self.get_inherited_value(
+                    instrument,
+                    fields=fut_opt_additional,
+                    cache=cache
+                )))
+
             try:
                 symbolic = (
-                    f"{compiled_instrument['maturityDate'].get('day', '')}"
-                    f"{Months(compiled_instrument['maturityDate']['month']).name}"
-                    f"{compiled_instrument['maturityDate']['year']}"
+                    f"{required_fields['maturityDate'].get('day', '')}"
+                    f"{Months(required_fields['maturityDate']['month']).name}"
+                    f"{required_fields['maturityDate']['year']}"
                 )
             except KeyError:
-                if compiled_instrument.get('maturityName'):
-                    symbol_id += f".{compiled_instrument['maturityName']}"
+                if required_fields.get('maturityName'):
+                    symbol_id += f".{required_fields['maturityName']}"
                     return symbol_id
                 else:
                     return None
             symbol_id += f".{symbolic}"
             if instrument_type == 'OPTION':
                 symbol_id += f".{strike}"
-        if compiled_instrument.get('maturityName'):
-            symbol_id += f".{compiled_instrument['maturityName']}"
+        if required_fields.get('maturityName'):
+            symbol_id += f".{required_fields['maturityName']}"
         return symbol_id
 
     def find_target_instrument(self, search_string: str, is_shortname: bool = False):
@@ -1020,7 +1050,7 @@ class SDBAdditional:
     async def get_instrument_type(self, symbol, cache: list[dict] = None) -> str:
         """
         Method to get the inherited instrument type
-        :param uuid: uuid or symbolId of instrument
+        :param symbol: uuid or symbolId of instrument
         :return: instrument type
         """
         result = await self.get_inherited_value(symbol, ['type'], cache)
