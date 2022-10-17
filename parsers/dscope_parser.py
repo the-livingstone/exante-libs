@@ -384,14 +384,14 @@ class Parser(Datascope, ExchangeParser):
         search string {overrides['base']}*{overrides.get('suffix', '')},
         exchange codes {rt_codes},
         only active,
-        search type Isin""")
+        search type Ric""")
         raw_search = []
         duplicates = [
             x for x in self.futures_raw(
                 f"{overrides['base']}*{overrides.get('suffix', '')}",
                 exchange_codes=rt_codes,
                 only_active=True,
-                search_type='Ric'
+                search_type='Isin'
             )
             if x['Identifier'] in [item['Identifier'] for item in raw_search]
             or raw_search.append(x)
@@ -501,7 +501,8 @@ class Parser(Datascope, ExchangeParser):
         raw_search = [
             x for x
             in raw_search
-            if re.match(filtering_regex, x['Identifier'])
+            if not ['IdentifierType'] == 'Ric'
+            or re.match(filtering_regex, x['Identifier'])
         ]
         if not raw_search:
             self.logger.warning(f"nothing is found for {series}")
