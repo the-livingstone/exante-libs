@@ -1095,7 +1095,11 @@ class DerivativeAdder:
 
         # reuters with its reutersProperties is somewhat special
         if feed_provider == 'REUTERS':
-            overrides = DerivativeAdder.set_reuters_overrides(overrides)
+            overrides = DerivativeAdder.set_reuters_overrides(
+                ticker,
+                exchange,
+                derivative_type=derivative_type,
+                overrides=overrides)
 
         parsed = DerivativeAdder.parse_available(
             overrides,
@@ -1232,10 +1236,10 @@ class DerivativeAdder:
                         f"{ticker.replace(sym, i)}.{exchange}",
                         overrides=srch_pld
                     )
-                    if search.get('contracts') and weeklies:
+                    if search[1] and weeklies:
                         found = True
                         pprint(f"Week {i}: {search['contracts']}")
-                    elif search.get('contracts'):
+                    elif search[1]:
                         found = True
                         to_print = search['contracts'][:3]
                         if len(search['contracts']) > 3:
@@ -1252,7 +1256,7 @@ class DerivativeAdder:
                     f"{ticker}.{exchange}",
                     overrides=srch_pld
                 )
-                if search.get('contracts'):
+                if search[1]:
                     found = True
                     to_print = search['contracts'][:3]
                     if len(search['contracts']) > 3:
@@ -1354,7 +1358,13 @@ class DerivativeAdder:
         '''
         print(message)
         if feed_provider == 'REUTERS':
-            overrides = self.set_reuters_overrides(deepcopy(overrides), weeklies=True)
+            overrides = self.set_reuters_overrides(
+                self.ticker,
+                self.exchange,
+                derivative_type=self.derivative_type,
+                overrides=deepcopy(overrides),
+                weeklies=True
+            )
         else:
             while '$' not in ticker and '@' not in ticker:
                 ticker = input('Type weekly ticker template: ')
