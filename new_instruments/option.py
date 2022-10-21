@@ -502,10 +502,11 @@ class Option(Derivative):
                 and 'weekly' in x['name'].lower()
                 and x['isAbstract']
             ]
-            weekly_commons: list[WeeklyCommon] = [
-                WeeklyCommon.from_dict(self, payload=x, reference=x) for x
-                in weekly_common_folders
-            ]
+            weekly_commons: list[WeeklyCommon] = []
+            for wcf in weekly_common_folders:
+                wc = WeeklyCommon.from_dict(self, payload=wcf, reference=wcf)
+                if wc:
+                    weekly_commons.append(wc)
         else:
             weekly_commons = []
         return sorted(contracts), weekly_commons
@@ -1816,6 +1817,8 @@ class WeeklyCommon(Instrument):
             common_name=common_name
         )
         cw.weekly_folders = cw.__find_weekly_folders()
+        if not cw.weekly_folders:
+            return None
         cw.templates = {
             'ticker': re.sub(
                 r'[12345]',
