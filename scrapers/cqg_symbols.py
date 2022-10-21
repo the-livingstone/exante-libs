@@ -103,11 +103,16 @@ class CqgSymbols:
                 '',
                 description
             )
-            result = difflib.get_close_matches(prepared, df['Description'].to_list(), cutoff=0.82)
+            result = difflib.get_close_matches(prepared, df['Description'].to_list(), cutoff=0.82) # 0.82
             numbers = re.findall(r'\d+', description)
             if numbers:
                 result = [x for x in result if all(num in x for num in numbers)]
             return result
+
+        def filter_currencies(match: re.Match, df_description: str):
+            if match.group('first_ccy') in df_description and match.group('second_ccy'):
+                return True
+            return False
 
         special_words = [
             'TAS',
@@ -116,7 +121,9 @@ class CqgSymbols:
             'Micro',
             'Weekly',
             'Ultra',
-            'Dividend'
+            'Dividend',
+            'FTSE',
+            'MSCI'
         ]
         if instrument_type.replace(' ', '_') == 'OPTION_ON_FUTURE':
             instrument_type = 'OPTION'
@@ -143,6 +150,15 @@ class CqgSymbols:
                     lambda row: sw not in row['Description'],
                     axis=1
                 )]
+        match_currencies = re.search(
+            r'(?P<first_ccy>[A-Z]{3})\/(?P<second_ccy>[A-Z]{3})',
+            description
+        )
+        if match_currencies:
+            candidates_df = candidates_df[candidates_df.apply(
+                lambda row: filter_currencies(match_currencies, row['Description']),
+                axis=1
+            )]
         suggestions_df = candidates_df[candidates_df.apply(
             lambda row: row['Description'] in get_suggestions(description, candidates_df)[:1],
             axis=1
