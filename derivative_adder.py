@@ -25,6 +25,7 @@ from libs.new_instruments import (
     set_schema,
     get_uuid_by_path
 )
+from libs.scrapers.cqg_symbols import CqgSymbols
 from libs.terminal_tools import pick_from_list_tm
 from pprint import pformat, pprint
 
@@ -389,6 +390,29 @@ class DerivativeAdder:
                 )
         return payload
 
+    @staticmethod
+    def check_cqg_symbolname(
+            exchange: str,
+            shortname: str,
+            derivative_type: str
+        ):
+        cqg = CqgSymbols()
+        suggestions_df = cqg.get_symbolname(
+            instrument_type=derivative_type,
+            description=shortname,
+            exchange=exchange
+        )
+        if suggestions_df.shape[0] > 0:
+            if suggestions_df.shape[0] > 1:
+                logging.warning(
+                    'CQG symbolName selection is ambiguous!'
+                    'Please have a look at providerOverrides to check if it\'s ok'
+                )
+            return suggestions_df.iloc[0]['Symbol']
+        return None
+
+
+
     def set_targets(
             self,
             weekly: bool = False,
@@ -439,7 +463,7 @@ class DerivativeAdder:
         if self.croned:
             raise RuntimeError(
                 f'{self.ticker}.{self.exchange} '
-                'weekly folders are not found in SDB and could not be set automatically'
+               'weekly folders are not found in SDB and could not be set automatically'
             )
         overrides = self.get_overrides(
             self.ticker,
@@ -448,6 +472,21 @@ class DerivativeAdder:
         )
         weekly_templates = self.set_weekly_templates(overrides)
         weekly_common = self.series.create_weeklies(weekly_templates, common_name=create_weeklies)
+        for wf in weekly_common.weekly_folders:
+            weekly_cqg_symbolname = self.check_cqg_symbolname(
+                exchange=self.exchange,
+                shortname=wf.instrument['shortName'],
+                derivative_type='OPTION'
+            )
+            if weekly_cqg_symbolname:
+                cqg_providers = [
+                    x[0] for x
+                    in asyncio.run(self.sdbadds.get_list_from_sdb('broker_providers'))
+                    if 'CQG' in x[0]
+                ]
+                for cqg in cqg_providers:
+                    wf.set_provider_overrides(cqg, **{'symbolName': weekly_cqg_symbolname})
+            
         weekly_targets = self.make_weekly_targets(weekly_common, overrides, weekly_templates)
         return weekly_targets
 
@@ -1131,6 +1170,22 @@ class DerivativeAdder:
             sdbadds=sdbadds,
             tree_df=tree_df
         ) # raises RuntimeError if not recreate and series exists in sdb
+        
+        # set CQG overrides
+        cqg_symbolname = DerivativeAdder.check_cqg_symbolname(
+            exchange=exchange,
+            shortname=shortname,
+            derivative_type=derivative_type
+        )
+        if cqg_symbolname:
+            cqg_providers = [
+                x[0] for x
+                in asyncio.run(sdbadds.get_list_from_sdb('broker_providers'))
+                if 'CQG' in x[0]
+            ]
+            for cqg in cqg_providers:
+                series.set_provider_overrides(cqg, {'symbolName': cqg_symbolname})
+
         for key, val in parsed['series'].items():
             series.set_field_value(val, key.split('/'))
         if overrides:
@@ -1183,6 +1238,7 @@ class DerivativeAdder:
                     provider=bp,
                     **broker_currency_override
                 )
+
         overrides.update({
             'target_folder': series
         })
