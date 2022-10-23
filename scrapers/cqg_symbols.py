@@ -3,9 +3,6 @@ import logging
 import re
 import pandas as pd
 
-from libs.derivative_adder import DerivativeAdder, DerivativeType
-
-
 class CqgSymbols:
     cqg_url = 'http://help.cqg.com/fcm/symbols.xlsx'
     exchange_mapping = {
@@ -29,6 +26,8 @@ class CqgSymbols:
         # 'IFM Comex': 'COMEX',
         # 'IFM ICE US': 'ICE',
         # 'IFM NYMEX': 'NYMEX',
+        'NYMEX/Globex (NYMEXG)': 'NYMEX',
+        'Nymex Event Contracts': 'NYMEX',
         'Osaka Securities Exchange (OSE)': 'OE',
         'Singapore Exchange (SGX)': 'SGX'
     }
@@ -60,6 +59,14 @@ class CqgSymbols:
         # 'Strategy as a single instrument',
         # 'Strip'
     }
+    derivative_types = [
+        'OPTION',
+        'OPTION_ON_FUTURE',
+        'FUTURE',
+        'SPREAD',
+        'CALENDAR_SPREAD'
+    ]
+
 
     def __init__(self):
         self.symbols_df = pd.read_excel(self.cqg_url, skiprows=4)
@@ -84,15 +91,8 @@ class CqgSymbols:
 
         self.symbols_df['Description'] = self.symbols_df.apply(lambda row: row['Description'].strip(), axis=1)
     
-    def get_series_details(self, series: str, instrument_type: str):
-        ticker, exchange = series.split('.')[:2]
-        da = DerivativeAdder.from_sdb(ticker, exchange, derivative=instrument_type)
-        description = da.series.instrument.get('shortName', '')
-        return description, exchange
-
     def get_symbolname(
             self,
-            series: str = None,
             instrument_type: str = None,
             description: str = None,
             exchange: str = None
@@ -103,7 +103,7 @@ class CqgSymbols:
                 '',
                 description
             )
-            result = difflib.get_close_matches(prepared, df['Description'].to_list(), cutoff=0.82) # 0.82
+            result = difflib.get_close_matches(prepared, df['Description'].to_list(), n=6, cutoff=0.77) # 0.82
             numbers = re.findall(r'\d+', description)
             if numbers:
                 result = [x for x in result if all(num in x for num in numbers)]
@@ -123,15 +123,16 @@ class CqgSymbols:
             'Ultra',
             'Dividend',
             'FTSE',
-            'MSCI'
+            'MSCI',
+            'Eris',
+            'SOFR',
+            'MAC'
         ]
         if instrument_type.replace(' ', '_') == 'OPTION_ON_FUTURE':
             instrument_type = 'OPTION'
-        if instrument_type not in DerivativeType.__members__:
+        if instrument_type not in self.derivative_types:
             logging.warning(f"{instrument_type=} is invalid")
             return None
-        if series:
-            description, exchange = self.get_series_details(series, instrument_type)
         if not description or not exchange:
             logging.warning(f'Invalid {description=} or {exchange=}')
             return None
