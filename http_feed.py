@@ -26,7 +26,7 @@ class HttpFeed:
         elif env == 'stage':
             self.url = 'http://gateways9.stage.zorg.sh:8081'
         elif env == 'cprod':
-            self.url = 'http://http-feed.cprod.zorg.sh:80'
+            self.url = 'http://cryptogw20.cprod.zorg.sh:8081'
         elif env == 'prod':
             self.url = 'http://internal-gateways20.prod.zorg.sh:8081'
         elif env == 'cstage':
