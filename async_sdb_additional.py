@@ -319,9 +319,10 @@ class SDBAdditional:
                         dummy(x) for x
                         in cache
                         if x['_id'] == symbol
-                    ),
-                    get_and_cache(symbol)
+                    ), None
                 )
+                if instrument is None:
+                    instrument = get_and_cache(symbol)
                 tasks.append(instrument)
             elif isinstance(symbol, dict) and symbol.get('path'):
                 tasks.append(dummy(symbol))
@@ -622,6 +623,8 @@ class SDBAdditional:
             ))
         else:
             required_fields = instrument
+        if not required_fields.get('expiry'):
+            return None
         schedule_tz = next((
             x[2] for x
             in asyncio.run(
