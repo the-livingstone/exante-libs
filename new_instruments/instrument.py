@@ -957,7 +957,7 @@ class Instrument:
         · properties are passed through kwargs as a dict: {'property_name': value}
           e.g. {'symbolName': 'AAPL'}
         · properties are validated through the validation schemes, so if you pass
-          (provider='REUTERS', {'ric': 'LSE.L'}) it will find its right place as:
+          (provider='REUTERS', **{'ric': 'LSE.L'}) it will find its right place as:
             {
                 'providerOverrides': {
                     '04a47f56b3d29913fdaea70beb9da503':{
