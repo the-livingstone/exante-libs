@@ -239,6 +239,7 @@ class Option(Derivative):
         instrument.update({
             'description': f'Options on {shortname}'
         })
+
         if not week_number:
             instrument.update({
                 'underlying': ticker
@@ -979,7 +980,7 @@ class Option(Derivative):
 
     def create_weeklies(
             self,
-            templates: dict = None,
+            templates: dict,
             common_name: str = 'Weekly',
             recreate: bool = False,
             week_number: int = 0
@@ -987,8 +988,6 @@ class Option(Derivative):
         if self.week_number:
             self.logger.error(f"{self.ticker}.{self.exchange}: Cannot create weeklies inside weekly folder")
             return None
-        if not templates:
-            templates = self.weekly_templates
         ticker_template = templates.get('ticker')
         # generally, one week differs from another by ticker, but it's not always the case
         if not ticker_template:
@@ -1758,6 +1757,7 @@ class WeeklyCommon(Instrument):
         self.bo = option.bo
         self.sdb = option.sdb
         self.sdbadds = option.sdbadds
+        self.tree_df = option.tree_df
         self.common_name = common_name
         self.weekly_folders: list[Option] = []
         self.templates = {}
@@ -1933,7 +1933,8 @@ class WeeklyCommon(Instrument):
                 if x.week_number == num
             ), None)
             shortname = self.option.instrument.get('description')
-            shortname = re.sub(r'( )?[Oo]ptions( )?(on )?', '', shortname)
+            shortname = re.sub(r'( )?[Oo]ptions( )?([Oo]n )?', '', shortname)
+            shortname += f" {num}{endings[num]} Week"
             ticker_template = self.templates.get('ticker')
             if not ticker_template:
                 self.option.logger.warning('No weekly ticker template have been provided, weekly folders are not created')
