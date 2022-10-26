@@ -137,7 +137,7 @@ class SDBAdditional:
         self.current_dir = os.getcwd()
         self.instrument_cache = []
         if self.current_dir == '/':
-            self.current_dir = '/home/instsupport/airflow/dags'
+            self.current_dir = '/usr/local/airflow-server/airflow/dags'
         self.current_dir = self.current_dir if self.current_dir[-1] != '/' else self.current_dir[:-1]
         self.lua_lib = f'{self.current_dir}/libs/stdlib.lua'
         self.lua = lupa.LuaRuntime(unpack_returned_tuples=True)
@@ -642,7 +642,7 @@ class SDBAdditional:
             dt.datetime.combine(
                 expiration_date,
                 dt.time.fromisoformat(
-                    required_fields['expiry'].get('time', '23:59:59')
+                    f"{required_fields['expiry'].get('time', '23:59:59'):0>8}"
                 )
             )
         )

@@ -6,7 +6,7 @@ import uuid
 import logging
 import os
 import requests
-from .nexus import Nexus
+from libs.nexus import Nexus
 
 
 class JmxCli:

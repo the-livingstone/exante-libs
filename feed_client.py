@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import asyncio
 import datetime
 import json
 import logging
@@ -8,14 +9,9 @@ import re
 import subprocess
 import sys
 import uuid
-from .nexus import Nexus
-from .sdb_additional import SDBAdditional
+from libs.nexus import Nexus
+from libs.async_sdb_additional import SDBAdditional
 from dateutil import parser as date_parser
-
-try:
-    from . import symboldb_auth
-except SystemError:
-    import symboldb_auth
 
 
 class FeedClient:
@@ -288,10 +284,10 @@ class FeedClient:
         :return: dict, keys are symbolID, values are list of feed urls
         """
         data = {}
-        sdb = symboldb_auth.SymbolDB(self.env)
         sdbadds = SDBAdditional(self.env)
-        for s in sdb.get_v2(symbol, fields=['symbolId', '_id', 'strikePrices']):
-            compiled = sdbadds.build_inheritance(s['_id'], include_self=True)
+        sdb = sdbadds.sdb
+        for s in asyncio.run(sdb.get_v2(symbol, fields=['symbolId', '_id', 'strikePrices'])):
+            compiled = asyncio.run(sdbadds.build_inheritance(s['_id'], include_self=True))
             if not s.get('strikePrices'):
                 data[str(uuid.uuid1())] = {
                     'data': list(),
@@ -299,7 +295,7 @@ class FeedClient:
                     'maxSpread': 100 * compiled.get('quoteFilters', dict()).get('maxSpread', 0.0),
                     'url': next((
                         x[2] for x
-                        in sdbadds.get_list_from_sdb('gateways', additional_fields=['feedAddress'])
+                        in asyncio.run(sdbadds.get_list_from_sdb('gateways', additional_fields=['feedAddress']))
                         if x[1] == next((
                             y['gatewayId'] for y
                             in compiled['feeds']['gateways']
@@ -316,7 +312,7 @@ class FeedClient:
                                 'maxSpread': 100 * compiled.get('quoteFilters', dict()).get('maxSpread', 0.0),
                                 'url': next((
                                     x[2] for x
-                                    in sdbadds.get_list_from_sdb('gateways', additional_fields=['feedAddress'])
+                                    in asyncio.run(sdbadds.get_list_from_sdb('gateways', additional_fields=['feedAddress']))
                                     if x[1] == next((
                                         y['gatewayId'] for y
                                         in compiled['feeds']['gateways']
