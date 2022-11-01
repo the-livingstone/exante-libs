@@ -32,7 +32,7 @@ IDENT = {
     # 'orderMinPriceIncrement': etree.XPath(f""),
     # 'lotSize': etree.XPath(f""),
     # 'includedIntoRegReporting': etree.XPath(f""),
-    # 'gics_filds': etree.XPath(f"")
+    'gics_filds': etree.XPath(f"{gl}/organizationInformation/classifications/*[@type='gicsCode']/text()")
     # Add path to values 
 }
 
