@@ -620,7 +620,8 @@ class SymbolDB:
             types: list = None,
             status: str = None,
             fields: list = None,
-            last_event_id: str = None
+            last_event_id: str = None,
+            broker_names: list= None
             ):
         
         params = {}
@@ -643,6 +644,10 @@ class SymbolDB:
         if last_event_id:
             params.update({
                 'lastEventId': last_event_id
+            })
+        if broker_names:
+            params.update({
+                'brokerProviders': ','.join(broker_names)
             })
         return await self.__request_v2(method='get', handle='snapshot', params=params)
 
