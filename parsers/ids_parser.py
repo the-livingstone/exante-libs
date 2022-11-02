@@ -37,7 +37,7 @@ IDENT = {
     # Add path to values 
 }
 
-from libs.easy_func import count_dict_nested_values
+
 class ICEXmlParser:
     """ Class to parse XML from ICE Data Service
     """
