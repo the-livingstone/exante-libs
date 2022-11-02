@@ -32,11 +32,12 @@ IDENT = {
     # 'orderMinPriceIncrement': etree.XPath(f""),
     # 'lotSize': etree.XPath(f""),
     # 'includedIntoRegReporting': etree.XPath(f""),
-    'localIndustryClassification': etree.XPath(f"{gl}/organization_information/classifications/*[@type_id=4]/text()")
+    'localIndustryClassification': etree.XPath(f"{gl}/organization_information/classifications/*[@type_id=4]/text()"),
+    'instrumentType': etree.XPath(f"{mi}/{ix}/*[@type_id='20']/@security_typ2")
     # Add path to values 
 }
 
-
+from libs.easy_func import count_dict_nested_values
 class ICEXmlParser:
     """ Class to parse XML from ICE Data Service
     """
