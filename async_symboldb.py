@@ -616,6 +616,7 @@ class SymbolDB:
 
     async def get_snapshot(
             self,
+            ids: list = None,
             symbol_id_regex: str = None,
             types: list = None,
             status: str = None,
@@ -625,6 +626,10 @@ class SymbolDB:
             ):
         
         params = {}
+        if ids:
+            params.update({
+                'ids': ','.join(ids)
+            })
         if symbol_id_regex:
             params.update({
                 'id_regexp': symbol_id_regex
