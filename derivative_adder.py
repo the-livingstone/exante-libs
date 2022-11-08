@@ -1108,12 +1108,8 @@ class DerivativeAdder:
             ticker,
             exchange,
             parent,
-            parent=True
+            parent=False
         )
-        overrides.update({
-            'ticker': ticker,
-            'exchange': exchange
-        })
         feed_provider = overrides.get('provider')
         gateway = None
 
