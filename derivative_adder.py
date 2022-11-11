@@ -12,7 +12,6 @@ from libs.async_symboldb import SymbolDB
 from libs.parsers import DxfeedParser, FtxParser, DscopeParser, ExchangeParser
 from libs.async_sdb_additional import SDBAdditional, Months, SdbLists
 from libs.new_instruments import (
-    NoInstrumentError,
     Option,
     OptionExpiration,
     WeeklyCommon,
@@ -22,7 +21,6 @@ from libs.new_instruments import (
     SpreadExpiration,
     Instrument,
     InitThemAll,
-    set_schema,
     get_uuid_by_path
 )
 from libs.scrapers.cqg_symbols import CqgSymbols
@@ -266,6 +264,70 @@ class DerivativeAdder:
         )
         drv.new_ticker_parsed = parsed
         return drv
+
+    @classmethod
+    def from_dict(
+        cls,
+        derivative: str,
+        payload: dict,
+        contracts_payload: list[dict] = None,
+
+        weekly: bool = False,
+        reload_cache: bool = True,
+        croned: bool = False,
+
+        sdb: SymbolDB = None,
+        sdbadds: SDBAdditional = None,
+        tree_df: DataFrame = None,
+        env='prod'
+    ):
+        (
+            bo,
+            sdb,
+            sdbadds,
+            tree_df
+        ) = InitThemAll(
+            sdb=sdb,
+            sdbadds=sdbadds,
+            tree_df=tree_df,
+            reload_cache=reload_cache,
+            env=env
+        ).get_instances
+        if derivative.replace(' ', '_') not in DerivativeType.__members__:
+            raise TypeUndefined(f'{derivative=} is unknown type')
+        series_class: Union[Option, Future, Spread] = DerivativeType[derivative.replace(' ', '_')].value
+        series = series_class.from_dict(
+            payload,
+
+            bo=bo,
+            sdb=sdb,
+            sdbadds=sdbadds,
+            tree_df=tree_df,
+            reload_cache=reload_cache,
+            env=env
+        )
+        if not contracts_payload:
+            contracts_payload = []
+        drv = cls(
+            series.ticker,
+            series.exchange,
+            derivative,
+            series=series,
+            weekly=weekly,
+            croned=croned,
+
+            sdb=sdb,
+            sdbadds=sdbadds,
+            tree_df=tree_df,
+            env=env
+        )
+        if contracts_payload and not weekly:
+            drv.add_expirations(
+                drv.series,
+                contracts_payload
+            )
+        return drv
+
 
 # common_methods
     @staticmethod
