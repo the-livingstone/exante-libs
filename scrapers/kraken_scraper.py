@@ -53,9 +53,9 @@ class KrakenFXSchema(BaseModel):
             if values[currency] not in sdb_currencies:
                 raise ValueError(f"{values[currency]=} does not exist in sdb")
         values['name'] = f"{values['baseCurrency']}/{values['currency']}"
-        values['lotSize'] = 10**-int(values.get('lot_decimals', 0))
-        values['feedMinPriceIncrement'] = 10**-int(values.get('cost_decimals', 0))
-        values['orderMinPriceIncrement'] = 10**-int(values.get('cost_decimals', 0))
+        values['lotSize'] = float(values.get('tick_size', 0.01))*float(values.get('lot_multiplier', 1))
+        values['feedMinPriceIncrement'] = float(values.get('tick_size', 0.01))
+        values['orderMinPriceIncrement'] = float(values.get('tick_size', 0.01))
 
         base_ccy_descr = next((x[2] for x in KrakenScraper.currencies if x[0] == values['baseCurrency']), values['baseCurrency'])
         ccy_descr = next((x[2] for x in KrakenScraper.currencies if x[0] == values['currency']), values['currency'])
