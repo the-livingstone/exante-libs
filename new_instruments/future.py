@@ -277,6 +277,7 @@ class Future(Derivative):
     def from_dict(
             cls,
             payload: dict,
+            recreate: bool = False,
             # class instances
             bo: BackOffice = None,
             sdb: SymbolDB = None,
@@ -344,6 +345,16 @@ class Future(Derivative):
             tree_df=tree_df,
             env=env
         )
+        if reference:
+            if not recreate:
+                raise RuntimeError(
+                    f'{ticker}.{exchange} series already exist in SymbolDB'
+                )
+            payload.update({
+                key: val for key, val
+                in reference.items()
+                if key[0] == '_' or key == 'path'
+            })
 
         return cls(
             ticker=ticker,
@@ -541,11 +552,11 @@ class Future(Derivative):
                     f"or {symbolic} are not there"
                 )
                 return {}
-        if not payload.get('path'):
-            payload['path'] = series.instrument['path']
-        elif payload['path'][:len(series.instrument['path'])] != series.instrument['path']:
-            self.logger.error(f"Bad path: {self.sdbadds.show_path(payload['path'])}")
-            return {}
+        # if not payload.get('path'):
+        #     payload['path'] = series.instrument['path']
+        # elif payload['path'][:len(series.instrument['path'])] != series.instrument['path']:
+        #     self.logger.error(f"Bad path: {self.sdbadds.show_path(payload['path'])}")
+        #     return {}
 
         new_contract = FutureExpiration.from_dict(
             series,
@@ -670,6 +681,11 @@ class Future(Derivative):
         else:
             self.logger.info(f"{self.series_name}.*: No changes have been made")
 
+        # adjust paths
+        for contract in self.new_expirations + update_expirations:
+            contract.instrument.update({
+                'path': contract.path
+            })
         # Create expirations
         if self.new_expirations and dry_run:
             print(f"Dry run, new expirations to create:")
@@ -741,6 +757,7 @@ class FutureExpiration(Instrument):
         self.ticker = future.ticker
         self.exchange = future.exchange
         self.series_name = future.series_name
+        self.future = future
         self.instrument = instrument
         if reference is None:
             reference = {}
@@ -759,7 +776,6 @@ class FutureExpiration(Instrument):
         for field, val in kwargs.items():
             self.set_field_value(val, field.split('/'))
 
-
     @classmethod
     def from_scratch(
             cls,
@@ -777,8 +793,7 @@ class FutureExpiration(Instrument):
         instrument = FutureExpiration.create_expiration_dict(
             future,
             expiration,
-            maturity,
-            **kwargs
+            maturity
         )
         return cls(
             future,
@@ -801,13 +816,6 @@ class FutureExpiration(Instrument):
             reference = {}
         if instrument.get('isTrading') is not None:
             instrument.pop('isTrading')
-        if not instrument.get('path'):
-            instrument['path'] = future.instrument['path']
-        else:
-            if instrument['path'][:len(future.instrument['path'])] != future.instrument['path']:
-                raise ExpirationError(
-                    f"Bad path: {future.sdbadds.show_path(instrument['path'])}"
-                )
         return cls(
             future,
             instrument,
@@ -837,12 +845,21 @@ class FutureExpiration(Instrument):
     def contract_name(self):
         return f"{self.ticker}.{self.exchange}.{self._maturity_to_symbolic(self.maturity)}"
 
+    @property
+    def path(self):
+        if self.future.instrument.get('_id'):
+            p = deepcopy(self.future.instrument['path'])
+        else:
+            p = deepcopy(self.future.instrument['path']) + ['<<series_folder_id>>']
+        if not self.instrument.get('_id'):
+            return p
+        return p + [self.instrument['_id']]
+
     @staticmethod
     def create_expiration_dict(
             future: Future,
             expiration: dt.date,
-            maturity: str,
-            **kwargs
+            maturity: str
         ) -> dict:
         instrument = {
             'isAbstract': False,
@@ -855,14 +872,8 @@ class FutureExpiration(Instrument):
             'maturityDate': {
                 'month': int(maturity.split('-')[1]),
                 'year': int(maturity.split('-')[0])
-            },
-            'path': future.instrument['path']
-
+            }
         }
-        [
-            instrument.update({key: val}) for key, val
-            in kwargs.items() if len(key.split('/')) == 1
-        ]
         FutureExpiration.set_la_lt(future, instrument)
         return instrument
 

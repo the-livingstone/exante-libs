@@ -297,6 +297,7 @@ class Option(Derivative):
     def from_dict(
             cls,
             payload: dict,
+            recreate: bool = False,
             # class instances
             bo: BackOffice = None,
             sdb: SymbolDB = None,
@@ -348,6 +349,16 @@ class Option(Derivative):
             tree_df=tree_df,
             env=env
         )
+        if reference:
+            if not recreate:
+                raise RuntimeError(
+                    f'{ticker}.{exchange} series already exist in SymbolDB'
+                )
+            payload.update({
+                key: val for key, val
+                in reference.items()
+                if key[0] == '_' or key == 'path'
+            })
 
         return cls(
             ticker=ticker,
@@ -1108,6 +1119,11 @@ class Option(Derivative):
                 target.update(diff, dry_run)
             else:
                 self.logger.info(f"No changes were made for {target.series_name}.*")
+            # adjust paths
+            for contract in target.new_expirations + update_expirations:
+                contract.instrument.update({
+                    'path': contract.path
+                })
             for new in target.new_expirations:
                 if target.option_type == 'OPTION ON FUTURE':
                     if not new.instrument.get('underlyingId', {}).get('id'):
@@ -1192,6 +1208,7 @@ class OptionExpiration(Instrument):
         self.ticker = option.ticker
         self.exchange = option.exchange
         self.series_name = option.series_name
+        self.option = option
         self.instrument = instrument
         if reference is None:
             reference = {}
@@ -1237,8 +1254,7 @@ class OptionExpiration(Instrument):
             expiration,
             maturity,
             strikes=strikes,
-            underlying=underlying,
-            **kwargs
+            underlying=underlying
         )
         return cls(
             option,
@@ -1259,16 +1275,6 @@ class OptionExpiration(Instrument):
         ):
         if instrument.get('isTrading') is not None:
             instrument.pop('isTrading')
-        if not instrument.get('_id'):
-            if instrument['path'] != option.instrument['path']:
-                raise ExpirationError(
-                    f"Bad path: {option.sdbadds.show_path(instrument['path'])}"
-                )
-        else:
-            if instrument['path'][:-1] != option.instrument['path']:
-                raise ExpirationError(
-                    f"Bad path: {option.sdbadds.show_path(instrument['path'])}"
-                )
         if not reference:
             if not instrument.get('strikePrices', {}).get('CALL')\
                 or not instrument.get('strikePrices', {}).get('PUT'):
@@ -1310,14 +1316,23 @@ class OptionExpiration(Instrument):
     def contract_name(self):
         return f"{self.ticker}.{self.exchange}.{self._maturity_to_symbolic(self.maturity)}"
 
+    @property
+    def path(self):
+        if self.option.instrument.get('_id'):
+            p = deepcopy(self.option.instrument['path'])
+        else:
+            p = deepcopy(self.option.instrument['path']) + ['<<series_folder_id>>']
+        if not self.instrument.get('_id'):
+            return p
+        return p + [self.instrument['_id']]
+
     @staticmethod
     def create_expiration_dict(
             option: Option,
             expiration: dt.date,
             maturity: str,
             strikes: dict,
-            underlying: str = None,
-            **kwargs
+            underlying: str = None
         ) -> dict:
         instrument = {
             'isAbstract': False,
@@ -1330,9 +1345,7 @@ class OptionExpiration(Instrument):
             'maturityDate': {
                 'month': int(maturity.split('-')[1]),
                 'year': int(maturity.split('-')[0])
-            },
-            'path': option.instrument['path']
-
+            }
         }
         if len(maturity.split('-')) == 3:
             instrument['maturityDate'].update({
@@ -1357,10 +1370,6 @@ class OptionExpiration(Instrument):
                 if underlying_time is not False:
                     instrument['expiry']['time'] = underlying_time
 
-        [
-            instrument.update({key: val}) for key, val
-            in kwargs.items() if len(key.split('/')) == 1
-        ]
         OptionExpiration.set_la_lt(option, instrument)
         return instrument
 
@@ -1800,6 +1809,17 @@ class WeeklyCommon(Instrument):
                     )
         return weekly_folders
 
+    @property
+    def path(self):
+        if self.option.instrument.get('_id'):
+            p = deepcopy(self.option.instrument['path'])
+        else:
+            p = deepcopy(self.option.instrument['path']) + ['<<series_folder_id>>']
+        if not self.instrument.get('_id'):
+            return p
+        return p + [self.instrument['_id']]
+
+
     @classmethod
     def from_dict(
             cls,
@@ -1808,8 +1828,6 @@ class WeeklyCommon(Instrument):
             reference: dict = None
         ):
         common_name = payload.get('name')
-        if not payload.get('path'):
-            payload['path'] = deepcopy(option.instrument['path'])
         cw = cls(
             option,
             payload,
@@ -1841,7 +1859,6 @@ class WeeklyCommon(Instrument):
         ):
         payload = {
             'isAbstract': True,
-            'path': deepcopy(option.instrument['path']),
             'name': common_name
         }
         cw = cls(
@@ -1866,8 +1883,9 @@ class WeeklyCommon(Instrument):
         return cw
 
     def create(self, dry_run: bool = False):
-        if not self.payload.get('path'):
-            self.payload['path'] = deepcopy(self.option.instrument['path'])
+        self.payload.update({
+            'path': self.path
+        })
         if dry_run:
             print(f"Dry run. New folder {self.payload['name']} to create:")
             pp(self.payload)
