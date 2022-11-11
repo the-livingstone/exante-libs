@@ -382,13 +382,13 @@ class Instrument:
                 self.instrument_type = self.__set_instrument_type(
                     instrument_type
                 )
-                self.schema = set_schema[env][self.instrument_type.value]
+                self.schema = set_schema[env][self.instrument_type]
             elif instrument:
                 self.instrument_type = self.__set_instrument_type_by_payload(
                     instrument,
                     self.sdbadds
                 )
-                self.schema = set_schema[env][self.instrument_type.value]
+                self.schema = set_schema[env][self.instrument_type]
             else:
                 raise RuntimeError(
                 f'Instrument type could not be defined'
@@ -408,7 +408,7 @@ class Instrument:
     @staticmethod
     def __set_instrument_type_by_schema(
             schema: BaseModel
-        ) -> InstrumentTypes:
+        ) -> str:
         if isinstance(schema, sdb_schemas.SpreadSchema):
             return InstrumentTypes.FUTURE
         instrument_type = next((
@@ -418,13 +418,13 @@ class Instrument:
             if val == schema
         ), None)
         if instrument_type == 'OPTION ON FUTURE':
-            return InstrumentTypes.OPTION
+            return InstrumentTypes.OPTION.value
         elif instrument_type == 'CALENDAR_SPREAD':
-            return InstrumentTypes.CALENDAR_SPREAD
+            return InstrumentTypes.CALENDAR_SPREAD.value
         elif instrument_type == 'SPREAD':
-            return InstrumentTypes.FUTURE
+            return InstrumentTypes.FUTURE.value
         elif instrument_type in InstrumentTypes.__members__:
-            return InstrumentTypes[instrument_type]
+            return InstrumentTypes[instrument_type].value
         else:
             raise RuntimeError(
                 f'Instrument type {instrument_type} is unknown'
@@ -434,10 +434,10 @@ class Instrument:
     def __set_instrument_type_by_payload(
             payload: dict,
             sdbadds: SDBAdditional
-        ) -> InstrumentTypes:
+        ) -> str:
         instrument_type = asyncio.run(sdbadds.get_instrument_type(payload))
         if instrument_type in InstrumentTypes.__members__:
-            return InstrumentTypes[instrument_type]
+            return InstrumentTypes[instrument_type].value
         else:
             raise RuntimeError(
                 f'Instrument type {instrument_type} is unknown'
@@ -446,15 +446,15 @@ class Instrument:
     @staticmethod
     def __set_instrument_type(
             instrument_type: str
-        ) -> InstrumentTypes:
+        ) -> str:
         if instrument_type == 'OPTION ON FUTURE':
-            return InstrumentTypes.OPTION
+            return InstrumentTypes.OPTION.value
         elif instrument_type == 'CALENDAR_SPREAD':
-            return InstrumentTypes.CALENDAR_SPREAD
+            return InstrumentTypes.CALENDAR_SPREAD.value
         elif instrument_type == 'SPREAD':
-            return InstrumentTypes.FUTURE
+            return InstrumentTypes.FUTURE.value
         elif instrument_type in InstrumentTypes.__members__:
-            return InstrumentTypes[instrument_type]
+            return InstrumentTypes[instrument_type].value
         else:
             raise RuntimeError(
                 f'Instrument type {instrument_type} is unknown'
