@@ -82,6 +82,7 @@ class DerivativeAdder:
         self.comment = ''
         self.validation_errors = {}
         self.new_ticker_parsed = {}
+        self.report = {}
         (
             self.bo,
             self.sdb,
@@ -916,9 +917,9 @@ class DerivativeAdder:
         return expirations
 
     def post_to_sdb(self, dry_run: bool):
-        report = self.series.post_to_sdb(dry_run)
-        if report:
-            for series, part_report in report.items():
+        self.report = self.series.post_to_sdb(dry_run)
+        if self.report:
+            for series, part_report in self.report.items():
                 if part_report.get('created') or part_report.get('updated'):
                     self.comment += f'{series}' + '\n'
                 else:
