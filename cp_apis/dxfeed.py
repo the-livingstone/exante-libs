@@ -301,12 +301,13 @@ class DxFeed:
             data = self.get_from_db(['SPREAD'], ticker)
             return data
         data = self.get(['SPREAD'], ticker, mode='dict')
+        return data
 
-        if data:
-            scheme = self.load_scheme('TYPE', data.pop(0))
-            data = [{key: record[i] for i, key in enumerate(scheme)} for record in data if len(record) > 1]
-            return data
-        return []
+        # if data:
+        #     scheme = self.load_scheme('TYPE', data.pop(0))
+        #     data = [{key: record[i] for i, key in enumerate(scheme)} for record in data if len(record) > 1]
+        #     return data
+        # return []
 
     def search_option(self, ticker: list = None, products: list = None, description=None, mic=None, cfi=None):
         """
