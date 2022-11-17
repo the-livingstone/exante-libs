@@ -363,17 +363,17 @@ class Parser(DxFeed, ExchangeParser):
                     'type': 'symbolId',
                     'id': underlying_search[0]['symbolId']}
                 if not series_data.get('shortName') and not description_giveup:
-                    search_description = next(
-                        (
-                            x['DESCRIPTION'] for x in self.search_stock([ticker])
-                            if x['COUNTRY'] == 'US' and x['OPOL'] in ['XNAS', 'XNYS', 'ARCX', 'BATS', 'XASE']
-                        ),
-                        next(
-                        (
-                            x['DESCRIPTION'] for x in self.search_etf([ticker])
-                            if x['COUNTRY'] == 'US' and x['OPOL'] in ['XNAS', 'XNYS', 'ARCX', 'BATS', 'XASE']
-                        ), '')                    
-                    )
+                    stocks = self.search_stock([ticker])
+                    search_description = next((
+                        x['DESCRIPTION'] for x in stocks
+                        if x['COUNTRY'] == 'US' and x['OPOL'] in ['XNAS', 'XNYS', 'ARCX', 'BATS', 'XASE']
+                    ), None)
+                    if search_description is None:
+                        etfs = self.search_etf([ticker])
+                        search_description = next((
+                            x['DESCRIPTION'] for x in etfs
+                            if x.get('COUNTRY', '') == 'US' and x.get('OPOL', '') in ['XNAS', 'XNYS', 'ARCX', 'BATS', 'XASE']
+                        ), '')
                     if not search_description:
                         description_giveup = True
                     # trim useless part
