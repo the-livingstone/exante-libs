@@ -359,9 +359,13 @@ class Parser(DxFeed, ExchangeParser):
                 if 'test' not in x['symbolId'].lower()
             ]
             if underlying_search:
-                series_data['underlyingId'] = {
-                    'type': 'symbolId',
-                    'id': underlying_search[0]['symbolId']}
+                series_data.update({
+                    'underlyingId': {
+                        'type': 'symbolId',
+                        'id': underlying_search[0]['symbolId']
+                    },
+                    'shortName': underlying_search[0]['shortName']
+                })
                 if not series_data.get('shortName') and not description_giveup:
                     stocks = self.search_stock([ticker])
                     search_description = next((
@@ -381,14 +385,11 @@ class Parser(DxFeed, ExchangeParser):
                     if not search_description:
                         description_giveup = True
                     # trim useless part
-                    match = re.search(
+                    series_data = re.sub(
                         r'(,)?( LLC| Ltd| LTD| Inc| INC| plc| PLC| Corp| NV| N\.V\.| -| L\.P\.| Common Stock| Incorporated| Co\.| \(The\))( |\.|$)',
+                        '',
                         search_description
                     )
-                    if match:
-                        series_data['shortName'] = search_description[:match.start()]
-                    else:
-                        series_data['shortName'] = search_description
             else:
                 self.logger.warning(
                     f"Cannot find underlying stock for "
