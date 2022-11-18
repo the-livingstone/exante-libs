@@ -354,7 +354,7 @@ class Parser(DxFeed, ExchangeParser):
                 asyncio.run(self.sdb.get_v2(
                     rf"^{ticker}\.(NASDAQ|NYSE|AMEX|ARCA|BATS)$",
                     is_expired=False,
-                    fields=['symbolId']
+                    fields=['symbolId', 'shortName']
                 ))
                 if 'test' not in x['symbolId'].lower()
             ]
@@ -366,13 +366,17 @@ class Parser(DxFeed, ExchangeParser):
                     stocks = self.search_stock([ticker])
                     search_description = next((
                         x['DESCRIPTION'] for x in stocks
-                        if x['COUNTRY'] == 'US' and x['OPOL'] in ['XNAS', 'XNYS', 'ARCX', 'BATS', 'XASE']
+                        if x['SYMBOL'] == ticker
+                        and x.get('COUNTRY', '') == 'US'
+                        and x['OPOL'] in ['XNAS', 'XNYS', 'ARCX', 'BATS', 'XASE']
                     ), None)
                     if search_description is None:
                         etfs = self.search_etf([ticker])
                         search_description = next((
                             x['DESCRIPTION'] for x in etfs
-                            if x.get('COUNTRY', '') == 'US' and x.get('OPOL', '') in ['XNAS', 'XNYS', 'ARCX', 'BATS', 'XASE']
+                            if x['SYMBOL'] == ticker
+                            and x.get('COUNTRY', '') == 'US'
+                            and x.get('OPOL', '') in ['XNAS', 'XNYS', 'ARCX', 'BATS', 'XASE']
                         ), '')
                     if not search_description:
                         description_giveup = True
