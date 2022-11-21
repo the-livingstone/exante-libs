@@ -90,7 +90,7 @@ class Future(Derivative):
         self.new_expirations: list[FutureExpiration] = []
         self.series_tree = series_tree
         self.contracts = self.__set_contracts(series_tree)
-        self._align_expiry_la_lt(self.contracts)
+        # self._align_expiry_la_lt(self.contracts)
 
     @property
     def logger(self):
@@ -469,7 +469,102 @@ class Future(Derivative):
             maturity=maturity,
             uuid=uuid
             )
-        return series.contracts[num] if num is not None and series is not None else None
+        return series.contracts[num] if num is not None and series else None
+
+
+
+    def __update_existing_contract(
+            self,
+            series,
+            num: int,
+            overwrite_old: bool = False,
+            payload: dict = None,
+            **kwargs
+        ):
+        exp_date = series.contracts[num].expiration
+        maturity = series.contracts[num].maturity
+        if overwrite_old:
+            if payload:
+                payload.update({
+                    key: val for key, val
+                    in series.contracts[num].instrument.items()
+                    if key[0] == '_' or key in ['path', 'strikePrices']
+                })
+                series.contracts[num].instrument = payload
+            else:
+                kwargs.update({
+                    key: val for key, val
+                    in series.contracts[num].instrument.items()
+                    if key[0] == '_'
+                })
+                series.contracts[num] = FutureExpiration.from_scratch(
+                    series,
+                    expiration_date=exp_date,
+                    maturity=maturity,
+                    reference=series.contracts[num].reference
+                    **kwargs
+                )
+        else:
+            if payload:
+                series.contracts[num].instrument.update(payload)
+            else:
+                for field, val in kwargs.items():
+                    series.contracts[num].set_field_value(val, field.split('/'))
+
+        if series.contracts[num].instrument.get('isTrading'):
+            series.contracts[num].instrument.pop('isTrading')
+        diff = series.contracts[num].get_diff()
+        if diff:
+            self.logger.info(
+                f'{series.contracts[num].contract_name}: '
+                'following changes have been made:'
+            )
+            self.logger.info(pformat(diff))
+        return {
+            'updated': series.contracts[num].contract_name,
+            'diff': diff
+        }
+
+    def __create_new_contract(
+            self,
+            series,
+            exp_date: dt.date,
+            maturity: str,
+            payload: dict = None,
+            **kwargs
+        ):
+        if series.allowed_expirations:
+            symbolic = self._maturity_to_symbolic(maturity)
+
+            if not (
+                    exp_date.isoformat() in series.allowed_expirations
+                    or symbolic in series.allowed_expirations
+                ):
+                self.logger.info(
+                    f"Allowed expirations are set and {exp_date.isoformat()} "
+                    f"or {symbolic} are not there"
+                )
+                return {}
+        if payload:
+            new_contract = FutureExpiration.from_dict(
+                series,
+                payload
+            )
+        else:
+            new_contract = FutureExpiration.from_scratch(
+                series,
+                expiration_date=exp_date,
+                maturity=maturity,
+                **kwargs
+            )
+        if new_contract in series.new_expirations:
+            self.logger.warning(
+                f"{new_contract} is already in list of new expirations. "
+                "Replacing it with newer version")
+            series.new_expirations.remove(new_contract)
+        series.new_expirations.append(new_contract)
+        return {'created': new_contract.contract_name}
+
 
     def add_payload(
             self,
@@ -478,7 +573,8 @@ class Future(Derivative):
             overwrite_old: bool = False
         ):
         """
-        Add new expiration (if it does not exist in sdb) or update existing expiration with given dict
+        Add new expiration (if it does not exist in sdb)
+        or update existing expiration with given dict
         mandatory fields: {
             'expiry': {
                 'year': int,
@@ -491,10 +587,11 @@ class Future(Derivative):
             }
         }
         :param payload: dict to create/update expiration
-        :param skip_if_exists: if True create new expirations only, do nothing if contract already exists
+        :param skip_if_exists: if True do not update existing expiration
         :param owerwrite_old: if True replace all data in existing contract with given one (except for _id and _rev)
             else update existing contract with given data (other fields stay unmodified)
-        :return: dict {'created': symbolId} in case of creation or dict {'updated': symbolId, 'diff': diff} in case of update existing
+        :return: dict {'created': symbolId} in case of creation
+            or dict {'updated': symbolId, 'diff': diff} in case of update existing
         """
         if not payload.get('expiry') \
             or not payload.get('maturityDate'):
@@ -508,149 +605,70 @@ class Future(Derivative):
         existing_exp, series = self.find_expiration(exp_date, maturity, payload.get('_id'))
         if existing_exp is not None:
             if skip_if_exists:
-                self.skipped.add(exp_date.isoformat())
+                self.skipped.add(series.contracts[existing_exp].contract_name)
                 return {}
-            if not payload.get('path'):
-                payload['path'] = series.contracts[existing_exp].instrument['path']
-            elif payload['path'][:len(series.instrument['path'])] != series.instrument['path']:
-                self.logger.error(f"Bad path: {self.sdbadds.show_path(payload['path'])}")
-                return {}
-
-            if overwrite_old:
-                payload.update({
-                    key: val for key, val
-                    in series.contracts[existing_exp].instrument.items()
-                    if key[0] == '_' or key == 'path'
-                })
-                series.contracts[existing_exp].instrument = payload
-            else:
-                series.contracts[existing_exp].instrument.update(payload)
-            if series.contracts[existing_exp].instrument.get('isTrading'):
-                series.contracts[existing_exp].instrument.pop('isTrading')
-            series.contracts[existing_exp].set_la_lt()
-            diff = series.contracts[existing_exp].get_diff()
-            if diff:
-                self.logger.info(
-                    f'{series.contracts[existing_exp].contract_name}: '
-                    'following changes have been made:'
-                )
-                self.logger.info(pformat(diff))
-            return {
-                'updated': series.contracts[existing_exp].contract_name,
-                'diff': diff
-            }
-
-        if series.allowed_expirations:
-            symbolic = self._maturity_to_symbolic(maturity)
-
-            if not (
-                    exp_date.isoformat() in series.allowed_expirations
-                    or symbolic in series.allowed_expirations
-                ):
-                self.logger.info(
-                    f"Allowed expirations are set and {exp_date.isoformat()} "
-                    f"or {symbolic} are not there"
-                )
-                return {}
-        # if not payload.get('path'):
-        #     payload['path'] = series.instrument['path']
-        # elif payload['path'][:len(series.instrument['path'])] != series.instrument['path']:
-        #     self.logger.error(f"Bad path: {self.sdbadds.show_path(payload['path'])}")
-        #     return {}
-
-        new_contract = FutureExpiration.from_dict(
+            update = self.__update_existing_contract(
+                series,
+                existing_exp,
+                overwrite_old,
+                payload=payload
+            )
+            return update
+        create = self.__create_new_contract(
             series,
-            payload
+            exp_date,
+            maturity,
+            payload=payload
         )
-        new_contract.set_la_lt(series, new_contract.instrument)
-        if new_contract in series.new_expirations:
-            self.logger.warning(
-                f"{new_contract} is already in list of new expirations. "
-                "Replacing it with newer version")
-            series.new_expirations.remove(new_contract)
-        series.new_expirations.append(new_contract)
-        return {'created': new_contract.contract_name}
+        return create
 
     def add(
             self,
-            exp_date: Union[str, dt.date, dt.datetime],
-            maturity: str,
+            exp_date: Union[
+                str,
+                dt.date,
+                dt.datetime
+            ] = None,
+            maturity: str = None,
             uuid: str = None,
             skip_if_exists: bool = True,
             overwrite_old: bool = False,
             **kwargs
         ):
         """
-        Create and add new expiration (if it does not exist in sdb) using given expiration date, maturity and other custom params
+        Create and add new expiration (if it does not exist in sdb)
+        using given expiration date, maturity and other custom params
         or update existing expiration with custom params
         :param exp_date: expiration date (ISO str or date object)
         :param maturity: maturity str as numeric (like '2022-08') or symbolic (like Q2022)
         :param uuid: _id of existing expiration
-        :param skip_if_exists: if True create new expirations only, do nothing if contract already exists
+        :param skip_if_exists: if True do not update existing expiration
         :param owerwrite_old: if True replace all data in existing contract with created from scratch (except for _id and _rev)
             else update existing contract with given custom params in kwargs (other fields stay unmodified)
         :return: dict {'created': symbolId} in case of creation or dict {'updated': symbolId, 'diff': diff} in case of update existing
         """
+        exp_date = self.normalize_date(exp_date)
+        maturity = self.format_maturity(maturity)
         existing_exp, series = self.find_expiration(exp_date, maturity, uuid)
         if existing_exp is not None:
             if skip_if_exists:
-                self.skipped.add(exp_date)
+                self.skipped.add(series.contracts[existing_exp].contract_name)
                 return {}
-            if not maturity and series.contracts[existing_exp].instrument.get('maturityDate'):
-                maturity = self.format_maturity(series.contracts[existing_exp].instrument['maturityDate'])
-            if not overwrite_old:
-                for field, val in kwargs.items():
-                    series.contracts[existing_exp].set_field_value(val, field.split('/'))
-            else:
-                kwargs.update({
-                    key: val for key, val
-                    in series.contracts[existing_exp].instrument.items()
-                    if key[0] == '_' or key == 'path'
-                })
-                series.contracts[existing_exp] = FutureExpiration.from_scratch(
-                    series,
-                    expiration_date=exp_date,
-                    maturity=maturity,
-                    reference=series.contracts[existing_exp].reference
-                    **kwargs
-                )
-            diff = series.contracts[existing_exp].get_diff()
-            if diff:
-                self.logger.info(
-                    f'{series.contracts[existing_exp].contract_name}: '
-                    'following changes have been made:'
-                )
-                self.logger.info(pformat(diff))
-                return {
-                    'updated': series.contracts[existing_exp].contract_name,
-                    'diff': diff
-                }
-            else:
-                self.logger.info(f'No new data for existing expiration: {exp_date}')
-                return {}
-
-        if self.allowed_expirations:
-            symbolic = self._maturity_to_symbolic(self.format_maturity(maturity))
-            if not (
-                    exp_date in self.allowed_expirations
-                    or symbolic in self.allowed_expirations
-                ):
-                self.logger.info(f"Allowed expirations are set and {exp_date} or {symbolic} is not in it")
-                return {}
-
-        new_contract = FutureExpiration.from_scratch(
-            self,
+            update = self.__update_existing_contract(
+                series,
+                existing_exp,
+                overwrite_old,
+                **kwargs
+            )
+            return update
+        create = self.__create_new_contract(
+            series,
             exp_date,
             maturity,
             **kwargs
         )
-        if new_contract in self.new_expirations:
-            self.logger.warning(
-                f"{new_contract} is already in list of new expirations. "
-                "Replacing it with newer version")
-            self.new_expirations.remove(new_contract)
-        self.new_expirations.append(new_contract)
-        return {'created': new_contract.contract_name}
+        return create
+
 
     def post_to_sdb(self, dry_run=True) -> dict:
         """
@@ -682,10 +700,10 @@ class Future(Derivative):
             self.logger.info(f"{self.series_name}.*: No changes have been made")
 
         # adjust paths
-        for contract in self.new_expirations + update_expirations:
-            contract.instrument.update({
-                'path': contract.path
-            })
+        # for contract in self.new_expirations + update_expirations:
+        #     contract.instrument.update({
+        #         'path': contract.path
+        #     })
         # Create expirations
         if self.new_expirations and dry_run:
             print(f"Dry run, new expirations to create:")
@@ -696,7 +714,7 @@ class Future(Derivative):
         elif self.new_expirations:
             self.wait_for_sdb()
             create_result = asyncio.run(self.sdb.batch_create(
-                input_data=[x.instrument for x in self.new_expirations]
+                input_data=[x.get_instrument for x in self.new_expirations]
             ))
             if create_result:
                 if isinstance(create_result, str):
@@ -720,7 +738,7 @@ class Future(Derivative):
         elif update_expirations:
             self.wait_for_sdb()
             update_result = asyncio.run(self.sdb.batch_update(
-                input_data=[x.instrument for x in update_expirations]
+                input_data=[x.get_instrument for x in update_expirations]
             ))
             if update_result:
                 if isinstance(update_result, str):
@@ -749,23 +767,30 @@ class FutureExpiration(Instrument):
     def __init__(
             self,
             future: Future,
-            instrument: dict,
+            expiration: dt.date,
+            maturity: str,
+            custom_fields: dict = None,
             reference: dict = None,
             reload_cache: bool = False,
             **kwargs
         ):
+        if custom_fields is None:
+            custom_fields = {}
+        if reference is None:
+            reference = {}
         self.ticker = future.ticker
         self.exchange = future.exchange
         self.series_name = future.series_name
         self.future = future
-        self.instrument = instrument
-        if reference is None:
-            reference = {}
+
+        self.expiration = expiration
+        self.maturity = maturity
+        self.instrument = custom_fields
+        self.instrument = self.get_instrument
+
         self.reference = reference
-        self.expiration = self.normalize_date(instrument['expiry'])
-        self.maturity = self.format_maturity(instrument['maturityDate'])
         super().__init__(
-            instrument=instrument,
+            instrument=self.instrument,
             instrument_type='FUTURE',
             parent=future,
             env=future.env,
@@ -773,6 +798,7 @@ class FutureExpiration(Instrument):
             sdbadds=future.sdbadds,
             reload_cache=reload_cache
         )
+        self.set_la_lt()
         for field, val in kwargs.items():
             self.set_field_value(val, field.split('/'))
 
@@ -780,7 +806,11 @@ class FutureExpiration(Instrument):
     def from_scratch(
             cls,
             future: Future,
-            expiration_date: Union[str, dt.date, dt.datetime],
+            expiration_date: Union[
+                str,
+                dt.date,
+                dt.datetime
+            ],
             maturity: str = None,
             reference: dict = None,
             reload_cache: bool = False,
@@ -790,15 +820,11 @@ class FutureExpiration(Instrument):
             reference = {}
         expiration = Instrument.normalize_date(expiration_date)
         maturity = Instrument.format_maturity(maturity)
-        instrument = FutureExpiration.create_expiration_dict(
-            future,
-            expiration,
-            maturity
-        )
         return cls(
             future,
-            instrument,
-            deepcopy(reference),
+            expiration,
+            maturity,
+            reference=deepcopy(reference),
             reload_cache=reload_cache,
             **kwargs
         )
@@ -816,10 +842,14 @@ class FutureExpiration(Instrument):
             reference = {}
         if instrument.get('isTrading') is not None:
             instrument.pop('isTrading')
+        expiration = Instrument.normalize_date(instrument.get('expiry', {}))
+        maturity = Instrument.format_maturity(instrument.get('maturityDate', {}))
         return cls(
             future,
-            instrument,
-            deepcopy(reference),
+            expiration,
+            maturity,
+            custom_fields=instrument,
+            reference=deepcopy(reference),
             reload_cache=reload_cache,
             **kwargs
         )
@@ -831,7 +861,10 @@ class FutureExpiration(Instrument):
         )
 
     def __eq__(self, other: object) -> bool:
-        return (self.expiration == other.expiration and self.maturity == other.maturity)
+        return (
+            self.expiration == other.expiration 
+            and self.maturity == other.maturity
+        )
     
     def __gt__(self, other: object) -> bool:
         return self.expiration > other.expiration
@@ -842,11 +875,11 @@ class FutureExpiration(Instrument):
         return logging.getLogger(f"{self.__class__.__name__}")
 
     @property
-    def contract_name(self):
+    def contract_name(self) -> str:
         return f"{self.ticker}.{self.exchange}.{self._maturity_to_symbolic(self.maturity)}"
 
     @property
-    def path(self):
+    def path(self) -> list[str]:
         if self.future.instrument.get('_id'):
             p = deepcopy(self.future.instrument['path'])
         else:
@@ -855,45 +888,61 @@ class FutureExpiration(Instrument):
             return p
         return p + [self.instrument['_id']]
 
-    @staticmethod
-    def create_expiration_dict(
-            future: Future,
-            expiration: dt.date,
-            maturity: str
-        ) -> dict:
-        instrument = {
+    @property
+    def get_custom_fields(self) -> dict:
+        return {
+            key: val for key, val
+            in self.instrument.items()
+            if key not in [
+                'isAbstract',
+                'name',
+                'expiry',
+                'maturityDate',
+                'path'
+            ]
+        }
+
+    @property
+    def get_instrument(self) -> dict:
+        instrument_dict = {
             'isAbstract': False,
-            'name': maturity,
+            'name': self.maturity,
             'expiry': {
-                'year': expiration.year,
-                'month': expiration.month,
-                'day': expiration.day
+                'year': self.expiration.year,
+                'month': self.expiration.month,
+                'day': self.expiration.day
             },
             'maturityDate': {
-                'month': int(maturity.split('-')[1]),
-                'year': int(maturity.split('-')[0])
-            }
+                'month': int(self.maturity.split('-')[1]),
+                'year': int(self.maturity.split('-')[0])
+            },
+            'path': self.path
         }
-        FutureExpiration.set_la_lt(future, instrument)
-        return instrument
+        if len(self.maturity.split('.')) == 3:
+            instrument_dict['maturityDate'].update({
+                'day': int(self.maturity.split('-')[2])
+            })
+        instrument_dict.update(self.get_custom_fields)
+        return instrument_dict
 
-    @staticmethod
-    def set_la_lt(future: Future, instrument: dict):
-        if future.set_la:
-            instrument['lastAvailable'] = future.sdb.date_to_sdb(
-                future.sdb.sdb_to_date(instrument['expiry']) + dt.timedelta(days=3)
+    def set_la_lt(self):
+        if self.future.set_la:
+            self.set_field_value(
+                self.sdb.date_to_sdb(
+                    self.expiration + dt.timedelta(days=3)
+                ),
+                ['lastAvailable']
             )
-            if isinstance(future.set_la, str):
-                instrument['lastAvailable']['time'] = future.set_la
-            
-
-        if future.set_lt:
-            instrument['lastTrading'] = deepcopy(instrument['expiry'])
-            if isinstance(future.set_lt, str):
-                instrument['lastTrading']['time'] = future.set_lt
+            self.set_field_value(self.future.set_la, ['lastAvailable', 'time'])
+        if self.future.set_lt:
+            self.set_field_value(
+                self.sdb.date_to_sdb(self.expiration),
+                ['lastTrading']
+            )
+            self.set_field_value(self.future.set_lt, ['lastTrading', 'time'])
 
     def get_diff(self) -> dict:
-        return DeepDiff(self.reference, self.instrument)
+        return DeepDiff(self.reference, self.get_instrument)
 
     def get_expiration(self) -> tuple[dict, str]:
-        return self.instrument, self.contract_name
+        return self.get_instrument, self.contract_name
