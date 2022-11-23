@@ -1000,7 +1000,8 @@ class Option(Derivative):
             )
             return False
         # check if symbol exists in sdb
-        if asyncio.run(self.sdb.get(symbol_id)):
+
+        if not self.tree_df[self.tree_df['symbolId'] == symbol_id].empty:
             self.underlying_dict = {
                         'id': symbol_id,
                         'type': 'symbolId'
@@ -1219,6 +1220,7 @@ class OptionExpiration(Instrument):
             expiration: dt.date,
             maturity: str,
             strikes: dict,
+            underlying: str = None,
             custom_fields: dict = None,
             reference: dict = None,
             reload_cache: bool = False,
@@ -1240,6 +1242,7 @@ class OptionExpiration(Instrument):
         self.week_number = option.week_number
         self.strikes = strikes
         self.strikes = self.get_strikes
+        self.underlying = underlying
 
         self.instrument = custom_fields
         self.instrument = self.get_instrument
@@ -1289,7 +1292,8 @@ class OptionExpiration(Instrument):
             option,
             expiration,
             maturity,
-            strikes,
+            strikes=strikes,
+            underlying=underlying,
             reference=deepcopy(reference),
             reload_cache=reload_cache,
             **kwargs
@@ -1311,11 +1315,13 @@ class OptionExpiration(Instrument):
         expiration = Instrument.normalize_date(instrument.get('expiry', {}))
         maturity = Instrument.format_maturity(instrument.get('maturityDate', {}))
         strikes = OptionExpiration.build_strikes(instrument.get('strikePrices', {}))
+        underlying = instrument.get('underlyingId', {}).get('id')
         return cls(
             option,
             expiration,
             maturity,
-            strikes,
+            strikes=strikes,
+            underlying=underlying,
             custom_fields=instrument,
             reference=deepcopy(reference),
             reload_cache=reload_cache,
@@ -1367,13 +1373,33 @@ class OptionExpiration(Instrument):
                 'name',
                 'expiry',
                 'maturityDate',
-                'path'
+                'path',
+                'strikePrices',
+                'underlyingId'
             ]
         }
 
     @property
     def get_strikes(self) -> dict[str, list[dict]]:
-        return self.build_strikes(self.strikes)
+        return self.build_strikes(
+            self.strikes,
+            self.instrument.get('_id')
+        )
+
+    @property
+    def get_underlying(self) -> dict:
+        if self.underlying:
+            existing_future = self.option.tree_df[self.option.tree_df['symbolId'] == self.underlying]
+            if not existing_future.empty:
+                return {
+                    'id': self.underlying,
+                    'type': 'symbolId'
+                }
+            else:
+                self.logger.warning(
+                    f'{self.contract_name}: '
+                    f'{self.underlying} is not found in sdb, underlying is not set'
+                )
 
     @property
     def get_instrument(self) -> dict:
@@ -1390,11 +1416,16 @@ class OptionExpiration(Instrument):
                 'year': int(self.maturity.split('-')[0])
             },
             'path': self.path,
-            'strikePrices': self.get_strikes
+            'strikePrices': self.get_strikes,
         }
         if len(self.maturity.split('-')) == 3:
             instrument_dict['maturityDate'].update({
                 'day': int(self.maturity.split('-')[2])
+            })
+        underlying = self.get_underlying
+        if underlying:
+            instrument_dict.update({
+                'underlyingId': underlying
             })
         instrument_dict.update(self.get_custom_fields)
         return instrument_dict
@@ -1417,7 +1448,7 @@ class OptionExpiration(Instrument):
 
     def check_underlying_future(self, symbol_id: str) -> str:
         # check if symbol exists in sdb
-        underlying = asyncio.run(self.option.sdbadds.sdb.get(
+        underlying = asyncio.run(self.option.sdb.get(
             symbol_id,
             fields=[
                 'expiryTime',
@@ -1451,14 +1482,14 @@ class OptionExpiration(Instrument):
                 f"for {self.contract_name} as it expires earlier"
             )
             return None
-        udl_compiled_exiry = asyncio.run(
+        udl_compiled_expiry = asyncio.run(
             self.option.sdbadds.get_inherited_value(underlying, fields=['expiry'])
         )
-        udl_expiry_local_time = udl_compiled_exiry.get('expiry', {}).get('time', False)
+        udl_expiry_local_time = udl_compiled_expiry.get('expiry', {}).get('time', False)
         return udl_expiry_local_time
 
     @staticmethod
-    def build_strikes(strikes: dict) -> Dict[str, list[dict]]:
+    def build_strikes(strikes: dict, uuid: str = None) -> Dict[str, list[dict]]:
         def format_strike(raw_strike: dict) -> dict:
             strike_price = {
                 'strikePrice': float(raw_strike['strikePrice']),
@@ -1473,10 +1504,12 @@ class OptionExpiration(Instrument):
                     ).update(raw_strike[key])
             return strike_price
 
-        if not strikes.get('CALL') or not strikes.get('PUT'):
-            raise ExpirationError(
-                f"Strikes are invalid: {pformat(strikes)}"
-            )
+        if not uuid:
+            if not isinstance(strikes.get('CALL'), (set, list)) \
+                or not isinstance(strikes.get('PUT'), (set, list)):
+                raise ExpirationError(
+                    f"Strikes are invalid: {pformat(strikes)}"
+                )
         strikeprices_is_proper_dict = all(
             (
                 isinstance(strike, dict)
