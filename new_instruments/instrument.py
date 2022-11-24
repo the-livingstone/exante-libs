@@ -595,7 +595,12 @@ class Instrument:
                 self.instrument['path'][-1], include_self=True
             ))
         else:
-            self.compiled_parent = {}
+            try:
+                self.compiled_parent = asyncio.run(self.sdbadds.build_inheritance(
+                    self.path, include_self=True
+                ))
+            except AttributeError:
+                self.compiled_parent = {}
 
     def force_tree_reload(self, fields: list = None):
         if not fields:
