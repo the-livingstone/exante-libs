@@ -85,7 +85,7 @@ class Option(Derivative):
             series_tree,
             week_number=week_number
         )
-        # self._align_expiry_la_lt(self.contracts)
+        self._align_expiry_la_lt()
 
     @property
     def logger(self):
@@ -1242,8 +1242,7 @@ class OptionExpiration(Instrument):
         self.week_number = option.week_number
 
         self.instrument = custom_fields
-        self.strikes = strikes
-        self.strikes = self.get_strikes
+        self.strikes = self.build_strikes(strikes, self.instrument.get('_id'))
         self.underlying = underlying
         self.instrument = self.get_instrument
 
@@ -1281,7 +1280,6 @@ class OptionExpiration(Instrument):
             reference = {}
         expiration = Instrument.normalize_date(expiration_date)
         maturity = Instrument.format_maturity(maturity)
-        strikes = OptionExpiration.build_strikes(strikes)
         if option.week_number:
             if int((expiration.day - 1)/7) + 1 != option.week_number:
                 raise ExpirationError(
@@ -1314,7 +1312,7 @@ class OptionExpiration(Instrument):
             instrument.pop('isTrading')
         expiration = Instrument.normalize_date(instrument.get('expiry', {}))
         maturity = Instrument.format_maturity(instrument.get('maturityDate', {}))
-        strikes = OptionExpiration.build_strikes(instrument.get('strikePrices', {}))
+        strikes = instrument.get('strikePrices', {})
         underlying = instrument.get('underlyingId', {}).get('id')
         return cls(
             option,
@@ -1504,12 +1502,15 @@ class OptionExpiration(Instrument):
                     ).update(raw_strike[key])
             return strike_price
 
-        if not uuid:
-            if not isinstance(strikes.get('CALL'), (set, list)) \
-                or not isinstance(strikes.get('PUT'), (set, list)):
-                raise ExpirationError(
-                    f"Strikes are invalid: {pformat(strikes)}"
-                )
+        if uuid:
+            strikes.setdefault('CALL', [])
+            strikes.setdefault('PUT', [])
+            return strikes
+        if not isinstance(strikes.get('CALL'), (set, list)) \
+            or not isinstance(strikes.get('PUT'), (set, list)):
+            raise ExpirationError(
+                f"Strikes are invalid: {pformat(strikes)}"
+            )
         strikeprices_is_proper_dict = all(
             (
                 isinstance(strike, dict)

@@ -90,7 +90,7 @@ class Future(Derivative):
         self.new_expirations: list[FutureExpiration] = []
         self.series_tree = series_tree
         self.contracts = self.__set_contracts(series_tree)
-        # self._align_expiry_la_lt(self.contracts)
+        self._align_expiry_la_lt()
 
     @property
     def logger(self):
