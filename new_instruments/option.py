@@ -1240,11 +1240,11 @@ class OptionExpiration(Instrument):
         self.maturity = maturity
         self.option_type = option.option_type
         self.week_number = option.week_number
+
+        self.instrument = custom_fields
         self.strikes = strikes
         self.strikes = self.get_strikes
         self.underlying = underlying
-
-        self.instrument = custom_fields
         self.instrument = self.get_instrument
 
         self.reference = reference
@@ -1496,7 +1496,7 @@ class OptionExpiration(Instrument):
                 'isAvailable': raw_strike.get('isAvailable', True)
             }
             if raw_strike.get('identifiers'):
-                strike_price.update('identifiers')
+                strike_price.update({'identifiers': raw_strike['identifiers']})
             for key in ['ISIN', 'FIGI']:
                 if key in raw_strike:
                     strike_price.setdefault(
