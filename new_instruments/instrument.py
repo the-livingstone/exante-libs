@@ -936,6 +936,9 @@ class Instrument:
             return False
         # prepare the place in dict
         self.__check_n_create(path, **kwargs)
+        if isinstance(value, bool) and type_mapping[field_props['type']] != bool:
+            self.logger.warning(f"{value} is wrong type (should be {type_mapping[field_props['type']]}")
+            return False
         try:
             value = type_mapping[field_props['type']](value)
         except ValueError:
