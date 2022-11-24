@@ -935,7 +935,6 @@ class Instrument:
         if not field_props:
             return False
         # prepare the place in dict
-        self.__check_n_create(path, **kwargs)
         if isinstance(value, bool) and type_mapping[field_props['type']] != bool:
             self.logger.warning(f"{value} is wrong type (should be {type_mapping[field_props['type']]}")
             return False
@@ -946,6 +945,7 @@ class Instrument:
             return False
         except TypeError:
             self.logger.warning(f"{'/'.join(path)} is set to None")
+        self.__check_n_create(path, **kwargs)
         if field_props.get('opts_list'):
             if isinstance(field_props['opts_list'][0], str) and value not in field_props['opts_list']:
                 self.logger.warning(f'{value} is not in list of possible values for {path[-1]}, not updated')
