@@ -995,7 +995,7 @@ class SDBAdditional:
         check_cache = await self.__check_instrument_cache([symbol], cache)
         instrument = check_cache[0]
         if not instrument:
-            return None
+            return result
         for f in fields:
             if instrument.get(f) is not None:
                 if not isinstance(instrument[f], (list, dict)):
