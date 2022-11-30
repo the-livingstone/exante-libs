@@ -125,8 +125,9 @@ class DxFeed:
                 )
         stream.close()
         if len(data) == 0:
-            logging.info(f'Nothing found with params {params}, try using wildcards, like * or ?')
-
+            logging.info(
+                f'Nothing found with params {params}, try using wildcards, like * or ?'
+            )
         return data
 
     def get_from_db(self, TYPE: list = None, SYMBOL: list = None, CURRENCY: list = None, mode: str = 'dict', **kwargs):
