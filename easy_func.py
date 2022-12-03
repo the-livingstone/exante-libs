@@ -50,3 +50,17 @@ def count_dict_nested_values(dictionary: dict, counter: int=0)->int:
         else:
             counter += 1
     return counter
+
+
+def recursive_items(dictionary):
+    """ Generator to return key value pair from nested dict
+    
+    Args:
+        dictionary (dict): input dictionary to key value pairs generating
+    """
+    for key, value in dictionary.items():
+        if isinstance(value, dict):
+            yield from recursive_items(value)
+        else:
+            yield (key, value)
+            

@@ -12,6 +12,7 @@ gl, ci, mi, om, im, ix, ici, mm = ('global_information', 'country_information',
 
 
 IDENT = {
+    'id': etree.XPath('@id'),
     'isin': etree.XPath(f'{mi}/{ix}/*[@type_id="2"]/text()'),
     'figi': etree.XPath(f'{mi}/{ix}/*[@type_id="20"]/text()'),
     'sedol': etree.XPath(f'{mi}/{ix}/*[@type="SEDOL"]/text()'),
@@ -32,10 +33,10 @@ IDENT = {
     # 'orderMinPriceIncrement': etree.XPath(f""),
     # 'lotSize': etree.XPath(f""),
     # 'includedIntoRegReporting': etree.XPath(f""),
-    'gics_filds': etree.XPath(f"{gl}/organizationInformation/classifications/*[@type='gicsCode']/text()")
+    'localIndustryClassification': etree.XPath(f"{gl}/organization_information/classifications/*[@type_id=4]/text()"),
+    'instrumentType': etree.XPath(f"{mi}/{ix}/*[@type_id='20']/@security_typ2")
     # Add path to values 
 }
-
 
 class ICEXmlParser:
     """ Class to parse XML from ICE Data Service
