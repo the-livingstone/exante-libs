@@ -354,37 +354,42 @@ class Parser(DxFeed, ExchangeParser):
                 asyncio.run(self.sdb.get_v2(
                     rf"^{ticker}\.(NASDAQ|NYSE|AMEX|ARCA|BATS)$",
                     is_expired=False,
-                    fields=['symbolId']
+                    fields=['symbolId', 'shortName']
                 ))
                 if 'test' not in x['symbolId'].lower()
             ]
             if underlying_search:
-                series_data['underlyingId'] = {
-                    'type': 'symbolId',
-                    'id': underlying_search[0]['symbolId']}
+                series_data.update({
+                    'underlyingId': {
+                        'type': 'symbolId',
+                        'id': underlying_search[0]['symbolId']
+                    },
+                    'shortName': underlying_search[0]['shortName']
+                })
                 if not series_data.get('shortName') and not description_giveup:
-                    search_description = next(
-                        (
-                            x['DESCRIPTION'] for x in self.search_stock([ticker])
-                            if x['COUNTRY'] == 'US' and x['OPOL'] in ['XNAS', 'XNYS', 'ARCX', 'BATS', 'XASE']
-                        ),
-                        next(
-                        (
-                            x['DESCRIPTION'] for x in self.search_etf([ticker])
-                            if x['COUNTRY'] == 'US' and x['OPOL'] in ['XNAS', 'XNYS', 'ARCX', 'BATS', 'XASE']
-                        ), '')                    
-                    )
+                    stocks = self.search_stock([ticker])
+                    search_description = next((
+                        x['DESCRIPTION'] for x in stocks
+                        if x['SYMBOL'] == ticker
+                        and x.get('COUNTRY', '') == 'US'
+                        and x['OPOL'] in ['XNAS', 'XNYS', 'ARCX', 'BATS', 'XASE']
+                    ), None)
+                    if search_description is None:
+                        etfs = self.search_etf([ticker])
+                        search_description = next((
+                            x['DESCRIPTION'] for x in etfs
+                            if x['SYMBOL'] == ticker
+                            and x.get('COUNTRY', '') == 'US'
+                            and x.get('OPOL', '') in ['XNAS', 'XNYS', 'ARCX', 'BATS', 'XASE']
+                        ), '')
                     if not search_description:
                         description_giveup = True
                     # trim useless part
-                    match = re.search(
+                    series_data = re.sub(
                         r'(,)?( LLC| Ltd| LTD| Inc| INC| plc| PLC| Corp| NV| N\.V\.| -| L\.P\.| Common Stock| Incorporated| Co\.| \(The\))( |\.|$)',
+                        '',
                         search_description
                     )
-                    if match:
-                        series_data['shortName'] = search_description[:match.start()]
-                    else:
-                        series_data['shortName'] = search_description
             else:
                 self.logger.warning(
                     f"Cannot find underlying stock for "

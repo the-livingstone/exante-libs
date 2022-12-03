@@ -2072,7 +2072,7 @@ class CommonSchema(BaseModel):
         alias='isRobotTradable',
         title='isRobotTradable'
     )
-    quote_filters: QuoteFilters = Field(
+    quote_filters: Optional[QuoteFilters] = Field(
         alias='quoteFilters',
         title='quoteFilters'
     )

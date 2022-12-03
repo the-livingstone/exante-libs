@@ -94,7 +94,7 @@ class Spread(Derivative):
         self.leg_futures: list[FutureExpiration] = []
         self.series_tree = series_tree
         self.contracts, self.gap_folders = self.__set_contracts(series_tree)
-        self.leg_futures = self.__set_gap_folders()
+        self.leg_futures = self.__set_leg_futures()
         self._align_expiry_la_lt(self.contracts)
 
     @property
@@ -256,6 +256,7 @@ class Spread(Derivative):
     def from_dict(
             cls,
             payload: dict,
+            recreate: bool = False,
             # class instances
             bo: BackOffice = None,
             sdb: SymbolDB = None,
@@ -308,6 +309,16 @@ class Spread(Derivative):
             tree_df=tree_df,
             env=env
         )
+        if reference:
+            if not recreate:
+                raise RuntimeError(
+                    f'{ticker}.{exchange} series already exist in SymbolDB'
+                )
+            payload.update({
+                key: val for key, val
+                in reference.items()
+                if key[0] == '_' or key == 'path'
+            })
 
         if reference.get('spreadType') == 'REVERSE' or payload.get('spreadType') == 'REVERSE':
             calendar_type = 'REVERSE'
@@ -367,7 +378,7 @@ class Spread(Derivative):
 
         return sorted(contracts), gap_folders
 
-    def __set_gap_folders(self):
+    def __set_leg_futures(self):
         leg_futures: list[FutureExpiration] = []
         tickers = self.ticker.split('-')
         for leg_ticker in tickers:
@@ -668,34 +679,6 @@ class Spread(Derivative):
                     f"or {symbolic} are not there"
                 )
                 return {}
-        if not payload.get('path'):
-            payload['path'] = series.instrument['path']
-            if self.gap_folders:
-                try:
-                    days_delta =  (
-                        dt.date.fromisoformat(f"{far_maturity}-01") - \
-                        dt.date.fromisoformat(f"{near_maturity}-01")
-                    ).days
-                    month_gap = int(round(days_delta / 30.41, 0)) # 30.41 = 365 / 12
-                    gap_folder = next(
-                        (
-                            x for x in self.gap_folders
-                            if re.search(r'(?P<month>\d{1,2}) month', x['name'])
-                            and int(re.search(r'(?P<month>\d{1,2}) month', x['name']).group('month')) == month_gap
-                        ), None)
-                    if gap_folder:
-                        payload['path'].append(gap_folder['_id'])
-                    else:
-                        payload['path'].append(f'<<{month_gap} month folder>>')
-                except Exception:
-                    self.logger.error(
-                        "Cannot determine month gap"
-                    )
-
-        elif payload['path'][:len(series.instrument['path'])] != series.instrument['path']:
-            self.logger.error(f"Bad path: {self.sdbadds.show_path(payload['path'])}")
-            return {}
-
         new_contract = SpreadExpiration.from_dict(
             series,
             payload,
@@ -935,13 +918,18 @@ class Spread(Derivative):
             )
             if new_gap_folder:
                 self.gap_folders.append(new_gap_folder)
-        self.replace_id_fillers(dry_run)
+        # self.replace_id_fillers(dry_run)
         update_expirations = [
             x for x
             in self.contracts
             if x.expiration >= dt.date.today()
             and x.get_diff()
         ]
+        # adjust paths
+        for contract in self.new_expirations + update_expirations:
+            contract.instrument.update({
+                'path': contract.path
+            })
 
         if self.new_expirations and dry_run:
             print(f"Dry run, new expirations to create:")
@@ -1019,6 +1007,7 @@ class SpreadExpiration(Instrument):
         self.series_name = spread.series_name
         self.spread_type = spread.spread_type
         self.leg_futures = spread.leg_futures
+        self.spread = spread
         self.leg_gap = leg_gap
         self.instrument = instrument
         if self.instrument.get('spreadType'):
@@ -1076,8 +1065,7 @@ class SpreadExpiration(Instrument):
             maturity,
             near_maturity,
             far_maturity,
-            calendar_type,
-            **kwargs
+            calendar_type
         )
         return cls(
             spread,
@@ -1087,7 +1075,7 @@ class SpreadExpiration(Instrument):
             reload_cache=reload_cache,
             **kwargs
         )
-
+    
     @classmethod
     def from_dict(
             cls,
@@ -1102,23 +1090,6 @@ class SpreadExpiration(Instrument):
             reference = {}
         if instrument.get('isTrading') is not None:
             instrument.pop('isTrading')
-        if not instrument.get('path'):
-            instrument['path'] = spread.instrument['path']
-            if spread.spread_type == 'CALENDAR_SPREAD':
-                near_maturity = Instrument.format_maturity(instrument.get('nearMaturityDate'))
-                far_maturity = Instrument.format_maturity(instrument.get('farMaturityDate'))
-                gf_id = SpreadExpiration.get_gap_folder_id(
-                    spread,
-                    near_maturity,
-                    far_maturity
-                )
-                if gf_id:
-                    instrument['path'].append(gf_id)
-        else:
-            if instrument['path'][:len(spread.instrument['path'])] != spread.instrument['path']:
-                raise ExpirationError(
-                    f"Bad path: {spread.sdbadds.show_path(instrument['path'])}"
-                )
         return cls(
             spread,
             instrument,
@@ -1137,13 +1108,15 @@ class SpreadExpiration(Instrument):
         elif self.spread_type == 'CALENDAR_SPREAD' and self.calendar_type == 'FORWARD':
             return (
                 f"SpreadExpiration({self.ticker}.{self.exchange}.CS/"
-                f"{self._maturity_to_symbolic(self.near_maturity)}-{self._maturity_to_symbolic(self.far_maturity)}, "
+                f"{self._maturity_to_symbolic(self.near_maturity)}-"
+                f"{self._maturity_to_symbolic(self.far_maturity)}, "
                 f"{self.expiration.isoformat()}, {self.calendar_type=})"
             )
         elif self.spread_type == 'CALENDAR_SPREAD' and self.calendar_type == 'REVERSE':
             return (
                 f"SpreadExpiration({self.ticker}.{self.exchange}.RS/"
-                f"{self._maturity_to_symbolic(self.near_maturity)}-{self._maturity_to_symbolic(self.far_maturity)}, "
+                f"{self._maturity_to_symbolic(self.near_maturity)}-"
+                f"{self._maturity_to_symbolic(self.far_maturity)}, "
                 f"{self.expiration.isoformat()}, {self.calendar_type=})"
             )
 
@@ -1180,13 +1153,34 @@ class SpreadExpiration(Instrument):
     @property
     def contract_name(self):
         if self.spread_type == 'CALENDAR_SPREAD':
-            symbolic_date = f"{self._maturity_to_symbolic(self.near_maturity)}-{self._maturity_to_symbolic(self.far_maturity)}"
+            symbolic_date = (
+                f"{self._maturity_to_symbolic(self.near_maturity)}-"
+                f"{self._maturity_to_symbolic(self.far_maturity)}"
+            )
             if self.calendar_type == 'REVERSE':
                 return f"{self.ticker}.{self.exchange}.RS/{symbolic_date}"
             return f"{self.ticker}.{self.exchange}.CS/{symbolic_date}"
         else:
             symbolic_date = f"{self._maturity_to_symbolic(self.maturity)}"
             return f"{self.ticker}.{self.exchange}.{symbolic_date}"
+
+    @property
+    def path(self):
+        if self.spread.instrument.get('_id'):
+            p = deepcopy(self.spread.instrument['path'])
+        else:
+            p = deepcopy(self.spread.instrument['path']) + ['<<series_folder_id>>']
+        if self.spread.gap_folders:
+            gf_id = SpreadExpiration.get_gap_folder_id(
+                self.spread,
+                self.near_maturity,
+                self.far_maturity
+            )
+            if gf_id:
+                p.append(gf_id)
+        if not self.instrument.get('_id'):
+            return p
+        return p + [self.instrument['_id']]
 
     @staticmethod
     def create_expiration_dict(
@@ -1195,8 +1189,7 @@ class SpreadExpiration(Instrument):
             maturity: str = None,
             near_maturity: str = None,
             far_maturity: str = None,
-            calendar_type: str = None,
-            **kwargs
+            calendar_type: str = None
         ) -> dict:
         instrument = {
             'isAbstract': False,
@@ -1204,12 +1197,8 @@ class SpreadExpiration(Instrument):
                 'year': expiration.year,
                 'month': expiration.month,
                 'day': expiration.day
-            },
-            'path': deepcopy(spread.instrument['path'])
+            }
         }
-        if spread.instrument['path'][-1] != spread.instrument.get('_id'):
-            instrument['path'].append('<<series_id>>')
-
         if spread.spread_type == 'CALENDAR_SPREAD':
             if not near_maturity or not far_maturity:
                 raise ExpirationError(
@@ -1231,14 +1220,6 @@ class SpreadExpiration(Instrument):
                 instrument.update({
                     'spreadType': calendar_type
                 })
-            gf_id = SpreadExpiration.get_gap_folder_id(
-                spread,
-                near_maturity,
-                far_maturity
-            )
-            if gf_id:
-                instrument['path'].append(gf_id)
-
             legs = SpreadExpiration.mk_calendar_legs(
                 spread,
                 near_maturity,
@@ -1248,7 +1229,7 @@ class SpreadExpiration(Instrument):
         else:
             if not maturity:
                 raise ExpirationError(
-                    f'{maturity=} should be set for a product spread contract'
+                    f'maturity should be set for a product spread contract, {maturity=}'
                 )
             instrument.update({
                 'maturityDate': {
@@ -1260,17 +1241,12 @@ class SpreadExpiration(Instrument):
             legs = SpreadExpiration.mk_product_legs(
                 spread,
                 maturity
-            )
-            
+            )            
         if not legs:
             raise ExpirationError(
                 f'Legs are not set, cannot create contract'
             )
         instrument['legs'] = legs
-        [
-            instrument.update({key: val}) for key, val
-            in kwargs.items() if len(key.split('/')) == 1
-        ]
         SpreadExpiration.set_la_lt(spread, instrument)
         return instrument
 
@@ -1282,8 +1258,6 @@ class SpreadExpiration(Instrument):
             )
             if isinstance(spread.set_la, str):
                 instrument['lastAvailable']['time'] = spread.set_la
-            
-
         if spread.set_lt:
             instrument['lastTrading'] = deepcopy(instrument['expiry'])
             if isinstance(spread.set_lt, str):

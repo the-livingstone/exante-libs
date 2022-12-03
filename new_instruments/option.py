@@ -85,7 +85,7 @@ class Option(Derivative):
             series_tree,
             week_number=week_number
         )
-        self._align_expiry_la_lt(self.contracts)
+        self._align_expiry_la_lt()
 
     @property
     def logger(self):
@@ -297,6 +297,7 @@ class Option(Derivative):
     def from_dict(
             cls,
             payload: dict,
+            recreate: bool = False,
             # class instances
             bo: BackOffice = None,
             sdb: SymbolDB = None,
@@ -348,6 +349,16 @@ class Option(Derivative):
             tree_df=tree_df,
             env=env
         )
+        if reference:
+            if not recreate:
+                raise RuntimeError(
+                    f'{ticker}.{exchange} series already exist in SymbolDB'
+                )
+            payload.update({
+                key: val for key, val
+                in reference.items()
+                if key[0] == '_' or key == 'path'
+            })
 
         return cls(
             ticker=ticker,
@@ -661,6 +672,114 @@ class Option(Derivative):
                     "try to narrow search criteria"
                 )
     
+    def __update_existing_contract(
+            self,
+            series,
+            num: int,
+            overwrite_old: bool = False,
+            payload: dict = None,
+            strikes: dict = None,
+            **kwargs
+        ):
+        if payload:
+            strikes = payload.pop('strikePrices')
+        exp_date = series.contracts[num].expiration
+        maturity = series.contracts[num].maturity
+        if overwrite_old:
+            added, removed, preserved = series.contracts[num].refresh_strikes(
+                strikes,
+                hard=True
+            )
+            if removed is None or removed.get('not_updated'):
+                self.logger.warning(
+                    f"{series.contracts[num].contract_name}: strikes are not updated!"
+                )
+            new_strikes = series.contracts[num].instrument['strikePrices']
+            if payload:
+                payload.update({
+                    key: val for key, val
+                    in series.contracts[num].instrument.items()
+                    if key[0] == '_' or key in ['path', 'strikePrices']
+                })
+                series.contracts[num].instrument = payload
+            else:
+                kwargs.update({
+                    key: val for key, val
+                    in series.contracts[num].instrument.items()
+                    if key[0] == '_'
+                })
+                series.contracts[num] = OptionExpiration.from_scratch(
+                    series,
+                    expiration_date=exp_date,
+                    maturity=maturity,
+                    strikes=new_strikes,
+                    reference=series.contracts[num].reference
+                    **kwargs
+                )
+        else:
+            series.contracts[num].add_strikes(strikes)
+            if payload:
+                series.contracts[num].instrument.update(payload)
+            else:
+                for field, val in kwargs.items():
+                    series.contracts[num].set_field_value(val, field.split('/'))
+
+        if series.contracts[num].instrument.get('isTrading'):
+            series.contracts[num].instrument.pop('isTrading')
+        diff = series.contracts[num].get_diff()
+        if diff:
+            self.logger.info(
+                f'{series.contracts[num].contract_name}: '
+                'following changes have been made:'
+            )
+            self.logger.info(pformat(diff))
+        return {
+            'updated': series.contracts[num].contract_name,
+            'diff': diff
+        }
+
+    def __create_new_contract(
+            self,
+            series,
+            exp_date: dt.date,
+            maturity: str,
+            payload: dict = None,
+            strikes: dict = None,
+            **kwargs
+        ):
+        if series.allowed_expirations:
+            symbolic = self._maturity_to_symbolic(maturity)
+
+            if not (
+                    exp_date.isoformat() in series.allowed_expirations
+                    or symbolic in series.allowed_expirations
+                ):
+                self.logger.info(
+                    f"Allowed expirations are set and {exp_date.isoformat()} "
+                    f"or {symbolic} are not there"
+                )
+                return {}
+        if payload:
+            new_contract = OptionExpiration.from_dict(
+                series,
+                payload
+            )
+        else:
+            new_contract = OptionExpiration.from_scratch(
+                series,
+                expiration_date=exp_date,
+                maturity=maturity,
+                strikes=strikes,
+                **kwargs
+            )
+        if new_contract in series.new_expirations:
+            self.logger.warning(
+                f"{new_contract} is already in list of new expirations. "
+                "Replacing it with newer version")
+            series.new_expirations.remove(new_contract)
+        series.new_expirations.append(new_contract)
+        return {'created': new_contract.contract_name}
+
     def add_payload(
             self,
             payload: dict,
@@ -712,17 +831,27 @@ class Option(Derivative):
             or not payload.get('maturityDate') \
             or not payload.get('strikePrices'):
 
-            self.logger.error("bad data")
+            self.logger.error(f"Bad data: {pformat(payload)}")
             return {}
 
-        # get expiration date
+        # normalize variables
         exp_date = self.normalize_date(payload['expiry'])
         maturity = self.format_maturity(payload['maturityDate'])
         if week_num is True:
             week_num = int((exp_date.day - 1)/7) + 1
         elif isinstance(week_num, int) and week_num > 5:
-            raise ExpirationError(f"Week number, could not be greater than 5, {week_num=}")
-        # series = self._set_target_folder(week_num, ticker) # seems to be excessive
+            raise ExpirationError(
+                f"Week number, could not be greater than 5, {week_num=}"
+            )
+        if self.week_number:
+            if week_num and week_num != self.week_number:
+                self.logger.error(
+                    f"You are trying to find {week_num=} expiration inside {self} instance. "
+                    f"Please call this method either from Monthly instance or {week_num} week instance"
+                )
+                return {}
+
+        # check if contract already exists
         existing_exp, series = self.find_expiration(
             exp_date,
             maturity,
@@ -731,101 +860,52 @@ class Option(Derivative):
             uuid=payload.get('_id')
         )
         if existing_exp is not None:
+            # update existing
             if skip_if_exists:
-                series.skipped.add(exp_date.isoformat())
+                series.skipped.add(series.contracts[existing_exp].contract_name)
                 return {}
-            if not payload.get('path'):
-                payload['path'] = series.contracts[existing_exp].instrument['path']
-            elif payload['path'][:len(series.instrument['path'])] != series.instrument['path']:
-                self.logger.error(f"Bad path: {self.sdbadds.show_path(payload['path'])}")
-                return {}
-
-            if overwrite_old:
-                added, removed, preserved = series.contracts[existing_exp].refresh_strikes(
-                    payload['strikePrices'],
-                    hard=True
-                )
-                if removed is None or removed.get('not_updated'):
-                    self.logger.warning(
-                        f"{series.contracts[existing_exp].contract_name}: strikes are not updated!"
-                    )
-                payload.update({
-                    key: val for key, val
-                    in series.contracts[existing_exp].instrument.items()
-                    if key[0] == '_' or key in ['path', 'strikePrices']
-                })
-                series.contracts[existing_exp].instrument = payload
-            else:
-                # CHECK STRIKES!
-                series.contracts[existing_exp].add_strikes(payload.pop('strikePrices'))
-                series.contracts[existing_exp].instrument.update(payload)
-            if series.contracts[existing_exp].instrument.get('isTrading'):
-                series.contracts[existing_exp].instrument.pop('isTrading')
-            OptionExpiration.set_la_lt(series, series.contracts[existing_exp].instrument)
-            diff = series.contracts[existing_exp].get_diff()
-            if diff:
-                self.logger.info(
-                    f'{series.contracts[existing_exp].contract_name}: '
-                    'following changes have been made:'
-                )
-                self.logger.info(pformat(diff))
-            return {
-                'updated': series.contracts[existing_exp].contract_name,
-                'diff': diff
-            }
+            update = self.__update_existing_contract(
+                series,
+                existing_exp,
+                overwrite_old,
+                payload=payload
+            )
+            return update
+        # contract does not exist
+        # find a place where to create a new one
         series = self._set_target_folder(week_num, ticker)
         if series is None:
             self.logger.error(
-                f"Series folder is not set ({self=}, {week_num=}), expiration is not added"
+                f"Series folder is not set ({self=}, {week_num=}), "
+                "expiration is not added"
             )
             return {}
-        if series.allowed_expirations:
-            symbolic = self._maturity_to_symbolic(maturity)
-
-            if not (
-                    exp_date.isoformat() in series.allowed_expirations
-                    or symbolic in series.allowed_expirations
-                ):
-                self.logger.info(
-                    f"Allowed expirations are set and {exp_date.isoformat()} "
-                    f"or {symbolic} are not there"
-                )
-                return {}
-        if not payload.get('path'):
-            payload['path'] = series.instrument['path']
-        elif payload['path'][:len(series.instrument['path'])] != series.instrument['path']:
-            self.logger.error(f"Bad path: {self.sdbadds.show_path(payload['path'])}")
-            return {}
-
-        new_contract = OptionExpiration.from_dict(
+        create = self.__create_new_contract(
             series,
-            payload
+            exp_date,
+            maturity,
+            payload=payload
         )
-        new_contract.set_la_lt(series, new_contract.instrument)
-        if new_contract in series.new_expirations:
-            self.logger.warning(
-                f"{new_contract} is already in list of new expirations. "
-                "Replacing it with newer version")
-            series.new_expirations.remove(new_contract)
-        series.new_expirations.append(new_contract)
-        return {'created': new_contract.contract_name}
+        return create
 
     def add(
             self,
             exp_date: Union[str, dt.date, dt.datetime],
             strikes: dict,
             maturity: str = None,
-            underlying: str = None,
             skip_if_exists: bool = True,
             overwrite_old: bool = False,
             week_num: Union[bool, int] = None,
             ticker: str = None,
             **kwargs
         ):
+        # normalize variables
         exp_date = self.normalize_date(exp_date)
         maturity = self.format_maturity(maturity)
         if week_num is True:
             week_num = int((exp_date.day - 1)/7) + 1
+        elif isinstance(week_num, int) and week_num > 5:
+            raise ExpirationError(f"Week number, could not be greater than 5, {week_num=}")
         if self.week_number:
             if week_num and week_num != self.week_number:
                 self.logger.error(
@@ -843,76 +923,29 @@ class Option(Derivative):
             if skip_if_exists:
                 series.skipped.add(exp_date.isoformat())
                 return {}
-            if not maturity and series.contracts[existing_exp].instrument.get('maturityDate'):
-                maturity = self.format_maturity(series.contracts[existing_exp].instrument['maturityDate'])
-            if not underlying:
-                underlying = series.contracts[existing_exp].instrument.get
-            if not overwrite_old:
-                series.contracts[existing_exp].add_strikes(strikes)
-                for field, val in kwargs.items():
-                    series.contracts[existing_exp].set_field_value(val, field.split('/'))
-            else:
-                added, removed, preserved = series.contracts[existing_exp].refresh_strikes(strikes, hard=True)
-                if removed is None or removed.get('not_updated'):
-                    self.logger.warning(
-                        f"{series.contracts[existing_exp].contract_name}: strikes are not updated!"
-                    )
-                new_strikes = series.contracts[existing_exp].instrument['strikePrices']
-                kwargs.update({
-                    key: val for key, val
-                    in series.contracts[existing_exp].instrument.items()
-                    if key[0] == '_' or key == 'path'
-                })
-                series.contracts[existing_exp] = OptionExpiration.from_scratch(
-                    series,
-                    expiration_date=exp_date,
-                    maturity=maturity,
-                    strikes=new_strikes,
-                    reference=series.contracts[existing_exp].reference
-                    **kwargs
-                )
-            if series.contracts[existing_exp].instrument.get('isTrading'):
-                series.contracts[existing_exp].instrument.pop('isTrading')
-            OptionExpiration.set_la_lt(series, series.contracts[existing_exp].instrument)
-            diff = series.contracts[existing_exp].get_diff()
-            if diff:
-                self.logger.info(
-                    f'{series.contracts[existing_exp].contract_name}: '
-                    'following changes have been made:'
-                )
-                self.logger.info(pformat(diff))
-            return {
-                'updated': series.contracts[existing_exp].contract_name,
-                'diff': diff
-            }
+            update = self.__update_existing_contract(
+                series,
+                existing_exp,
+                overwrite_old,
+                strikes=strikes,
+                **kwargs
+            )
+            return update
         series = self._set_target_folder(week_num, ticker)
-        if series.allowed_expirations:
-            symbolic = self._maturity_to_symbolic(maturity)
-
-            if not (
-                    exp_date.isoformat() in series.allowed_expirations
-                    or symbolic in series.allowed_expirations
-                ):
-                self.logger.info(
-                    f"Allowed expirations are set and {exp_date.isoformat()} "
-                    f"or {symbolic} are not there"
-                )
-                return {}
-        new_contract = OptionExpiration.from_scratch(
+        if series is None:
+            self.logger.error(
+                f"Series folder is not set ({self=}, {week_num=}), "
+                "expiration is not added"
+            )
+            return {}
+        create = self.__create_new_contract(
             series,
-            expiration_date=exp_date,
-            maturity=maturity,
+            exp_date,
+            maturity,
             strikes=strikes,
             **kwargs
         )
-        new_contract.set_la_lt(series, new_contract.instrument)
-        if new_contract in series.new_expirations:
-            self.logger.warning(
-                f"{new_contract} is already in list of new expirations. "
-                "Replacing it with newer version")
-            series.new_expirations.remove(new_contract)
-        series.new_expirations.append(new_contract)
-        return {'created': new_contract.contract_name}
+        return create
 
     def refresh_strikes(
             self,
@@ -950,12 +983,12 @@ class Option(Derivative):
         added, removed, preserved = series.contracts[existing_exp].refresh_strikes(
             strikes,
             force=force,
-            hard=hard,
-
+            hard=hard
         )
         if removed is None or removed.get('not_updated'):
             self.logger.warning(
-                f"{series.contracts[existing_exp].contract_name}: strikes are not updated!"
+                f"{series.contracts[existing_exp].contract_name}: "
+                "strikes are not updated!"
             )
         return series.contracts[existing_exp], added, removed, preserved
 
@@ -967,7 +1000,8 @@ class Option(Derivative):
             )
             return False
         # check if symbol exists in sdb
-        if asyncio.run(self.sdb.get(symbol_id)):
+
+        if not self.tree_df[self.tree_df['symbolId'] == symbol_id].empty:
             self.underlying_dict = {
                         'id': symbol_id,
                         'type': 'symbolId'
@@ -1079,7 +1113,6 @@ class Option(Derivative):
             # Create weekly subfolders
             for wf in wc.weekly_folders:
                 if not wf.instrument.get('_id'):
-                    wf.instrument['path'] = deepcopy(wc.payload['path'])
                     wf.create(dry_run)
                 else:
                     wf_diff = DeepDiff(wf.reference, wf.instrument)
@@ -1110,7 +1143,7 @@ class Option(Derivative):
                 self.logger.info(f"No changes were made for {target.series_name}.*")
             for new in target.new_expirations:
                 if target.option_type == 'OPTION ON FUTURE':
-                    if not new.instrument.get('underlyingId', {}).get('id'):
+                    if not new.get_instrument.get('underlyingId', {}).get('id'):
                         self.logger.warning(f"Underlying for {new.contract_name} is not set!")
             if target.new_expirations and dry_run:
                 print(f"Dry run, new expirations to create:")
@@ -1122,7 +1155,7 @@ class Option(Derivative):
             elif target.new_expirations:
                 self.wait_for_sdb()
                 create_result = asyncio.run(self.sdb.batch_create(
-                    input_data=[x.instrument for x in target.new_expirations]
+                    input_data=[x.get_instrument for x in target.new_expirations]
                 ))
                 if create_result:
                     if isinstance(create_result, str):
@@ -1153,7 +1186,7 @@ class Option(Derivative):
             elif update_expirations:
                 self.wait_for_sdb()
                 update_result = asyncio.run(self.sdb.batch_update(
-                    input_data=[x.instrument for x in update_expirations]
+                    input_data=[x.get_instrument for x in update_expirations]
                 ))
                 if update_result:
                     if isinstance(update_result, str):
@@ -1184,24 +1217,38 @@ class OptionExpiration(Instrument):
     def __init__(
             self,
             option: Option,
-            instrument: dict,
+            expiration: dt.date,
+            maturity: str,
+            strikes: dict,
+            underlying: str = None,
+            custom_fields: dict = None,
             reference: dict = None,
             reload_cache: bool = False,
             **kwargs
         ):
+        if custom_fields is None:
+            custom_fields = {}
+        if reference is None:
+            reference = {}
         self.ticker = option.ticker
         self.exchange = option.exchange
         self.series_name = option.series_name
-        self.instrument = instrument
-        if reference is None:
-            reference = {}
+        self.option = option
+
         self.reference = reference
-        self.expiration = self.normalize_date(instrument['expiry'])
-        self.maturity = self.format_maturity(instrument['maturityDate'])
+        self.expiration = expiration
+        self.maturity = maturity
         self.option_type = option.option_type
         self.week_number = option.week_number
+
+        self.instrument = custom_fields
+        self.strikes = self.build_strikes(strikes, self.instrument.get('_id'))
+        self.underlying = underlying
+        self.instrument = self.get_instrument
+
+        self.reference = reference
         super().__init__(
-            instrument=instrument,
+            instrument=self.instrument,
             instrument_type='OPTION',
             parent=option,
             env=option.env,
@@ -1209,6 +1256,7 @@ class OptionExpiration(Instrument):
             sdbadds=option.sdbadds,
             reload_cache=reload_cache
         )
+        self.set_la_lt()
         for field, val in kwargs.items():
             self.set_field_value(val, field.split('/'))
 
@@ -1216,7 +1264,11 @@ class OptionExpiration(Instrument):
     def from_scratch(
             cls,
             option: Option,
-            expiration_date: Union[str, dt.date, dt.datetime],
+            expiration_date: Union[
+                str,
+                dt.date,
+                dt.datetime
+            ],
             maturity: str = None,
             strikes: dict = None,
             reference: dict = None,
@@ -1224,26 +1276,23 @@ class OptionExpiration(Instrument):
             reload_cache: bool = False,
             **kwargs
         ):
+        if not reference:
+            reference = {}
         expiration = Instrument.normalize_date(expiration_date)
+        maturity = Instrument.format_maturity(maturity)
         if option.week_number:
             if int((expiration.day - 1)/7) + 1 != option.week_number:
                 raise ExpirationError(
                     f"You should not create a contract expiring at {expiration.isoformat()} "
                     f"as a {option.week_number} week contract"
                 )
-        maturity = Instrument.format_maturity(maturity)
-        instrument = OptionExpiration.create_expiration_dict(
+        return cls(
             option,
             expiration,
             maturity,
             strikes=strikes,
             underlying=underlying,
-            **kwargs
-        )
-        return cls(
-            option,
-            instrument,
-            deepcopy(reference),
+            reference=deepcopy(reference),
             reload_cache=reload_cache,
             **kwargs
         )
@@ -1257,30 +1306,22 @@ class OptionExpiration(Instrument):
             reload_cache: bool = False,
             **kwargs
         ):
+        if not reference:
+            reference = {}
         if instrument.get('isTrading') is not None:
             instrument.pop('isTrading')
-        if not instrument.get('_id'):
-            if instrument['path'] != option.instrument['path']:
-                raise ExpirationError(
-                    f"Bad path: {option.sdbadds.show_path(instrument['path'])}"
-                )
-        else:
-            if instrument['path'][:-1] != option.instrument['path']:
-                raise ExpirationError(
-                    f"Bad path: {option.sdbadds.show_path(instrument['path'])}"
-                )
-        if not reference:
-            if not instrument.get('strikePrices', {}).get('CALL')\
-                or not instrument.get('strikePrices', {}).get('PUT'):
-
-                raise ExpirationError(
-                    f"strikes are invalid: {pformat(instrument.get('strikePrices'))}"
-                )
-
+        expiration = Instrument.normalize_date(instrument.get('expiry', {}))
+        maturity = Instrument.format_maturity(instrument.get('maturityDate', {}))
+        strikes = instrument.get('strikePrices', {})
+        underlying = instrument.get('underlyingId', {}).get('id')
         return cls(
             option,
-            instrument,
-            deepcopy(reference),
+            expiration,
+            maturity,
+            strikes=strikes,
+            underlying=underlying,
+            custom_fields=instrument,
+            reference=deepcopy(reference),
             reload_cache=reload_cache,
             **kwargs
         )
@@ -1310,83 +1351,102 @@ class OptionExpiration(Instrument):
     def contract_name(self):
         return f"{self.ticker}.{self.exchange}.{self._maturity_to_symbolic(self.maturity)}"
 
-    @staticmethod
-    def create_expiration_dict(
-            option: Option,
-            expiration: dt.date,
-            maturity: str,
-            strikes: dict,
-            underlying: str = None,
-            **kwargs
-        ) -> dict:
-        instrument = {
+    @property
+    def path(self):
+        if self.option.instrument.get('_id'):
+            p = deepcopy(self.option.instrument['path'])
+        else:
+            p = deepcopy(self.option.instrument['path']) + ['<<series_folder_id>>']
+        if not self.instrument.get('_id'):
+            return p
+        return p + [self.instrument['_id']]
+
+    @property
+    def get_custom_fields(self) -> dict:
+        return {
+            key: val for key, val
+            in self.instrument.items()
+            if key not in [
+                'isAbstract',
+                'name',
+                'expiry',
+                'maturityDate',
+                'path',
+                'strikePrices',
+                'underlyingId'
+            ]
+        }
+
+    @property
+    def get_strikes(self) -> dict[str, list[dict]]:
+        return self.build_strikes(
+            self.strikes,
+            self.instrument.get('_id')
+        )
+
+    @property
+    def get_underlying(self) -> dict:
+        if self.underlying:
+            existing_future = self.option.tree_df[self.option.tree_df['symbolId'] == self.underlying]
+            if not existing_future.empty:
+                return {
+                    'id': self.underlying,
+                    'type': 'symbolId'
+                }
+            else:
+                self.logger.warning(
+                    f'{self.contract_name}: '
+                    f'{self.underlying} is not found in sdb, underlying is not set'
+                )
+
+    @property
+    def get_instrument(self) -> dict:
+        instrument_dict = {
             'isAbstract': False,
-            'name': maturity,
+            'name': self.maturity,
             'expiry': {
-                'year': expiration.year,
-                'month': expiration.month,
-                'day': expiration.day
+                'year': self.expiration.year,
+                'month': self.expiration.month,
+                'day': self.expiration.day
             },
             'maturityDate': {
-                'month': int(maturity.split('-')[1]),
-                'year': int(maturity.split('-')[0])
+                'month': int(self.maturity.split('-')[1]),
+                'year': int(self.maturity.split('-')[0])
             },
-            'path': option.instrument['path']
-
+            'path': self.path,
+            'strikePrices': self.get_strikes,
         }
-        if len(maturity.split('-')) == 3:
-            instrument['maturityDate'].update({
-                'day': int(maturity.split('-')[2])
+        if len(self.maturity.split('-')) == 3:
+            instrument_dict['maturityDate'].update({
+                'day': int(self.maturity.split('-')[2])
             })
-        instrument.update({
-            'strikePrices': OptionExpiration.build_strikes(strikes)
-        })
+        underlying = self.get_underlying
         if underlying:
-            underlying_time = OptionExpiration.check_underlying_future(
-                instrument,
-                option.sdbadds,
-                underlying
+            instrument_dict.update({
+                'underlyingId': underlying
+            })
+        instrument_dict.update(self.get_custom_fields)
+        return instrument_dict
+
+    def set_la_lt(self):
+        if self.option.set_la:
+            self.set_field_value(
+                self.sdb.date_to_sdb(
+                    self.expiration + dt.timedelta(days=3)
+                ),
+                ['lastAvailable']
             )
-            if underlying_time is not None:
-                instrument.update({
-                    'underlyingId': {
-                        'id': underlying,
-                        'type': 'symbolId'
-                    }
-                })
-                if underlying_time is not False:
-                    instrument['expiry']['time'] = underlying_time
-
-        [
-            instrument.update({key: val}) for key, val
-            in kwargs.items() if len(key.split('/')) == 1
-        ]
-        OptionExpiration.set_la_lt(option, instrument)
-        return instrument
-
-    @staticmethod
-    def set_la_lt(option: Option, instrument: dict):
-        if option.set_la:
-            instrument['lastAvailable'] = option.sdb.date_to_sdb(
-                option.sdb.sdb_to_date(instrument['expiry']) + dt.timedelta(days=3)
+            self.set_field_value(self.option.set_la, ['lastAvailable', 'time'])
+        if self.option.set_lt:
+            self.set_field_value(
+                self.sdb.date_to_sdb(self.expiration),
+                ['lastTrading']
             )
-            if isinstance(option.set_la, str):
-                instrument['lastAvailable']['time'] = option.set_la
-            
+            self.set_field_value(self.option.set_lt, ['lastTrading', 'time'])
 
-        if option.set_lt:
-            instrument['lastTrading'] = deepcopy(instrument['expiry'])
-            if isinstance(option.set_lt, str):
-                instrument['lastTrading']['time'] = option.set_lt
-
-    @staticmethod
-    def check_underlying_future(
-        instrument: dict,
-        sdbadds: SDBAdditional,
-        symbol_id: str
-    ) -> str:
+    def check_underlying_future(self, symbol_id: str) -> str:
         # check if symbol exists in sdb
-        underlying = asyncio.run(sdbadds.sdb.get(
+        underlying = asyncio.run(self.option.sdb.get(
             symbol_id,
             fields=[
                 'expiryTime',
@@ -1402,86 +1462,105 @@ class OptionExpiration(Instrument):
             return None
         try:
             instr_dt_expiry = dt.datetime.fromisoformat(
-                sdbadds.compile_expiry_time(instrument)[:-1]
+                self.option.sdbadds.compile_expiry_time(
+                    self.get_instrument
+                )[:-1]
             )
             udl_dt_expiry = dt.datetime.fromisoformat(
                 underlying['expiryTime'][:-1]
             )
         except TypeError:
             logging.warning(
-                f'Cannot compile {sdbadds.compile_symbol_id(instrument)} expiry time!'
+                f'Cannot compile {self.contract_name} expiry time!'
             )
             return None
         if instr_dt_expiry > udl_dt_expiry:
             logging.warning(
-                f"{symbol_id} could not be an underlying for {sdbadds.compile_symbol_id(instrument)} as it expires earlier"
+                f"{symbol_id} could not be an underlying "
+                f"for {self.contract_name} as it expires earlier"
             )
             return None
-        compiled_underlying = asyncio.run(
-            sdbadds.build_inheritance(underlying, include_self=True)
+        udl_compiled_expiry = asyncio.run(
+            self.option.sdbadds.get_inherited_value(underlying, fields=['expiry'])
         )
-        return compiled_underlying.get('expiry', {}).get('time', False)
+        udl_expiry_local_time = udl_compiled_expiry.get('expiry', {}).get('time', False)
+        return udl_expiry_local_time
 
     @staticmethod
-    def build_strikes(strikes: dict) -> Dict[str, list]:
-        if not strikes.get('CALL') or not strikes.get('PUT'):
-            raise ExpirationError(f"Strikes are invalid: {pformat(strikes)}")
-        if all(
-            (isinstance(strike, dict) and strike.get('strikePrice')) for strike
+    def build_strikes(strikes: dict, uuid: str = None) -> Dict[str, list[dict]]:
+        def format_strike(raw_strike: dict) -> dict:
+            strike_price = {
+                'strikePrice': float(raw_strike['strikePrice']),
+                'isAvailable': raw_strike.get('isAvailable', True)
+            }
+            if raw_strike.get('identifiers'):
+                strike_price.update({'identifiers': raw_strike['identifiers']})
+            for key in ['ISIN', 'FIGI']:
+                if key in raw_strike:
+                    strike_price.setdefault(
+                        'identifiers', {}
+                    ).update(raw_strike[key])
+            return strike_price
+
+        if uuid:
+            strikes.setdefault('CALL', [])
+            strikes.setdefault('PUT', [])
+            return strikes
+        if not isinstance(strikes.get('CALL'), (set, list)) \
+            or not isinstance(strikes.get('PUT'), (set, list)):
+            raise ExpirationError(
+                f"Strikes are invalid: {pformat(strikes)}"
+            )
+        strikeprices_is_proper_dict = all(
+            (
+                isinstance(strike, dict)
+                and strike.get('strikePrice')
+            ) for strike
             in strikes['CALL'] + strikes['PUT']
-        ):
+        )
+        if strikeprices_is_proper_dict:
             prepared_strikes = {
                 side: [
-                    dict(
-                        strikePrice=float(strike['strikePrice']),
-                        isAvailable=True,
-                        identifiers={
-                            key: val for key, val
-                            in strike.items()
-                            if key in [
-                                'ISIN',
-                                'FIGI'
-                            ]
-                        }
-                    ) for strike in strikes[side]
+                    format_strike(strike) for strike
+                    in strikes[side]
                 ] for side
                 in ['PUT', 'CALL']
             }
             return prepared_strikes
-        return {
-            side: [
-                {
-                    'strikePrice': float(strike),
-                    'isAvailable': True
-                } for strike in strikes.get(side)
-            ] for side
-            in ['PUT', 'CALL']
-        }
+        else:
+            prepared_strikes = {
+                side: [
+                    {
+                        'strikePrice': float(strike),
+                        'isAvailable': True
+                    } for strike in strikes.get(side)
+                ] for side
+                in ['PUT', 'CALL']
+            }
+            return prepared_strikes
 
-    def add_strikes(self, strikes: dict):
-        if strikes['PUT'] and strikes['CALL'] \
-            and all(
-                isinstance(x, (int, float, str, dict)) for x
-                in strikes['PUT'] + strikes['CALL']
-            ):
-            strikes = self.build_strikes(strikes)
+    def add_strikes(self, strikes: dict) -> dict:
+        strikes = self.build_strikes(strikes)
+        added = {}
         for side in ['PUT', 'CALL']:
-            self.instrument['strikePrices'][side].extend(
-                [
-                    x for x
-                    in strikes[side]
-                    if x.get('strikePrice') not in [
-                        strike['strikePrice'] for strike
-                        in self.instrument['strikePrices'][side]
-                    ]
+            new_strikes = [
+                x for x
+                in strikes[side]
+                if x.get('strikePrice') not in [
+                    strike['strikePrice'] for strike
+                    in self.strikes[side]
                 ]
-            )
-            self.instrument['strikePrices'][side] = sorted(
-                self.instrument['strikePrices'][side],
+            ]
+            added.update({side: new_strikes})
+            self.strikes[side].extend(new_strikes)
+            self.strikes[side] = sorted(
+                self.strikes[side],
                 key=lambda sp: sp['strikePrice']
             )
+        self.logger.info('New strikes:\n' + pformat(added))
+        return added
 
-    def _strike_exante_id(self, strike: float, side: str):
+    def _strike_exante_id(self, strike: float, side: str) -> str:
         if re.search(r'\.0$', str(strike)):
             strike = int(strike)
         underline = str(strike).replace('.', '_')
@@ -1496,57 +1575,38 @@ class OptionExpiration(Instrument):
             consider_demo: bool = True
         ):
         """
-        strikes is a dict of active strikes that should stay and the rest should be removed
-        with the exception of used symbols, they also should stay
+        strikes is a dict of active strikes that should stay
+        and the rest should be removed with the exception
+        of used symbols, they also should stay
 
-        updating strikes process is divided for two separate functions because adding new
-        strikes is fast and could be done on demand. Removing non-tradable strikes requires
-        to check their presence in used symbols and it is slow, so it may be done automatically on schedule
+        updating strikes process is divided into two separate functions
+        because adding new strikes is fast and could be done on demand.
+        Removing non-tradable strikes requires to check their presence in
+        used symbols and it is slow, so it may be done automatically on schedule
         """
 
         # general idea of metod is that: resulting self strikes are given strikes plus those found in used_symbols
 
         if hard:
             # slooow
-            self.used_symbols = asyncio.run(self.sdbadds.load_used_symbols(reload_cache, consider_demo))
+            self.used_symbols = asyncio.run(
+                self.sdbadds.load_used_symbols(
+                    reload_cache,
+                    consider_demo
+                )
+            )
 
         MIN_STRIKES_ACCEPTABLE = 7
         MIN_INTERSECTION = (
-            len(self.instrument['strikePrices']['CALL']) + 
-            len(self.instrument['strikePrices']['PUT']) - 16
+            len(self.strikes['CALL']) + 
+            len(self.strikes['PUT']) - 16
         )
         preserved = {}
         added = {}
         removed = {}
         cant_touch_this = {}
 
-        # normalize strikes dict to:
-        # {
-        #     'PUT': [
-        #         {
-        #             'strikePrice': float,
-        #             'isAvailable': True
-        #         },
-        #         ...
-        #     ],
-        #     'CALL': [
-        #         {
-        #             'strikePrice': float,
-        #             'isAvailable': True
-        #         },
-        #         ...
-        #     ]
-        # }
-        if strikes.get('PUT') and strikes.get('CALL') \
-            and all(
-                isinstance(x, (int, float, str, dict)) for x
-                in strikes['PUT'] + strikes['CALL']
-            ):
-            strikes = self.build_strikes(strikes)
-        else:
-            self.logger.error("refresh strikes: Bad data")
-            return None, None, None
-
+        strikes = self.build_strikes(strikes)
 
         # check if refresh is safe enough: check combined length of strikes and intersection
         strikes_len = len(strikes['PUT']) + len(strikes['CALL'])
@@ -1556,7 +1616,7 @@ class OptionExpiration(Instrument):
                 in strikes['PUT']
             }.intersection({
                 x['strikePrice'] for x
-                in self.instrument['strikePrices']['PUT']
+                in self.strikes['PUT']
             })
         ) + len(
             {
@@ -1564,19 +1624,19 @@ class OptionExpiration(Instrument):
                 in strikes['CALL']
             }.intersection({
                 x['strikePrice'] for x
-                in self.instrument['strikePrices']['CALL']
+                in self.strikes['CALL']
             })
         )
-        if not force:
-            if (
+        if not force and (
                 strikes_len < MIN_STRIKES_ACCEPTABLE
                 or strikes_intersection < MIN_INTERSECTION
             ):
-                self.logger.warning(
-                    f"{self.ticker}.{self.exchange} {self.maturity}: "
-                    "Provided list and existing strikes do not look similar enough, no strikes removed"
-                )
-                return None, {'not_updated': True}, None
+            self.logger.warning(
+                f"{self.ticker}.{self.exchange} {self.maturity}: "
+                "Provided list and existing strikes do not look similar enough, "
+                "no strikes removed"
+            )
+            return None, {'not_updated': True}, None
         
         # Now action
         for side in ['PUT', 'CALL']:
@@ -1584,7 +1644,7 @@ class OptionExpiration(Instrument):
                 # search existing strikes in used_symbols
                 cant_touch_this.setdefault(side, set()).update([
                     x for x 
-                    in self.instrument['strikePrices'][side]
+                    in self.strikes[side]
                     if self._strike_exante_id(x['strikePrice'], side) in self.used_symbols
                 ])
                 # preserved are the non-tradable strikes that we cannot remove due to the presense in used_symbols
@@ -1600,7 +1660,7 @@ class OptionExpiration(Instrument):
                 # self_strikes - new_strikes - can't_touch
                 removed.setdefault(side, set()).update(
                     {
-                        x['strikePrice'] for x in self.instrument['strikePrices'][side]
+                        x['strikePrice'] for x in self.strikes[side]
                     } - 
                     {
                         x['strikePrice'] for x in strikes[side]
@@ -1624,7 +1684,7 @@ class OptionExpiration(Instrument):
                 }
                 removed.setdefault(side, set()).update(
                     {
-                        x['strikePrice'] for x in self.instrument['strikePrices'][side]
+                        x['strikePrice'] for x in self.strikes[side]
                         if x.get('isAvailable') is not False # already disabled
                     } - 
                     {
@@ -1637,13 +1697,16 @@ class OptionExpiration(Instrument):
                     x['strikePrice'] for x in strikes[side]
                 } -
                 {
-                    x['strikePrice'] for x in self.instrument['strikePrices'][side]
+                    x['strikePrice'] for x in self.strikes[side]
                     if x.get('isAvailable') is not False
                 }
             )
             if hard:
                 # replace self_strikes with given ones enriched with preserved
-                self.instrument['strikePrices'][side] = sorted(strikes[side], key=lambda sp: sp['strikePrice'])
+                self.strikes[side] = sorted(
+                    strikes[side],
+                    key=lambda sp: sp['strikePrice']
+                )
         if not hard:
             self.enable_strikes(removed, enable=False)
             self.enable_strikes(added, enable=True)
@@ -1651,7 +1714,8 @@ class OptionExpiration(Instrument):
         if preserved.get('PUT') or preserved.get('CALL'):
             self.logger.info(
                 f"{self.ticker}.{self.exchange} {self.expiration}: "
-                f"cannot remove following strikes as they are present in used symbols {preserved}"
+                f"cannot remove following strikes as they are present "
+                f"in used symbols {preserved}"
             )
         return added, removed, preserved
 
@@ -1663,12 +1727,10 @@ class OptionExpiration(Instrument):
         :param enable: sets isAvailable: True if True, False if False or None
         """
         for side in ['PUT', 'CALL']:
-            self.instrument.setdefault('strikePrices',{}).setdefault(side, [])
+            self.strikes.setdefault(side, [])
             side_strikes_nums = [
                 num for num, x
-                in enumerate(
-                        self.instrument['strikePrices'][side]
-                    )
+                in enumerate(self.strikes[side])
                 if x['strikePrice'] in strikes.get(side, [])
             ]
             new_strikes = list({
@@ -1676,24 +1738,24 @@ class OptionExpiration(Instrument):
                 in strikes.get(side, [])
                 if x not in [
                     y['strikePrice'] for y
-                    in self.instrument['strikePrices'][side]
+                    in self.strikes[side]
                 ]
             })
             [
-                self.instrument['strikePrices'][side][num].update({
+                self.strikes[side][num].update({
                     'isAvailable': True if enable else False
                 }) for num
                 in side_strikes_nums
             ]
             [
-                self.instrument['strikePrices'][side].append({
+                self.strikes[side].append({
                     'strikePrice': strike,
                     'isAvailable': True if enable else False
                 }) for strike
                 in new_strikes
             ]
-            self.instrument['strikePrices'][side] = sorted(
-                self.instrument['strikePrices'][side],
+            self.strikes[side] = sorted(
+                self.strikes[side],
                 key=lambda s: s['strikePrice']
             )
 
@@ -1702,7 +1764,7 @@ class OptionExpiration(Instrument):
         for side in ['PUT', 'CALL']:
             added = [
                 x['strikePrice'] for x
-                in self.instrument.get('strikePrices', {}).get(side, [])
+                in self.get_strikes.get(side, [])
                 if x.get('isAvailable')
                 and x['strikePrice'] not in [
                     y['strikePrice'] for y
@@ -1714,11 +1776,11 @@ class OptionExpiration(Instrument):
                 strikes_diff.setdefault('added', {}).setdefault(side, []).extend(added)
             removed = [
                     x['strikePrice'] for x
-                    in self.instrument.get('strikePrices', {}).get(side, [])
+                    in self.reference.get('strikePrices', {}).get(side, [])
                     if x.get('isAvailable')
                     and x['strikePrice'] not in [
                         y['strikePrice'] for y
-                        in self.instrument['strikePrices'][side]
+                        in self.get_strikes[side]
                         if x.get('isAvailable')                        
                     ]
                 ]
@@ -1733,7 +1795,7 @@ class OptionExpiration(Instrument):
             }, 
             {
                 key: val for key, val
-                in self.instrument.items()
+                in self.get_instrument.items()
                 if key != 'strikePrices'
             }
         )
@@ -1742,29 +1804,31 @@ class OptionExpiration(Instrument):
         return diff
 
     def get_expiration(self):
-        return self.instrument, self.contract_name
+        return self.get_instrument, self.contract_name
 
 
 class WeeklyCommon(Instrument):
     def __init__(
             self,
             option: Option,
-            payload: dict = None,
-            reference: dict = None,
-            common_name: str = 'Weekly'
+            common_name: str = 'Weekly',
+            templates: dict = None,
+            custom_fields: dict = None,
+            reference: dict = None
         ):
+        if custom_fields is None:
+            custom_fields = {}
+        self.reference = reference
+        if self.reference is None:
+            self.reference = {}
+        self.templates = templates
+        if self.templates is None:
+            self.templates = {}
         self.option = option
-        self.bo = option.bo
-        self.sdb = option.sdb
-        self.sdbadds = option.sdbadds
-        self.tree_df = option.tree_df
         self.common_name = common_name
         self.weekly_folders: list[Option] = []
-        self.templates = {}
-        self.payload = payload
-        if not reference:
-            reference = {}
-        self.reference = reference
+        self.payload = custom_fields
+        self.payload = self.get_payload
 
     def __repr__(self):
         return f"WeeklyCommon({self.option.series_name}, {self.common_name=})"
@@ -1775,7 +1839,7 @@ class WeeklyCommon(Instrument):
             x['ticker'] for x
             in self.option.series_tree
             if x.get('ticker')
-            and x['path'][:-1] == self.payload['path']
+            and x['path'][:-1] == self.path
             and x['isAbstract']
         ]
         for x in existing_tickers:
@@ -1788,9 +1852,9 @@ class WeeklyCommon(Instrument):
                         reload_cache=False,
                         week_number=int(re.search(r'[12345]', x).group()),
                         parent_tree=self.option.series_tree,
-                        bo=self.bo,
-                        sdb=self.sdb,
-                        sdbadds=self.sdbadds
+                        bo=self.option.bo,
+                        sdb=self.option.sdb,
+                        sdbadds=self.option.sdbadds
                     )
                     weekly_folders.append(weekly_folder)
                 except NoInstrumentError:
@@ -1800,6 +1864,38 @@ class WeeklyCommon(Instrument):
                     )
         return weekly_folders
 
+    @property
+    def get_custom_fields(self) -> dict:
+        return {
+            key: val for key, val
+            in self.payload.items()
+            if key not in [
+                'isAbstract',
+                'name',
+                'path'
+            ]
+        }
+
+    @property
+    def path(self):
+        if self.option.instrument.get('_id'):
+            p = deepcopy(self.option.instrument['path'])
+        else:
+            p = deepcopy(self.option.instrument['path']) + ['<<series_folder_id>>']
+        if not self.payload.get('_id'):
+            return p
+        return p + [self.payload['_id']]
+
+    @property
+    def get_payload(self):
+        payload_dict = {
+            'isAbstract': True,
+            'name': self.common_name,
+            'path': self.path
+        }
+        payload_dict.update(self.get_custom_fields)
+        return payload_dict
+
     @classmethod
     def from_dict(
             cls,
@@ -1807,14 +1903,14 @@ class WeeklyCommon(Instrument):
             payload: dict,
             reference: dict = None
         ):
+        if reference is None:
+            reference = {}
         common_name = payload.get('name')
-        if not payload.get('path'):
-            payload['path'] = deepcopy(option.instrument['path'])
         cw = cls(
             option,
-            payload,
-            reference=reference,
-            common_name=common_name
+            common_name=common_name,
+            custom_fields=payload,
+            reference=deepcopy(reference)
         )
         cw.weekly_folders = cw.__find_weekly_folders()
         if not cw.weekly_folders:
@@ -1828,7 +1924,6 @@ class WeeklyCommon(Instrument):
         }
         return cw
 
-
     @classmethod
     def from_scratch(
             cls,
@@ -1839,44 +1934,37 @@ class WeeklyCommon(Instrument):
             recreate: bool = False,
             dry_run: bool = False
         ):
-        payload = {
-            'isAbstract': True,
-            'path': deepcopy(option.instrument['path']),
-            'name': common_name
-        }
+        if reference is None:
+            reference = {}
         cw = cls(
             option,
-            payload,
-            reference=reference,
-            common_name=common_name
+            common_name,
+            templates=templates,
+            reference=deepcopy(reference)
         )
         cw.templates = templates
         if reference:
-            payload.update({
+            cw.payload.update({
                 key: val for key, val
                 in reference.items()
-                if key[0] == '_' or key == 'path'
+                if key[0] == '_'
             })
             cw.update(dry_run)
             cw.__find_weekly_folders()
-        if option.instrument.get('_id'):
-            cw.create(dry_run)
+        cw.create(dry_run)
         cw.mk_weeklies(recreate)
-
         return cw
 
     def create(self, dry_run: bool = False):
-        if not self.payload.get('path'):
-            self.payload['path'] = deepcopy(self.option.instrument['path'])
         if dry_run:
-            print(f"Dry run. New folder {self.payload['name']} to create:")
-            pp(self.payload)
-            self.payload['path'].append(
-                f"<<new {self.option.ticker}.{self.option.exchange} {self.payload['name']} id>>"
+            print(f"Dry run. New folder {self.get_payload['name']} to create:")
+            pp(self.get_payload)
+            self.payload['_id'].append(
+                f"<<new {self.option.ticker}.{self.option.exchange} {self.get_payload['name']} id>>"
             )
         elif self.option.instrument.get('_id'):
-            self.wait_for_sdb()
-            create = asyncio.run(self.sdb.create(self.payload))
+            self.option.wait_for_sdb()
+            create = asyncio.run(self.option.sdb.create(self.get_payload))
             if not create.get('_id'):
                 self.option.logger.error(pformat(create))
                 raise RuntimeError(
@@ -1885,30 +1973,31 @@ class WeeklyCommon(Instrument):
             self.option.logger.debug(f'Result: {pformat(create)}')
             self.payload['_id'] = create['_id']
             self.payload['_rev'] = create['_rev']
-            self.payload['path'].append(self.payload['_id'])
+            self.payload['path'].append(create['_id'])
+            self.reference = deepcopy(self.payload)
             new_record = DataFrame([{
                 key: val for key, val
-                in self.payload.items()
-                if key in self.tree_df.columns
+                in self.get_payload.items()
+                if key in self.option.tree_df.columns
             }], index=[self.payload['_id']])
-            pd.concat([self.tree_df, new_record])
-            self.tree_df.replace({np.nan: None})
+            self.option.tree_df = pd.concat([self.option.tree_df, new_record])
+            self.option.tree_df.replace({np.nan: None})
 
     def update(self, diff: dict, dry_run: bool = False):
         self.option.logger.info(
-            f"{self.option.ticker}.{self.option.exchange}, {self.payload['name']}: "
+            f"{self.option.ticker}.{self.option.exchange}, {self.get_payload['name']}: "
             "following changes have been made:"
         )
         self.option.logger.info(pformat(diff))
         if dry_run:
-            print(f"Dry run. The folder {self.payload['name']} to update:")
+            print(f"Dry run. The folder {self.get_payload['name']} to update:")
             pp(diff)
             return {}
-        self.wait_for_sdb()
-        response = asyncio.run(self.sdb.update(self.payload))
+        self.option.wait_for_sdb()
+        response = asyncio.run(self.option.sdb.update(self.get_payload))
         if response.get('message'):
             self.option.logger.warning(
-                f"{self.option.ticker}.{self.option.exchange}, {self.payload['name']}: "
+                f"{self.option.ticker}.{self.option.exchange}, {self.get_payload['name']}: "
                 "folder is not updated"
             )
             self.option.logger.warning(pformat(response))
@@ -1935,9 +2024,11 @@ class WeeklyCommon(Instrument):
             shortname = self.option.instrument.get('description')
             shortname = re.sub(r'( )?[Oo]ptions( )?([Oo]n )?', '', shortname)
             shortname += f" {num}{endings[num]} Week"
-            ticker_template = self.templates.get('ticker')
+            ticker_template: str = self.templates.get('ticker')
             if not ticker_template:
-                self.option.logger.warning('No weekly ticker template have been provided, weekly folders are not created')
+                self.option.logger.warning(
+                    'No weekly ticker template have been provided, weekly folders are not created'
+                )
                 return None
             if '$' in ticker_template:
                 weekly_ticker = weekly_name = f"{ticker_template.replace('$', str(num))}"
@@ -1949,27 +2040,32 @@ class WeeklyCommon(Instrument):
                 ticker=weekly_ticker,
                 exchange=self.option.exchange,
                 shortname=shortname,
-                parent_folder_id=self.payload.get('_id'),
+                parent_folder_id=self.get_payload.get('_id'),
                 week_number=num,
                 reload_cache=False,
-                bo=self.bo,
-                sdb=self.sdb,
-                sdbadds=self.sdbadds
+                bo=self.option.bo,
+                sdb=self.option.sdb,
+                sdbadds=self.option.sdbadds,
 
+                name=weekly_name
             )
-            new_weekly.instrument['name'] = weekly_name
+            # new_weekly.instrument['name'] = weekly_name
             if not new_weekly.instrument.get('_id') or recreate:
                 if [x for x in self.templates if x != 'ticker']:
                     feed_providers = [
                         x[0] for x
                         in asyncio.run(
-                            self.sdbadds.get_list_from_sdb(SdbLists.FEED_PROVIDERS.value)
+                            self.option.sdbadds.get_list_from_sdb(
+                                SdbLists.FEED_PROVIDERS.value
+                            )
                         )
                     ]
                     broker_providers = [
                         x[0] for x
                         in asyncio.run(
-                            self.sdbadds.get_list_from_sdb(SdbLists.BROKER_PROVIDERS.value)
+                            self.option.sdbadds.get_list_from_sdb(
+                                SdbLists.BROKER_PROVIDERS.value
+                            )
                         )
                     ]
                     for provider in self.templates:
@@ -1994,5 +2090,4 @@ class WeeklyCommon(Instrument):
                 self.weekly_folders.append(new_weekly)
 
     def get_diff(self):
-        return DeepDiff(self.reference, self.payload)
-
+        return DeepDiff(self.reference, self.get_payload)

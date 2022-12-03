@@ -490,10 +490,9 @@ class Derivative(Instrument):
             demo_gw
         ]
 
-    def _align_expiry_la_lt(self, contracts):
+    def _align_expiry_la_lt(self):
         """
-        sets lastAvailableDate and lastTradingDate on every contract if self.set_la and self.set_lt are not False
-        :param contracts: list of existing contracts or new_expirations
+        sets flags if lastAvailableDate and lastTradingDate should be set on contracts
         """
         compiled = asyncio.run(
             self.sdbadds.build_inheritance(
@@ -508,45 +507,17 @@ class Derivative(Instrument):
             self.set_lt = True
             return None
         if compiled.get('expiry', {}).get('time'):
-            if [x for x in contracts if x.instrument.get('lastTrading')] \
+            if [x for x in self.contracts if x.instrument.get('lastTrading')] \
                 and not compiled.get('lastTrading', {}).get('time'):
 
                 self.set_field_value(compiled['expiry']['time'], ['lastTrading', 'time'])
                 self.set_lt = compiled['expiry']['time']
                 
-            if [x for x in contracts if x.instrument.get('lastAvailable')] \
+            if [x for x in self.contracts if x.instrument.get('lastAvailable')] \
                 and not compiled.get('lastAvailable', {}).get('time'):
 
                 self.set_field_value(compiled['expiry']['time'], ['lastAvailable', 'time'])
                 self.set_la = compiled['expiry']['time']
-
-            for ch in contracts:
-                if ch.instrument.get('isTrading') is False:
-                    continue
-                if ch.instrument.get('lastTrading') and ch.instrument.get('lastAvailable'):
-                    continue
-                if not ch.instrument.get('expiry'):
-                    continue
-                if not self.set_lt and not self.set_la:
-                    continue
-                if self.set_lt:
-                    ch.set_field_value(
-                        self.sdb.date_to_sdb(ch.expiration),
-                        ['lastTrading']
-                    )
-                    ch.set_field_value(self.set_lt, ['lastTrading', 'time'])
-                if self.set_la:
-                    ch.set_field_value(
-                        self.sdb.date_to_sdb(
-                            ch.expiration + dt.timedelta(days=3)
-                        ),
-                        ['lastAvailable']
-                    )
-                    ch.set_field_value(self.set_la, ['lastAvailable', 'time'])
-                self.logger.info(
-                    f"{ch.contract_name}: "
-                    'lastAvailable and lastTrading have been updated'
-                )
 
     def create(self, dry_run: bool = False):
         """

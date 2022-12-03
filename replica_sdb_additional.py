@@ -6,6 +6,7 @@ from enum import Enum
 import json
 import os
 import logging
+from uuid import UUID
 import lupa
 import pandas as pd
 import numpy as np
@@ -22,6 +23,9 @@ from libs.terminal_tools import (
     StatusColor
 )
 from typing import Any, Union
+from sqlalchemy import create_engine
+import sqlalchemy
+
 
 class Months(Enum):
     F = 1 # Jan
@@ -69,9 +73,11 @@ ROOT_FOLDERS = {
     'cprod': '2d1040e2962c4bab9fcf9d66af4bfb49',
     'stage': '0509b7989c5a565c815c6ef657454f2d'
 }
+REPLICA_CREDS = '/etc/support/auth/symboldb_replica_pg.json'
 
 class SDBAdditional:
     # paths to cache files and lua stdlib
+
     cache_conf = {
         'exchanges': {
             'expiry': dt.timedelta(days=3)
@@ -114,16 +120,32 @@ class SDBAdditional:
         }
     }
 
-    tree = []
     used_symbols = []
     used_symbols_demo =[]
     stock_rics = []
     execution_to_route = []
-    tree_df = pd.DataFrame()
+    selected_fields = {
+        'instruments': [
+            'id as _id',
+            'path as path',
+            '"isAbstract" as is_abstract'   
+        ],
+        'compiled_instruments': [
+            'type as type',
+            '"expiryTime" as expiry_time',
+            '"isExpired" as is_expired',
+            '"isTradable" as is_trading'
+        ],
+        'compiled_instruments_ids': [
+            '"dataId" as symbol_id'
+        ]
+    }
 
     def __init__(
             self,
             env: str = 'prod',
+            cred_file: str = REPLICA_CREDS,
+            engine: sqlalchemy.engine.Engine = None,
             sdb: SymbolDB = None,
             bo: BackOffice = None,
             nocache: bool = False,
@@ -146,12 +168,37 @@ class SDBAdditional:
             with open(self.lua_lib, 'r') as f:
                 self.lua.execute(f.read())
         except FileNotFoundError:
-            self.logger.warning(f'{self.lua_lib} not found! Lua templates compilation may not work')
+            self.logger.warning(
+                f'{self.lua_lib} not found! Lua templates compilation may not work'
+            )
         except lupa._lupa.LuaError as e:
             self.logger.warning(f'invalid {self.lua_lib} file: {e}')
             self.logger.warning('Lua templates compilation may not work')
+        if not engine:
+            engine = self.connect_replica(cred_file=cred_file)
+        self.engine = engine
         asyncio.run(self.__cached_lists())
         pass
+
+    def __repr__(self):
+        return f"SDBAdditional({self.env}), replica, async"
+
+    @staticmethod
+    def uuid2str(_id: Union[str, UUID]):
+        return str(_id).replace('-', '')
+
+    def connect_replica(
+            self,
+            db: str = 'symboldb',
+            cred_file: str = REPLICA_CREDS
+        ):
+        with open(cred_file, 'r') as f:
+            auth = json.load(f)
+        engine = create_engine(
+            f"postgresql+psycopg2://{auth['pguser']}:{auth['pgpass']}"
+            f"@warehouse-repl2.prod.zorg.sh:5438/{db}"
+        )
+        return engine
 
 
     async def __cached_lists(self):
@@ -182,8 +229,6 @@ class SDBAdditional:
         for i in range(2, 4):
             if not os.path.exists('/'.join(file_path[:i])):
                 os.mkdir('/'.join(file_path[:i]))
-
-
 
     async def __load_cache(self, list_name: SdbLists, env=None, silent=False, df=False):
         if df:
@@ -330,6 +375,61 @@ class SDBAdditional:
                 tasks.append(dummy(None))
         return await asyncio.gather(*tasks)
 
+    def __get_names(self, heirs: list[dict]):
+        ids = [f"'{x['_id']}'" for x in heirs]
+        extra_df = pd.read_sql(
+            f"SELECT id as _id, \"extraData\" as extra FROM instruments WHERE id in ({', '.join(ids)})",
+            self.engine,
+            index_col='_id'
+        )
+        for _id, row in extra_df.iterrows():
+            heir = next((x for x in heirs if x['_id'] == _id), None)
+            if heir is None:
+                continue
+            heir['name'] = row['extra'].get('name', '')
+
+    def __mk_query(
+            self,
+            selection: dict,
+            condition: str
+        ):
+        """
+        selection = {
+            table_name_1: [
+                field_1,
+                field_2
+            ],
+            table_name_2: [
+                field_3,
+                field_4
+            ]
+        }
+        """
+        sel = [
+            f'{table}.{field}' for table, fields
+            in selection.items() for field in fields
+        ]
+        query = f"SELECT {', '.join(sel)} FROM instruments"
+        for tab in ['compiled_instruments', 'compiled_instruments_ids']:
+            if selection.get(tab):
+                query += f' LEFT JOIN {tab} ON instruments.id = {tab}."instrumentId"'
+        query = query.replace(
+            'compiled_instruments_ids."dataId"',
+            'MIN(compiled_instruments_ids."dataId")'
+        )
+        if condition:
+            query += f' WHERE {condition}'
+        if 'MIN(' in query:
+            groupby = [
+                x.split(' as ')[0] for x
+                in sel
+                if x.split('.')[0] != 'instruments'
+                or x.split('.')[1][:2] == 'id'
+            ]
+            query += f" GROUP BY {', '.join(groupby)}"
+        return query
+
+
     def browse_folders(
             self,
             input_path: list = None,
@@ -358,13 +458,13 @@ class SDBAdditional:
             for num, h in enumerate(heirs):
                 if indent and num == len(heirs) - 1:
                     indent = indent[:-1] + indent_symbols['last']
-                if h['isTrading'] is False:
+                if h['is_trading'] is False:
                     state = state_symbols['not_trading']
                 elif self.isexpired(h):
                     state = state_symbols['expired']
                 else:
                     state = state_symbols['active']
-                if h.get('isAbstract'):
+                if h.get('is_abstract'):
                     heirs[num]['prefix'] = f"{state} {indent}»"
                 else:
                     heirs[num]['prefix'] = f"{state} {indent}·"
@@ -379,31 +479,20 @@ class SDBAdditional:
                 heirs.insert(0, p)
             heirs.append({'name': '..', '_id': '..', 'prefix': ''})
 
-        def filter_heirs(
-                row,
-                parent_id,
-                allowed: list = None
-            ) -> bool:
-            if len(row['path']) > 1 and row['path'][-2] == parent_id:
-                if allowed and row['name'] not in allowed:
-                    return False
-                return True
-            return False
-
         parents = []
         if not allowed:
             allowed = []
         if not input_path:
             input_path = []
-        asyncio.run(self.load_tree(fields=['expiryTime'], return_dict=False))
-        find_root = self.tree_df[self.tree_df['name'] == 'Root']
-        
-        root = find_root[
-            find_root.apply(
-                lambda x: len(x['path']) == 1,
-                axis=1
-            )
-        ].iloc[0].to_dict()
+        # asyncio.run(self.load_tree(fields=['expiryTime'], return_dict=False))        
+        root = pd.read_sql(
+            self.__mk_query(
+                self.selected_fields,
+                'cardinality(instruments.path) = 1'
+            ),
+            self.engine
+        ).iloc[0].to_dict()
+        self.__get_names([root])
 
         parents.append(root)
         parents[0].update({
@@ -413,11 +502,11 @@ class SDBAdditional:
         if input_path and input_path[0] in ['.', 'Root']:
             input_path.pop(0)
         initial_path = deepcopy(input_path)
-        search_df = self.tree_df
         while True:
+            params = []
             filter_allowed = None
-            is_trading = parents[-1].get('isTrading')
-            expiry_time = parents[-1].get('expiryTime')
+            is_trading = parents[-1].get('is_trading')
+            expiry_time = parents[-1].get('expiry_time')
             # go through the given path: pass the items one by one to the pick_from_list_tm
             # as "specify" argument
             pick = input_path.pop(0) if input_path else None
@@ -433,28 +522,44 @@ class SDBAdditional:
                     ), False) # ???? O__o
                 ):
                 filter_allowed = allowed
+                # self.tree_df[self.tree_df['isAbstract'] == True]
+            all_heirs_condition = (
+                f"instruments.path[{len(parents)}] = '{parents[-1]['_id']}' "
+                f"AND cardinality(instruments.path) = {len(parents) + 1}"
+            )
             if only_folders or len(input_path) > 1:
-                search_df = self.tree_df[self.tree_df['isAbstract'] == True]
-            all_heirs_df = search_df[
-                search_df.apply(
-                    lambda x: filter_heirs(
-                        x,
-                        parents[-1]['_id'],
-                        allowed=filter_allowed
-                    ),
-                    axis=1
-                )
-            ]
+                all_heirs_condition += ' AND instruments."isAbstract" = true'
+            all_heirs_df = pd.read_sql(
+                self.__mk_query(
+                    self.selected_fields,
+                    all_heirs_condition
+                ),
+                self.engine
+            )
+            # search_df[
+            #     search_df.apply(
+            #         lambda x: filter_heirs(
+            #             x,
+            #             parents[-1]['_id'],
+            #             allowed=filter_allowed
+            #         ),
+            #         axis=1
+            #     )
+            # ]
             # let's inherit isTrading and expiryTime
+            heirs = all_heirs_df.to_dict('records')
+            for h in heirs:
+                if h.get('is_trading') is None:
+                    h['is_trading'] = is_trading
+                if h.get('expiry_time') is None:
+                    h['expiry_time'] = expiry_time
+            self.__get_names(heirs)
             heirs = sorted(
-                all_heirs_df.to_dict('records'),
+                heirs,
                 key=lambda e: e['name']
             )
-            for h in heirs:
-                if h.get('isTrading') is None:
-                    h['isTrading'] = is_trading
-                if h.get('expiryTime') is None:
-                    h['expiryTime'] = expiry_time
+            if filter_allowed:
+                heirs = [x for x in heirs if x.get('name') in filter_allowed]
             
             # add some computor graphics
             decorate(parents, heirs)
@@ -486,7 +591,7 @@ class SDBAdditional:
             elif selected < len(parents) - 1:
                 parents = parents[:selected + 1]
             # if selected is not a folder or it is the lowest level parent return it
-            elif heirs[selected].get('isAbstract') == False or heirs[selected]['_id'] == parents[-1]['_id']:
+            elif heirs[selected].get('is_abstract') == False or heirs[selected]['_id'] == parents[-1]['_id']:
                 sym_id = (heirs[selected]['name'], heirs[selected]['_id'])
                 return sym_id
             else:
@@ -750,16 +855,21 @@ class SDBAdditional:
         """
         sym_uuid = None
         input_path = search_string.split('/')
-        tree = asyncio.run(self.load_tree(
-            fields=[
-                'expiryTime',
-                'description',
-                'type'
-            ]
-        ))
-        first_level = [
-            x['name'] for x in tree if len(x['path']) == 2
-        ]
+        # tree = asyncio.run(self.load_tree(
+        #     fields=[
+        #         'expiryTime',
+        #         'description',
+        #         'type'
+        #     ]
+        # ))
+        first_level = pd.read_sql(
+            'SELECT id as _id, path '
+            'FROM instruments '
+            'WHERE cardinality(path) = 2',
+            self.engine,
+            index_col='_id'
+        ).to_dict('records')
+        self.__get_names(first_level)
         first_level.append('.')
         # there is an option to browse the instrument through the instrument tree
         # dunno if it's really useful
@@ -774,7 +884,7 @@ class SDBAdditional:
                 'columns': [
                     browsed[0]
                 ],
-                '_id': browsed[1]
+                '_id': str(browsed[1]).replace('-', '')
             }
             return sym_uuid
         # another option is to directly specify the instrument uuid
@@ -995,7 +1105,7 @@ class SDBAdditional:
         check_cache = await self.__check_instrument_cache([symbol], cache)
         instrument = check_cache[0]
         if not instrument:
-            return result
+            return None
         for f in fields:
             if instrument.get(f) is not None:
                 if not isinstance(instrument[f], (list, dict)):
@@ -1661,19 +1771,31 @@ class SDBAdditional:
         :return: string of names connected with arrows
         """
         if isinstance(path, list):
-            gather = [self.uuid_to_name(x) for x in path]
+            id_list = [
+                {
+                    '_id': x if isinstance(x, UUID) else UUID(x)
+                } for x in path
+            ]
         elif isinstance(path, str):
             get_instr = asyncio.run(self.sdb.get(path))
             if not get_instr:
                 return None
-            get_path = get_instr['path']
-            gather = [self.uuid_to_name(x) for x in get_path]
+            id_list = [
+                {
+                    '_id': x if isinstance(x, UUID) else UUID(x)
+                } for x in get_instr['path']
+            ]
         elif isinstance(path, dict):
-            get_path = path.get('path', [])
-            if not get_path:
+            id_list = [
+                {
+                    '_id': x if isinstance(x, UUID) else UUID(x)
+                } for x in path.get('path', [])
+            ]
+            if not id_list:
                 return None
-            gather = [self.uuid_to_name(x) for x in get_path]
-        return " → ".join([x[0] for x in gather])
+        self.__get_names(id_list)
+        
+        return " → ".join([x['name'] for x in id_list])
 
     def uuid_to_name(self, uuid) -> tuple:
         """
@@ -1681,19 +1803,22 @@ class SDBAdditional:
         :param uuid: id of instrument
         :return: tuple of (name, uuid)
         """
-        tree_reload = False
-        while True:
-            asyncio.run(self.load_tree(reload_cache=tree_reload, return_dict=False))
-            try:
-                get_name = self.tree_df.at[uuid, 'name']
-                if not get_name:
-                    get_name = uuid
-                return get_name, uuid
-            except KeyError:
-                if not tree_reload:
-                    tree_reload = True
-                    continue
-                return uuid, uuid
+        try:
+            instr = [{
+                '_id': uuid if isinstance(uuid, UUID) else UUID(uuid)
+            }]
+        except ValueError:
+            self.logger.error(
+                f"{uuid=} is not a proper instrument _id"
+            )
+            return None, None
+        self.__get_names(instr)
+        instr = instr[0]
+        get_name = instr.get('name')
+        if get_name:
+            return get_name, uuid
+        else:
+            return uuid, uuid
 
 
     # fancy_dict group

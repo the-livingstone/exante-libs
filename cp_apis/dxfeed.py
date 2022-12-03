@@ -100,34 +100,35 @@ class DxFeed:
             if res.text == '':
                 logging.info(f'Received null-string from ipf! Result is: {res}')
             return res.text
-        else:
-            type_keys_tuples = {}
-            data = []
-            stream = self.session.get(url=self.ipf, params=params, stream=True)
-            for line in stream.iter_lines(decode_unicode=True):
-                if line == '' or line == '##':
-                    continue
-                decoded_line = next(csv.reader([line], skipinitialspace=True))
+        type_keys_tuples = {}
+        data = []
+        stream = self.session.get(url=self.ipf, params=params, stream=True)
+        for line in stream.iter_lines(decode_unicode=True):
+            if line == '' or line == '##':
+                continue
+            decoded_line = next(csv.reader([line], skipinitialspace=True))
 
-                if mode == 'list':
-                    data.append(decoded_line)
-                else:
-                    if decoded_line[0].startswith('#') and decoded_line[0].endswith('TYPE'):
-                        type_ = decoded_line[0].split('#')[1].split(':')[0]
-                        decoded_line[0] = 'TYPE'
-                        type_keys_tuples[type_] = decoded_line
-                    else:
-                        if type_keys_tuples and decoded_line:
-                            if decoded_line[0] in type_keys_tuples:
-                                data.append(dict(zip(type_keys_tuples[decoded_line[0]], decoded_line)))
-                        else:
-                            raise RuntimeError(
-                                'Did not find strings in ipf that define keys')
-            stream.close()
-            if len(data) == 0:
-                logging.info(f'Nothing found with params {params}, try using wildcards, like * or ?')
-
-            return data
+            if mode == 'list':
+                data.append(decoded_line)
+                continue
+            if decoded_line[0].startswith('#') and decoded_line[0].endswith('TYPE'):
+                type_ = decoded_line[0].split('#')[1].split(':')[0]
+                decoded_line[0] = 'TYPE'
+                type_keys_tuples[type_] = decoded_line
+                continue
+            if type_keys_tuples and decoded_line:
+                if decoded_line[0] in type_keys_tuples:
+                    data.append(dict(zip(type_keys_tuples[decoded_line[0]], decoded_line)))
+            else:
+                raise RuntimeError(
+                    'Did not find strings in ipf that define keys'
+                )
+        stream.close()
+        if len(data) == 0:
+            logging.info(
+                f'Nothing found with params {params}, try using wildcards, like * or ?'
+            )
+        return data
 
     def get_from_db(self, TYPE: list = None, SYMBOL: list = None, CURRENCY: list = None, mode: str = 'dict', **kwargs):
         if not self.engine:
@@ -185,17 +186,33 @@ class DxFeed:
         :return: list [dict1, dict2] or None
         """
         if self.engine:
-            data = self.get_from_db(['STOCK'], ticker, mode='list')
+            data = self.get_from_db(['STOCK'], ticker)
             return data
-        data = self.get(['STOCK'], ticker, mode='list')
-
-        if data:
-            scheme = self.load_scheme('TYPE', data.pop(0))
-            data = [{key: record[i] for i, key in enumerate(scheme)} for record in data if len(record) > 1]
-            if description:
-                data = [row for row in data if description in row['DESCRIPTION']]
-            return self.__select(data, cfi=cfi, isin=isin)
-        return []
+        data = self.get(['STOCK'], ticker, mode='dict')
+        data = [
+            row for row
+            in data
+            if (
+                not description
+                or description in row['DESCRIPTION']
+            ) and (
+                not isin
+                or isin == row.get('ISIN')
+            ) and (
+                not cfi
+                or all(
+                    row.get('CFI', '      ')[num] == x
+                    or row.get('CFI', '      ')[num] == 'X' for num, x
+                    in enumerate(cfi[:6])
+                )
+            )
+        ]
+        return data
+        # if data:
+        #     scheme = self.load_scheme('TYPE', data.pop(0))
+        #     data = [{key: record[i] for i, key in enumerate(scheme)} for record in data if len(record) > 1]
+        #     return self.__select(data, cfi=cfi, isin=isin)
+        # return []
 
     def search_etf(self, ticker: list = None, description=None, isin=None):
         """
@@ -208,15 +225,26 @@ class DxFeed:
         if self.engine:
             data = self.get_from_db(['ETF'], ticker)
             return data
-        data = self.get(['ETF'], ticker, mode='list')
-
-        if data:
-            scheme = self.load_scheme('TYPE', data.pop(0))
-            data = [{key: record[i] for i, key in enumerate(scheme)} for record in data if len(record) > 1]
-            if description:
-                data = [row for row in data if description in row['DESCRIPTION']]
-            return self.__select(data, isin=isin if self.scheme == 'EU' else None)
-        return []
+        data = self.get(['ETF'], ticker, mode='dict')
+        data = [
+            row for row
+            in data
+            if (
+                not description
+                or description in row['DESCRIPTION']
+            ) and (
+                not isin
+                or isin == row.get('ISIN')
+            )
+        ]
+        return data
+        # if data:
+        #     scheme = self.load_scheme('TYPE', data.pop(0))
+        #     data = [{key: record[i] for i, key in enumerate(scheme)} for record in data if len(record) > 1]
+        #     if description:
+        #         data = [row for row in data if description in row['DESCRIPTION']]
+        #     return self.__select(data, isin=isin if self.scheme == 'EU' else None)
+        # return []
 
     def search_future(self, ticker: list = None, products: list = None,
                       isin=None, description=None, mic=None, cfi=None):
@@ -233,15 +261,36 @@ class DxFeed:
         if self.engine:
             data = self.get_from_db(['FUTURE'], ticker, PRODUCT=products)
             return data
-        data = self.get(['FUTURE'], ticker, mode='list', PRODUCT=products)
-
-        if data:
-            scheme = self.load_scheme('TYPE', data.pop(0))
-            data = [{key: record[i] for i, key in enumerate(scheme)} for record in data if len(record) > 1]
-            if description:
-                data = [row for row in data if description in row['DESCRIPTION']]
-            return self.__select(data, cfi=cfi, opol=mic, isin=isin)
-        return []
+        data = self.get(['FUTURE'], ticker, mode='dict', PRODUCT=products)
+        data = [
+            row for row
+            in data
+            if (
+                not description
+                or description in row['DESCRIPTION']
+            ) and (
+                not isin
+                or isin == row.get('ISIN')
+            ) and (
+                not cfi
+                or all(
+                    row.get('CFI', '      ')[num] == x
+                    or row.get('CFI', '      ')[num] == 'X' for num, x
+                    in enumerate(cfi[:6])
+                )
+            ) and (
+                not mic
+                or mic == row.get('OPOL')
+            )
+        ]
+        return data
+        # if data:
+        #     scheme = self.load_scheme('TYPE', data.pop(0))
+        #     data = [{key: record[i] for i, key in enumerate(scheme)} for record in data if len(record) > 1]
+        #     if description:
+        #         data = [row for row in data if description in row['DESCRIPTION']]
+        #     return self.__select(data, cfi=cfi, opol=mic, isin=isin)
+        # return []
 
     def search_spread(self, ticker: list = None):
         """
@@ -252,13 +301,14 @@ class DxFeed:
         if self.engine:
             data = self.get_from_db(['SPREAD'], ticker)
             return data
-        data = self.get(['SPREAD'], ticker, mode='list')
+        data = self.get(['SPREAD'], ticker, mode='dict')
+        return data
 
-        if data:
-            scheme = self.load_scheme('TYPE', data.pop(0))
-            data = [{key: record[i] for i, key in enumerate(scheme)} for record in data if len(record) > 1]
-            return data
-        return []
+        # if data:
+        #     scheme = self.load_scheme('TYPE', data.pop(0))
+        #     data = [{key: record[i] for i, key in enumerate(scheme)} for record in data if len(record) > 1]
+        #     return data
+        # return []
 
     def search_option(self, ticker: list = None, products: list = None, description=None, mic=None, cfi=None):
         """
@@ -273,12 +323,30 @@ class DxFeed:
         if self.engine:
             data = self.get_from_db(['OPTION'], ticker, PRODUCT=products)
             return data
-        data = self.get(['OPTION'], ticker, mode='list', PRODUCT=products)
-
-        if data:
-            scheme = self.load_scheme('TYPE', data.pop(0))
-            data = [{key: record[i] for i, key in enumerate(scheme)} for record in data if len(record) > 1]
-            if description:
-                data = [row for row in data if description in row['DESCRIPTION']]
-            return self.__select(data, cfi=cfi, opol=mic)
-        return []
+        data = self.get(['OPTION'], ticker, mode='dict', PRODUCT=products)
+        data = [
+            row for row
+            in data
+            if (
+                not description
+                or description in row['DESCRIPTION']
+            ) and (
+                not cfi
+                or all(
+                    row.get('CFI', '      ')[num] == x
+                    or row.get('CFI', '      ')[num] == 'X' for num, x
+                    in enumerate(cfi[:6])
+                )
+            ) and (
+                not mic
+                or mic == row.get('OPOL')
+            )
+        ]
+        return data
+        # if data:
+        #     scheme = self.load_scheme('TYPE', data.pop(0))
+        #     data = [{key: record[i] for i, key in enumerate(scheme)} for record in data if len(record) > 1]
+        #     if description:
+        #         data = [row for row in data if description in row['DESCRIPTION']]
+        #     return self.__select(data, cfi=cfi, opol=mic)
+        # return []
