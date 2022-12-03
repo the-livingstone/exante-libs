@@ -12,6 +12,7 @@ gl, ci, mi, om, im, ix, ici, mm = ('global_information', 'country_information',
 
 
 IDENT = {
+    'id': etree.XPath('@id'),
     'isin': etree.XPath(f'{mi}/{ix}/*[@type_id="2"]/text()'),
     'figi': etree.XPath(f'{mi}/{ix}/*[@type_id="20"]/text()'),
     'sedol': etree.XPath(f'{mi}/{ix}/*[@type="SEDOL"]/text()'),
@@ -37,7 +38,6 @@ IDENT = {
     # Add path to values 
 }
 
-from libs.easy_func import count_dict_nested_values
 class ICEXmlParser:
     """ Class to parse XML from ICE Data Service
     """
