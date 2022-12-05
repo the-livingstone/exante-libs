@@ -1788,7 +1788,6 @@ class TickDB3:
     def quote_at(
             self,
             symbols: list,
-            data_type: str,
             timestamp: Union[str, datetime] = None
         ):
         """
@@ -1802,7 +1801,7 @@ class TickDB3:
             timestamp = parser.parse(timestamp)
         url = '/'.join(self.api_url(
             'quote',
-            marketdata=MarketData(data_type),
+            data_type=MarketData('quotes'),
             payload='history/quote_at/'
         ).split('/')[:-1])
         payload = [('symbol_id', s) for s in symbols]
