@@ -696,6 +696,7 @@ class SDBAdditional:
                         instrument['path'],
                         cache
                     )
+                    if x.get('path')
                 ],
                 key=lambda p: len(p['path'])
             )
@@ -707,6 +708,7 @@ class SDBAdditional:
                         instrument['path'][:-1],
                         cache
                     )
+                    if x.get('path')
                 ],
                 key=lambda p: len(p['path'])
             )
@@ -1124,18 +1126,26 @@ class SDBAdditional:
             if not parents:
                 if instrument.get('_id'):
                     parents = sorted(
-                        await self.__check_instrument_cache(
-                            instrument['path'],
-                            cache
-                        ),
+                        [
+                            x for x
+                            in await self.__check_instrument_cache(
+                                instrument['path'][:-1],
+                                cache
+                            )
+                            if x.get('path')
+                        ],
                         key=lambda p: len(p['path'])
                     )
                 else:
                     parents = sorted(
-                        await self.__check_instrument_cache(
-                            instrument['path'][:-1],
-                            cache
-                        ),
+                        [
+                            x for x
+                            in await self.__check_instrument_cache(
+                                instrument['path'],
+                                cache
+                            )
+                            if x.get('path')
+                        ],
                         key=lambda p: len(p['path'])
                     )
             value = next((
