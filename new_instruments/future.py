@@ -4,10 +4,10 @@ import logging
 import json
 from copy import copy, deepcopy
 from deepdiff import DeepDiff
-from pandas import DataFrame
+import pandas as pd
 from libs.async_symboldb import SymbolDB
 from libs.backoffice import BackOffice
-from libs.async_sdb_additional import SDBAdditional
+from libs.replica_sdb_additional import SDBAdditional
 from pprint import pformat, pp
 from typing import Union
 from libs.new_instruments import (
@@ -49,7 +49,6 @@ class Future(Derivative):
             bo: BackOffice = None,
             sdb: SymbolDB = None,
             sdbadds: SDBAdditional = None,
-            tree_df: DataFrame = None,
             env: str = 'prod'
         ):
         self.ticker = ticker
@@ -57,33 +56,24 @@ class Future(Derivative):
         (
             self.bo,
             self.sdb,
-            self.sdbadds,
-            self.tree_df
+            self.sdbadds
         ) = InitThemAll(
             bo,
             sdb,
             sdbadds,
-            tree_df,
-            env,
-            reload_cache=False
+            env
         ).get_instances
 
-        self.instrument_type = 'FUTURE'
-        self.instrument = instrument
         super().__init__(
             ticker=ticker,
             exchange=exchange,
             instrument_type='FUTURE',
-            instrument=self.instrument,
+            instrument=instrument,
+            reference=reference,
             bo=bo,
             sdb=sdb,
-            sdbadds=sdbadds,
-            tree_df=tree_df,
-            reload_cache=False
+            sdbadds=sdbadds
         )
-        if reference is None:
-            reference = {}
-        self.reference = reference
         self.skipped = set()
         self.allowed_expirations = []
 
@@ -114,8 +104,6 @@ class Future(Derivative):
             bo: BackOffice = None,
             sdb: SymbolDB = None,
             sdbadds: SDBAdditional = None,
-            tree_df: DataFrame = None,
-            reload_cache: bool = True,
             env: str = 'prod'
         ):
         """
@@ -124,35 +112,32 @@ class Future(Derivative):
         raises NoInstrumentError if ticker is not found for given exchange
         :param ticker:
         :param exchange:
-        :param parent_folder_id: specify in case of ambiguous results of finding series or series located not in Root → FUTURE folder,
+        :param parent_folder_id: specify in case of ambiguous results of finding series
+            or series located not in Root → FUTURE folder,
             feel free to leave empty
         :param bo: BackOffice class instance
         :param sdb: SymbolDB (async) class instance
         :param sdbadds: SDBAdditional class instance
-        :param tree_df: sdb tree DataFrame
-        :param reload_cache: load fresh tree_df if tree_df is not given in params
         :param env: environment
         """
-        bo, sdb, sdbadds, tree_df = InitThemAll(
+        bo, sdb, sdbadds = InitThemAll(
             bo,
             sdb,
             sdbadds,
-            tree_df,
-            env,
-            reload_cache=reload_cache
+            env
         ).get_instances
         if not parent_folder_id:
             parent_folder_id = get_uuid_by_path(
                 ['Root', 'FUTURE', exchange],
-                tree_df
+                sdbadds.engine
             )
             if not parent_folder_id:
                 raise NoExchangeError(f'{exchange=} does not exist in SymbolDB')
+            parent_folder_id = sdbadds.uuid2str(parent_folder_id)
         instrument, series_tree = Derivative._find_series(
             ticker,
             parent_folder_id,
             sdb=sdb,
-            tree_df=tree_df,
             env=env
         )
         if not instrument:
@@ -170,7 +155,6 @@ class Future(Derivative):
             bo=bo,
             sdb=sdb,
             sdbadds=sdbadds,
-            tree_df=tree_df,
             env=env
         )
 
@@ -186,48 +170,43 @@ class Future(Derivative):
             bo: BackOffice = None,
             sdb: SymbolDB = None,
             sdbadds: SDBAdditional = None,
-            tree_df: DataFrame = None,
-            reload_cache: bool = True,
             env: str = 'prod',
             **kwargs
         ):
         """
         creates new series document with given ticker, shortname and other fields as kwargs,
-        raises NoExchangeError if exchange does not exist in sdb,
-        raises NoInstrumentError if bad parent_folder_id was given,
-        raises RuntimeError if series exists in sdb and recreate=False
+            raises NoExchangeError if exchange does not exist in sdb,
+            raises NoInstrumentError if bad parent_folder_id was given,
+            raises RuntimeError if series exists in sdb and recreate=False
         :param ticker:
         :param exchange:
         :param shortname:
-        :param parent_folder_id: specify if new series should be placed in destination that is not the third level folder
+        :param parent_folder_id: specify if new series should be placed in destination
+            that is not the third level folder
             (i.e. other than Root → FUTURE → <<exchange>>)
         :param recreate: if series exists in sdb drop all settings and replace it with newly created document
         :param bo: BackOffice class instance
         :param sdb: SymbolDB (async) class instance
         :param sdbadds: SDBAdditional class instance
-        :param tree_df: sdb tree DataFrame
-        :param reload_cache: load fresh tree_df if tree_df is not given in params
         :param env: environment
         :param kwargs: fields, that could be validated via sdb_schemas
             deeper layer fields could be pointed using path divided by '/' e.g. {'identifiers/ISIN': value} 
 
         """
-        bo, sdb, sdbadds, tree_df = InitThemAll(
+        bo, sdb, sdbadds = InitThemAll(
             bo,
             sdb,
             sdbadds,
-            tree_df,
-            env,
-            reload_cache=reload_cache,
+            env
         ).get_instances
         if not parent_folder_id:
             parent_folder_id = get_uuid_by_path(
                 ['Root', 'FUTURE', exchange],
-                tree_df
+                sdbadds.engine
             )
             if not parent_folder_id:
                 raise NoExchangeError(f'{exchange=} does not exist in SymbolDB')            
-
+            parent_folder_id = sdbadds.uuid2str(parent_folder_id)
         parent_folder = asyncio.run(sdb.get(parent_folder_id))
         if not parent_folder or not parent_folder.get('isAbstract'):
             raise NoInstrumentError(f"Bad {parent_folder_id=}")
@@ -235,7 +214,6 @@ class Future(Derivative):
             ticker,
             parent_folder_id,
             sdb=sdb,
-            tree_df=tree_df,
             env=env
         )
         if reference:
@@ -269,7 +247,6 @@ class Future(Derivative):
             bo=bo,
             sdb=sdb,
             sdbadds=sdbadds,
-            tree_df=tree_df,
             env=env
         )
 
@@ -282,8 +259,6 @@ class Future(Derivative):
             bo: BackOffice = None,
             sdb: SymbolDB = None,
             sdbadds: SDBAdditional = None,
-            tree_df: DataFrame = None,
-            reload_cache: bool = True,
             env: str = 'prod'
         ):
         """
@@ -297,30 +272,37 @@ class Future(Derivative):
         :param bo: BackOffice class instance
         :param sdb: SymbolDB (async) class instance
         :param sdbadds: SDBAdditional class instance
-        :param tree_df: sdb tree DataFrame
-        :param reload_cache: load fresh tree_df if tree_df is not given in params
         :param env: environment
         :param kwargs: fields, that could be validated via sdb_schemas
             deeper layer fields could be pointed using path divided by '/' e.g. {'identifiers/ISIN': value} 
 
         """
 
-        bo, sdb, sdbadds, tree_df = InitThemAll(
+        bo, sdb, sdbadds = InitThemAll(
             bo,
             sdb,
             sdbadds,
-            tree_df,
-            env,
-            reload_cache=reload_cache
+            env
         ).get_instances
         if len(payload['path']) < 3:
             raise NoInstrumentError(f"Bad path: {payload.get('path')}")
-        check_parent_df = tree_df[tree_df['_id'] == payload['path'][-1]]
+        check_parent_df = pd.read_sql(
+            'SELECT id as _id, path '
+            'FROM instruments '
+            f"WHERE id = '{payload['path'][-2 if payload.get('_id') else -1]}'",
+            sdbadds.engine
+        )
+        # tree_df[tree_df['_id'] == payload['path'][-1]]
         if check_parent_df.empty:
             raise NoInstrumentError(f"Bad path: {payload.get('path')}")
-        if not check_parent_df.iloc[0]['path'] == payload['path']:
+        parent_path = [
+            sdbadds.uuid2str(x) for x
+            in check_parent_df.iloc[0]['path']
+        ]
+        future_fld_id = sdbadds.uuid2str(get_uuid_by_path(['Root', 'FUTURE'], sdbadds.engine))
+        if not parent_path == payload['path'][:len(parent_path)]:
             raise NoInstrumentError(f"Bad path: {sdbadds.show_path(payload.get('path'))}")
-        if payload['path'][1] != get_uuid_by_path(['Root', 'FUTURE'], tree_df):
+        if payload['path'][1] != future_fld_id:
             raise NoInstrumentError(f"Bad path: {sdbadds.show_path(payload.get('path'))}")
 
         if payload.get('_id') and payload['path'][-1] == payload['_id']:
@@ -329,12 +311,17 @@ class Future(Derivative):
             parent_folder_id = payload['path'][-1]
         ticker = payload.get('ticker')
         # get exchange folder _id from path (Root -> Future -> EXCHANGE), check its name in tree_df
-        exchange_df = tree_df[tree_df['_id'] == payload['path'][2]]
+        exchange_df = pd.read_sql(
+            'SELECT id as _id, "extraData" as extra '
+            'FROM instruments '
+            f"WHERE id = '{payload['path'][2]}'",
+            sdbadds.engine
+        )
         if exchange_df.empty:
             raise NoExchangeError(
                 f"Bad path: exchange folder with _id {payload['path'][2]} is not found"
             )
-        exchange = exchange_df.iloc[0]['name']
+        exchange = exchange_df.iloc[0]['extra']['name']
         parent_folder = asyncio.run(sdb.get(parent_folder_id))
         if not parent_folder or not parent_folder.get('isAbstract'):
             raise NoInstrumentError(f"Bad {parent_folder_id=}")
@@ -342,7 +329,6 @@ class Future(Derivative):
             ticker,
             parent_folder_id,
             sdb=sdb,
-            tree_df=tree_df,
             env=env
         )
         if reference:
@@ -366,7 +352,6 @@ class Future(Derivative):
             bo=bo,
             sdb=sdb,
             sdbadds=sdbadds,
-            tree_df=tree_df,
             env=env
         )
 
@@ -420,7 +405,7 @@ class Future(Derivative):
                 (
                     num for num, x
                     in enumerate(self.contracts)
-                    if x.instrument['_id'] == uuid
+                    if x._id == uuid
                 ),
                 None
             )
@@ -475,7 +460,7 @@ class Future(Derivative):
 
     def __update_existing_contract(
             self,
-            series,
+            series: 'Future',
             num: int,
             overwrite_old: bool = False,
             payload: dict = None,
@@ -488,9 +473,9 @@ class Future(Derivative):
                 payload.update({
                     key: val for key, val
                     in series.contracts[num].instrument.items()
-                    if key[0] == '_' or key in ['path', 'strikePrices']
+                    if key[0] == '_' or key in ['path']
                 })
-                series.contracts[num].instrument = payload
+                series.contracts[num]._instrument = payload
             else:
                 kwargs.update({
                     key: val for key, val
@@ -504,15 +489,13 @@ class Future(Derivative):
                     reference=series.contracts[num].reference
                     **kwargs
                 )
+        elif payload:
+            series.contracts[num]._instrument.update(payload)
         else:
-            if payload:
-                series.contracts[num].instrument.update(payload)
-            else:
-                for field, val in kwargs.items():
-                    series.contracts[num].set_field_value(val, field.split('/'))
+            for field, val in kwargs.items():
+                series.contracts[num].set_field_value(val, field.split('/'))
 
-        if series.contracts[num].instrument.get('isTrading'):
-            series.contracts[num].instrument.pop('isTrading')
+        series.contracts[num]._instrument.pop('isTrading', None)
         diff = series.contracts[num].get_diff()
         if diff:
             self.logger.info(
@@ -527,7 +510,7 @@ class Future(Derivative):
 
     def __create_new_contract(
             self,
-            series,
+            series: 'Future',
             exp_date: dt.date,
             maturity: str,
             payload: dict = None,
@@ -689,10 +672,10 @@ class Future(Derivative):
             if x.expiration >= dt.date.today()
             and x.get_diff()
         ]
-        self.instrument = self.reduce_instrument()
+        self.reduce_instrument()
         diff = DeepDiff(self.reference, self.instrument)
         # Create folder if need
-        if not self.instrument.get('_id'):
+        if not self._id:
             self.create(dry_run)
         elif diff:
             self.update(diff, dry_run)
@@ -769,15 +752,10 @@ class FutureExpiration(Instrument):
             future: Future,
             expiration: dt.date,
             maturity: str,
-            custom_fields: dict = None,
+            instrument: dict,
             reference: dict = None,
-            reload_cache: bool = False,
             **kwargs
         ):
-        if custom_fields is None:
-            custom_fields = {}
-        if reference is None:
-            reference = {}
         self.ticker = future.ticker
         self.exchange = future.exchange
         self.series_name = future.series_name
@@ -785,18 +763,16 @@ class FutureExpiration(Instrument):
 
         self.expiration = expiration
         self.maturity = maturity
-        self.instrument = custom_fields
-        self.instrument = self.get_instrument
+        self._instrument = instrument
 
-        self.reference = reference
         super().__init__(
-            instrument=self.instrument,
+            instrument=self.get_instrument,
+            reference=reference,
             instrument_type='FUTURE',
             parent=future,
             env=future.env,
             sdb=future.sdb,
-            sdbadds=future.sdbadds,
-            reload_cache=reload_cache
+            sdbadds=future.sdbadds
         )
         self.set_la_lt()
         for field, val in kwargs.items():
@@ -813,7 +789,6 @@ class FutureExpiration(Instrument):
             ],
             maturity: str = None,
             reference: dict = None,
-            reload_cache: bool = False,
             **kwargs
         ):
         if not reference:
@@ -824,8 +799,8 @@ class FutureExpiration(Instrument):
             future,
             expiration,
             maturity,
+            instrument={},
             reference=deepcopy(reference),
-            reload_cache=reload_cache,
             **kwargs
         )
 
@@ -835,22 +810,19 @@ class FutureExpiration(Instrument):
             future: Future,
             instrument: dict,
             reference: dict = None,
-            reload_cache: bool = False,
             **kwargs
         ):
         if not reference:
             reference = {}
-        if instrument.get('isTrading') is not None:
-            instrument.pop('isTrading')
+        instrument.pop('isTrading', None)
         expiration = Instrument.normalize_date(instrument.get('expiry', {}))
         maturity = Instrument.format_maturity(instrument.get('maturityDate', {}))
         return cls(
             future,
             expiration,
             maturity,
-            custom_fields=instrument,
+            instrument=instrument,
             reference=deepcopy(reference),
-            reload_cache=reload_cache,
             **kwargs
         )
 
@@ -881,9 +853,9 @@ class FutureExpiration(Instrument):
     @property
     def path(self) -> list[str]:
         if self.future.instrument.get('_id'):
-            p = deepcopy(self.future.instrument['path'])
+            p = self.future.instrument['path']
         else:
-            p = deepcopy(self.future.instrument['path']) + ['<<series_folder_id>>']
+            p = self.future.instrument['path'] + ['<<series_folder_id>>']
         if not self.instrument.get('_id'):
             return p
         return p + [self.instrument['_id']]
@@ -892,7 +864,7 @@ class FutureExpiration(Instrument):
     def get_custom_fields(self) -> dict:
         return {
             key: val for key, val
-            in self.instrument.items()
+            in self._instrument.items()
             if key not in [
                 'isAbstract',
                 'name',

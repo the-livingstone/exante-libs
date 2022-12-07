@@ -7,6 +7,7 @@ from enum import Enum
 from functools import reduce
 import operator
 import logging
+import pandas as pd
 from pandas import DataFrame
 from pprint import pformat
 from pydantic import BaseModel, Field, root_validator, validator
@@ -15,7 +16,7 @@ import re
 from typing import Union
 
 from libs.async_symboldb import SymbolDB
-from libs.async_sdb_additional import SDBAdditional, Months, SdbLists
+from libs.replica_sdb_additional import SDBAdditional, Months, SdbLists
 from libs.backoffice import BackOffice
 from libs import sdb_schemas_cprod as cdb_schemas
 from libs import sdb_schemas as sdb_schemas
@@ -38,31 +39,17 @@ class InitThemAll:
             bo: BackOffice = None,
             sdb: SymbolDB = None,
             sdbadds: SDBAdditional = None,
-            tree_df: DataFrame = None,
             env: str = 'prod',
-            reload_cache: bool = True,
             test: bool = False
         ):
         self.env = env
         self.sdb = sdb if sdb else SymbolDB(self.env)
         self.bo = bo if bo else BackOffice(env=self.env)
         self.sdbadds = sdbadds if sdbadds else SDBAdditional(self.env, sdb=sdb, test=test)
-        if tree_df is not None and not tree_df.empty:
-            self.sdbadds.tree_df = tree_df
-            self.tree_df = tree_df
-        else:
-            asyncio.run(
-                self.sdbadds.load_tree(
-                    fields=['expiryTime'],
-                    reload_cache=reload_cache,
-                    return_dict=False
-                )
-            )
-            self.tree_df = self.sdbadds.tree_df
     
     @property
     def get_instances(self):
-        return self.bo, self.sdb, self.sdbadds, self.tree_df
+        return self.bo, self.sdb, self.sdbadds
 
 class SetSectionId(BaseModel):
     exchange_id: str = Field(
@@ -304,38 +291,59 @@ stock_exchange_mapping = {
     'BZ': 'BM&F BoveSpa'
 }
 
-def get_uuid_by_path(input_path: list, df: DataFrame) -> str:
-    path = deepcopy(input_path)
-    # get instruments with the same name as last one in path
-    candidates = df[df['name'] == path.pop(-1)]
-    # filter candidates by path length: it should be the same as input path
-    candidates = candidates[
-        candidates.apply(
-                        lambda x: len(x['path']) == len(input_path),
-                        axis=1
-                    )
-    ]
-    while len(path) > 0:
-        parent_name = path.pop(-1)
-        # same procedure as for candidates: filter by name and then by path length
-        possible_parents = df[df['name'] == parent_name]
-        if possible_parents.empty:
+# def get_uuid_by_path(input_path: list, df: DataFrame) -> str:
+#     path = deepcopy(input_path)
+#     # get instruments with the same name as last one in path
+#     candidates = df[df['name'] == path.pop(-1)]
+#     # filter candidates by path length: it should be the same as input path
+#     candidates = candidates[
+#         candidates.apply(
+#                         lambda x: len(x['path']) == len(input_path),
+#                         axis=1
+#                     )
+#     ]
+#     while len(path) > 0:
+#         parent_name = path.pop(-1)
+#         # same procedure as for candidates: filter by name and then by path length
+#         possible_parents = df[df['name'] == parent_name]
+#         if possible_parents.empty:
+#             return None
+#         possible_parents = possible_parents[
+#             possible_parents.apply(
+#                 lambda x: len(x['path']) == len(path) + 1,
+#                 axis=1
+#         )]
+#         candidates = candidates[
+#             candidates.apply(
+#                 lambda x: x['path'][len(path)] in possible_parents.index,
+#                 axis=1
+#             )
+#         ]    
+#     if candidates.shape[0] == 1:
+#         return candidates.iloc[0]['_id']
+#     else:
+#         return None
+
+def get_uuid_by_path(input_path: list, engine) -> str:
+    ids = []
+    for num, p in enumerate(input_path):
+        conditions = [f"path[{id_num+1}] = '{str(x)}'" for id_num, x in enumerate(ids)]
+        conditions.append(f'cardinality(path) = {num+1}')
+        records_df = pd.read_sql(
+            'SELECT id as _id, "extraData" as extra FROM instruments '
+            f'WHERE {" AND ".join(conditions)}',
+            engine
+        )
+        records_df['name'] = records_df.apply(
+            lambda row: row['extra'].get('name'),
+            axis=1
+        )
+        found_df = records_df[records_df['name'] == p]
+        if found_df.empty:
+            logging.error(f"Path {' → '.join(map(str, input_path))} does not exist in sdb")
             return None
-        possible_parents = possible_parents[
-            possible_parents.apply(
-                lambda x: len(x['path']) == len(path) + 1,
-                axis=1
-        )]
-        candidates = candidates[
-            candidates.apply(
-                lambda x: x['path'][len(path)] in possible_parents.index,
-                axis=1
-            )
-        ]    
-    if candidates.shape[0] == 1:
-        return candidates.iloc[0]['_id']
-    else:
-        return None
+        ids.append(found_df.iloc[0]['_id'])
+    return ids[-1] if ids else None
 
 
 class Instrument:
@@ -344,66 +352,59 @@ class Instrument:
             # general
             schema: BaseModel = None,
             instrument: dict = None,
+            reference: dict = None,
             instrument_type: str = None,
-            parent = None, # also Instrument
+            parent: 'Instrument' = None, # also Instrument
             env: str = 'prod',
 
             bo: BackOffice = None,
             sdb: SymbolDB = None,
             sdbadds: SDBAdditional = None,
-            tree_df: DataFrame = None,
-            reload_cache: bool = False,
-
             **kwargs
         ):
         self.env = env
-        self.bo, self.sdb, self.sdbadds, self.tree_df = InitThemAll(
+        self.bo, self.sdb, self.sdbadds = InitThemAll(
             bo,
             sdb,
             sdbadds,
-            tree_df,
             env,
-            reload_cache=reload_cache
         ).get_instances
         
         # set schema
         if schema:
             self.schema = schema
-            self.instrument_type = self.__set_instrument_type_by_schema(
+            self._instrument_type = self.__set_instrument_type_by_schema(
                 schema
             )
-        else:
+        elif instrument_type:
+            self._instrument_type = self.__set_instrument_type(
+                instrument_type
+            )
             if instrument_type == 'SPREAD':
                 self.schema = set_schema[env]['SPREAD']
-                self.instrument_type = self.__set_instrument_type(
-                    instrument_type
-                )
-            elif instrument_type:
-                self.instrument_type = self.__set_instrument_type(
-                    instrument_type
-                )
-                self.schema = set_schema[env][self.instrument_type]
-            elif instrument:
-                self.instrument_type = self.__set_instrument_type_by_payload(
-                    instrument,
-                    self.sdbadds
-                )
-                self.schema = set_schema[env][self.instrument_type]
             else:
-                raise RuntimeError(
-                f'Instrument type could not be defined'
+                self.schema = set_schema[env][self._instrument_type]
+        elif instrument:
+            self._instrument_type = self.__set_instrument_type_by_payload(
+                instrument,
+                self.sdbadds
             )
+            self.schema = set_schema[env][self._instrument_type]
+        else:
+            raise RuntimeError(
+            f'Instrument type could not be defined'
+        )
         self.navi: sdb_schemas.SchemaNavigation = set_schema[env]['navigation'](self.schema)
 
         # set instrument
-        if instrument is None:
-            instrument = {}
-        elif isinstance(instrument, str):
-            instrument = asyncio.run(sdb.get(instrument))
-        self.set_instrument(instrument, parent)
+        self.set_instrument(instrument, parent, reference)
 
     def __repr__(self):
         return f"Instrument({self.instrument_type}, {self.schema.__name__})"
+
+    @property
+    def instrument_type(self) -> str:
+        return self._instrument_type
 
     @staticmethod
     def __set_instrument_type_by_schema(
@@ -577,30 +578,50 @@ class Instrument:
     def logger(self):
         return logging.getLogger(f"{self.__class__.__name__}")
 
-    def set_instrument(self, instrument: dict, parent = None):
-        self.instrument = instrument
-        if parent:
-            self.compiled_parent = asyncio.run(self.sdbadds.build_inheritance(
+    @property
+    def instrument(self):
+        return deepcopy(self._instrument)
+
+    @property
+    def reference(self):
+        return deepcopy(self._reference)
+
+    @property
+    def _id(self) -> str:
+        return self._instrument.get('_id', '')
+
+    @property
+    def compiled_parent(self):
+        if self._parent:
+            return asyncio.run(self.sdbadds.build_inheritance(
                 [
-                    parent.compiled_parent,
-                    parent.instrument
+                    self._parent.compiled_parent,
+                    self._parent.instrument
                 ], include_self=True
             ))
-        elif self.instrument.get('_id'):
-            self.compiled_parent = asyncio.run(self.sdbadds.build_inheritance(
-                self.instrument['path'][-2], include_self=True
+        if 'path' in self.__dir__():
+            use_path = self.path
+        else:
+            use_path = self._instrument.get('path', [])
+        
+        if self._id:
+            return asyncio.run(self.sdbadds.build_inheritance(
+                use_path[-2], include_self=True
             ))
-        elif self.instrument.get('path'):
-            self.compiled_parent = asyncio.run(self.sdbadds.build_inheritance(
-                self.instrument['path'][-1], include_self=True
+        elif use_path:
+            return asyncio.run(self.sdbadds.build_inheritance(
+                use_path[-1], include_self=True
             ))
         else:
-            try:
-                self.compiled_parent = asyncio.run(self.sdbadds.build_inheritance(
-                    self.path, include_self=True
-                ))
-            except AttributeError:
-                self.compiled_parent = {}
+            return {}
+
+
+    def set_instrument(self, instrument: dict, parent = None, reference: dict = None):
+        if isinstance(instrument, str):
+            instrument = asyncio.run(self.sdb.get(instrument))
+        self._instrument = instrument if instrument else {}
+        self._parent = parent
+        self._reference = reference if reference else asyncio.run(self.sdb.get(self._id))
 
     def force_tree_reload(self, fields: list = None):
         if not fields:
@@ -616,7 +637,7 @@ class Instrument:
         ))
         self.tree_df = self.sdbadds.tree_df
 
-    def reduce_instrument(self) -> dict:
+    def reduce_instrument(self):
         preserve = [
             'gatewayId',
             'accountId',
@@ -756,7 +777,6 @@ class Instrument:
                         reduced_list.append(reduced_member)
             return reduced_list if reduced_list else None
 
-
         def go_deeper(child, sibling):
             if isinstance(child, dict):
                 return process_dict(child, sibling)
@@ -776,7 +796,7 @@ class Instrument:
                 return child
                     
         reduced_instrument = go_deeper(self.instrument, self.compiled_parent)
-        return reduced_instrument
+        self._instrument = reduced_instrument
 
     def validate_instrument(self):
         if self.compiled_parent:
@@ -801,8 +821,8 @@ class Instrument:
             }
 
     def post_instrument(self, dry_run: bool = False):
-        if self.instrument.get('_id'):
-            diff = DeepDiff(self.instrument, asyncio.run(self.sdb.get(self.instrument['_id'])))
+        if self._id:
+            diff = DeepDiff(self.instrument, self.reference)
             if diff:
                 self.logger.info(f"{self.instrument['name']}: following changes have been made:")
                 self.logger.info(pformat(diff))
@@ -814,7 +834,7 @@ class Instrument:
                     else:
                         print('Validation passed, updated instrument:')
                         self.sdbadds.fancy_print(self.instrument)
-                        return {'_id': True}
+                        return {'_id': self._id, '_rev': True}
                 else:
                     return validation
         else:
@@ -826,7 +846,7 @@ class Instrument:
                 else:
                     print('Validation passed, new instrument:')
                     self.sdbadds.fancy_print(self.instrument)
-                    return {'_id': True}
+                    return {'_id': True, '_rev': True}
             else:
                 return validation
         return response
@@ -842,15 +862,22 @@ class Instrument:
             self.logger.info('Waiting for sdb...')
             sleep(wait_time)
 
-
     def create_new_section(
             self,
             exchange_id: str,
             schedule_id: str,
             dry_run: bool = False
         ):
-        exchange_name = next((x[0] for x in ValidationLists.exchanges if x[1] == exchange_id), None)
-        schedule_name = next((x[0] for x in ValidationLists.schedules if x[1] == schedule_id), None)
+        exchange_name = next((
+            x[0] for x
+            in ValidationLists.exchanges
+            if x[1] == exchange_id
+        ), None)
+        schedule_name = next((
+            x[0] for x
+            in ValidationLists.schedules
+            if x[1] == schedule_id
+        ), None)
         if exchange_name and schedule_name:
             new_section = {
                 "exchangeId": exchange_id,
@@ -883,7 +910,7 @@ class Instrument:
         try:
             validated = SetSectionId(**compiled)
             if compiled.get('sectionId') != validated.section_id:
-                self.instrument['sectionId'] = validated.section_id
+                self._instrument['sectionId'] = validated.section_id
             return True
         except ValidationError as valerr:
             errors = [v['msg'] for v in valerr.errors()]
@@ -902,7 +929,7 @@ class Instrument:
                 dry_run
             )
             if result.get('_id'):
-                self.instrument['sectionId'] = result['_id']
+                self._instrument['sectionId'] = result['_id']
                 return True
             return False
 
@@ -912,7 +939,12 @@ class Instrument:
             if len(props) == 1:
                 return props[0]
             elif path[-1] in kwargs:
-                props = next(x for x in props if x.get('type') == kwargs[path[-1]] or x.get('title') == kwargs[path[-1]])
+                props = next(
+                    x for x
+                    in props
+                    if x.get('type') == kwargs[path[-1]]
+                    or x.get('title') == kwargs[path[-1]]
+                )
                 return props
             elif not props:
                 self.logger.warning(f'Nothing is found for {path}')
@@ -925,6 +957,83 @@ class Instrument:
         except KeyError as e:
             self.logger.warning(e)
             return {}
+
+    def set_fields(self, payload: dict, **kwargs):
+        def update_list(part, path, opts, **kwargs):
+            for item in part:
+                if not isinstance(item, (dict, list)):
+                    if item not in self.get_part(self.instrument, path):                
+                        if opts and item not in opts:
+                            self.logger.warning(
+                                f'{item} is not in list of possible values for {path[-1]}, not updated'
+                            )
+                            continue
+                        self.get_part(self._instrument, path).append(item)
+                elif isinstance(item, list):
+                    self.logger.error(
+                            f'Updating list of lists is not implemented, sorry'
+                        )
+                else:
+                    id_key = next((x for x in item.keys() if str(x).endswith('Id')), None)
+                    if not id_key:
+                        self.logger.error(
+                            f'Cannot update list of dicts {path[-1]}'
+                        )
+                        continue
+                    present = next((
+                        num for num, x
+                        in enumerate(self.get_part(self._instrument, path))
+                        if x.get(id_key) == item[id_key]
+                    ), None)
+                    if present is not None:
+                        result = go_deeper(item, path + [present], **kwargs)
+                    elif kwargs.get(path[-1]) in ['first', 'head', 'beginning']:
+
+                        self.get_part(self._instrument, path).insert(0, {id_key: item.pop(id_key)})
+                        go_deeper(item, path + [0], **kwargs)
+                    else:
+                        self.get_part(self._instrument, path).append({id_key: item.pop(id_key)})
+                        eol = len(self.get_part(self._instrument, path)) - 1
+                        go_deeper(item, path + [eol], **kwargs)
+                    
+
+        def go_deeper(part, path: list = None, **kwargs):
+            field_props = self.get_field_properties(path, **kwargs)
+            if not field_props:
+                return False
+            # prepare the place in dict
+            if isinstance(part, bool) and type_mapping[field_props['type']] != bool:
+                self.logger.warning(
+                    f"{part} is wrong type (should be {type_mapping[field_props['type']]})"
+                )
+                return False
+            try:
+                part = type_mapping[field_props['type']](part)
+            except ValueError:
+                self.logger.warning(
+                    f"{part} is wrong type (should be {type_mapping[field_props['type']]})"
+                )
+                return False
+            except TypeError:
+                self.logger.warning(f"{'/'.join(path)} is set to None")
+            self.__check_n_create(path, **kwargs)
+            opts = []
+            if field_props.get('opts_list'):
+                if all(isinstance(x, str) for x in field_props['opts_list']):
+                    opts = field_props['opts_list']
+                elif all(isinstance(x, tuple) for x in field_props['opts_list']):
+                    opts = [x[1] for x in field_props['opts_list']]
+            if isinstance(part, dict):
+                for key, val in part.items():
+                    result = go_deeper(val, path + [key], **kwargs)
+            elif isinstance(part, list):
+                result = update_list(part, path, opts, **kwargs)
+            else:
+                self.get_part(self._instrument, path[:-1])[path[-1]] = part
+        for key, val in payload.items():
+            go_deeper(val, [key], **kwargs)
+
+
     
     def set_field_value(self, value, path: list = [], **kwargs):
         # path should include the field name
@@ -936,26 +1045,36 @@ class Instrument:
             return False
         # prepare the place in dict
         if isinstance(value, bool) and type_mapping[field_props['type']] != bool:
-            self.logger.warning(f"{value} is wrong type (should be {type_mapping[field_props['type']]}")
+            self.logger.warning(
+                f"{value} is wrong type (should be {type_mapping[field_props['type']]})"
+            )
             return False
         try:
             value = type_mapping[field_props['type']](value)
         except ValueError:
-            self.logger.warning(f"{value} is wrong type (should be {type_mapping[field_props['type']]}")
+            self.logger.warning(
+                f"{value} is wrong type (should be {type_mapping[field_props['type']]})"
+            )
             return False
         except TypeError:
             self.logger.warning(f"{'/'.join(path)} is set to None")
         self.__check_n_create(path, **kwargs)
         if field_props.get('opts_list'):
-            if isinstance(field_props['opts_list'][0], str) and value not in field_props['opts_list']:
-                self.logger.warning(f'{value} is not in list of possible values for {path[-1]}, not updated')
+            if isinstance(field_props['opts_list'][0], str) \
+                and value not in field_props['opts_list']:
+                
+                self.logger.warning(
+                    f'{value} is not in list of possible values for {path[-1]}, not updated'
+                )
                 return False
             if isinstance(field_props['opts_list'][0], tuple) \
                 and value not in [x[1] for x in field_props['opts_list']]:
 
-                self.logger.warning(f'{value} is not in list of possible values for {path[-1]}, not updated')
+                self.logger.warning(
+                    f'{value} is not in list of possible values for {path[-1]}, not updated'
+                )
                 return False
-        self.get_part(self.instrument, path[:-1])[path[-1]] = value
+        self.get_part(self._instrument, path[:-1])[path[-1]] = value
         # should not be anything beyond that so terminate
         return True
 
@@ -976,7 +1095,7 @@ class Instrument:
                 }
             }
           but you always could help pointing out the path divided by '/':
-          (provider='REUTERS', {'reutersProperties/quoteRic/base': 'JGL'})
+          (provider='REUTERS', **{'reutersProperties/quoteRic/base': 'JGL'})
         · if it happens that feed provider has the same name as broker provider
           (e.g. LAMBDA or HTTP) you could pass additional kwarg broker=True or feed=True
 
@@ -997,25 +1116,37 @@ class Instrument:
         elif broker_provider_id and kwargs.get('feed') != True:
             additional = ['brokers', 'providerOverrides', broker_provider_id]
         else:
-            self.logger.warning(f'{provider} is not found in available feed or broker providers')
+            self.logger.warning(
+                f'{provider} is not found in available feed or broker providers'
+            )
             return False
         success = dict()
         for prop, val in kwargs.items():
             if prop in ['feed', 'broker']:
                 success.update({prop: val})                
                 continue
-            field_type = next(x for x, y in type_mapping.items() if y == type(val))
+            field_type = next(
+                x for x, y
+                in type_mapping.items()
+                if y == type(val)
+            )
             path = self.navi.find_path(prop, field_type, *additional)
             if not path:
                 self.logger.warning(f'Cannot find a path to {prop}')
                 return False
             # replace dummy
             path[2] = additional[-1]
-            prop_type = {path[-1]: mapped for mapped, x in type_mapping.items() if isinstance(val, x)}
+            prop_type = {
+                path[-1]: mapped for mapped, x
+                in type_mapping.items()
+                if isinstance(val, x)
+            }
             if self.set_field_value(val, path, **prop_type):
                 success.update({prop: val})
             else:
-                self.logger.warning(f'{prop}: {val} is not written to the instrument')
+                self.logger.warning(
+                    f'{prop}: {val} is not written to the instrument'
+                )
         return True if success == kwargs else False
     
     def get_provider_overrides(
@@ -1030,7 +1161,8 @@ class Instrument:
         quite uncomfortable, so this method is intended to help dig out fields of interest
         :param provider: human readable provider name UPPER CASE, e.g DXFEED or BLOOMBERG
         :param silent: don't show warning messages on not found paths
-        :param args: fields of interest, could be provided with some last items of path divided by '/', e.g. 'ric/suffix'
+        :param args: fields of interest, could be provided with some last items of path divided by '/',
+            e.g. 'ric/suffix'
         :return: list of field values same length and order as args
         '''
         feed_provider_id = next((
@@ -1085,12 +1217,12 @@ class Instrument:
         elif compiled:
             routes = asyncio.run(
                 self.sdbadds.build_inheritance(
-                    self.instrument,
+                    self._instrument,
                     include_self=True
                 )
             ).get('brokers', {}).get('accounts', [])
         else:
-            routes = self.instrument.get('brokers', {}).get('accounts', [])
+            routes = self._instrument.get('brokers', {}).get('accounts', [])
         result = []
         for r in routes:
             route_name = next((
@@ -1124,9 +1256,9 @@ class Instrument:
             }
         }
         '''
-        part = self.instrument
+        part = self._instrument
         for num, p in enumerate(path):
-            if num < len(path) - 1:
+            if num < len(path) - 1 and isinstance(p, str):
                 kwargs.update({p: 'object'})
             lookup = self.get_field_properties(path[:num+1], **kwargs)
             if isinstance(part, dict) and not part.get(p):
@@ -1145,21 +1277,29 @@ class Instrument:
                         good_ones = list()
                         for item in p:
                             if lookup.get('opts_list') and item not in lookup['opts_list']:
-                                self.logger.warning(f'{item} is not in list of possible values for {path[num-1]}, not added')
+                                self.logger.warning(
+                                    f'{item} is not in list of possible values for {path[num-1]}, not added'
+                                )
                                 continue
                             if type(item) != item_type:
-                                self.logger.warning(f'{item} is wrong type for {path[num-1]} (should be {item_type}), not added')
+                                self.logger.warning(
+                                    f'{item} is wrong type for {path[num-1]} (should be {item_type}), not added'
+                                )
                                 continue
                             good_ones.append(item)
-                        self.get_part(self.instrument, path[:num-1])[path[num-1]] = good_ones
+                        self.get_part(self._instrument, path[:num-1])[path[num-1]] = good_ones
                     else:
                         if lookup.get('opts_list') and p not in lookup['opts_list']:
-                            self.logger.warning(f'{p} is not in list of possible values for {path[num-1]}, not added')
+                            self.logger.warning(
+                                f'{p} is not in list of possible values for {path[num-1]}, not added'
+                            )
                             return None
                         if type(p) != item_type:
-                            self.logger.warning(f'{p} is wrong type for {path[num-1]} (should be {item_type}), not added')
+                            self.logger.warning(
+                                f'{p} is wrong type for {path[num-1]} (should be {item_type}), not added'
+                            )
                             return None
-                        self.get_part(self.instrument, path[:num-1])[path[num-1]].append(p)
+                        self.get_part(self._instrument, path[:num-1])[path[num-1]].append(p)
 
                 elif not isinstance(p, int):
                     self.logger.warning(f"{path[num-1]} is a list, {p} should be an integer")
@@ -1171,12 +1311,12 @@ class Instrument:
                 try:
                     value = type_mapping[lookup['type']](p)
                 except ValueError:
-                    self.logger.warning(f"{p} is wrong type (should be {type_mapping[lookup['type']]}")
+                    self.logger.warning(f"{p} is wrong type (should be {type_mapping[lookup['type']]})")
                     return None
                 if lookup.get('opts_list') and value not in lookup['opts_list']:
                     self.logger.warning(f'{value} is not in list of possible values for {path[num-1]}, not updated')
                     return None
-                self.get_part(self.instrument, path[:num-1])[path[num-1]] = value
+                self.get_part(self._instrument, path[:num-1])[path[num-1]] = value
                 # should not be anything beyond that so terminate
                 return None
-            part = self.get_part(self.instrument, path[:num+1])
+            part = self.get_part(self._instrument, path[:num+1])

@@ -11,7 +11,7 @@ from pandas import DataFrame
 from libs.backoffice import BackOffice
 from libs.monitor import Monitor
 from libs.async_symboldb import SymbolDB
-from libs.async_sdb_additional import SDBAdditional, SdbLists
+from libs.replica_sdb_additional import SDBAdditional, SdbLists
 from pprint import pformat, pp
 from libs.new_instruments import (
     Instrument,
@@ -199,7 +199,6 @@ class Derivative(Instrument):
     · reference — unchanging copy of sdb instrument to compare if any changes were provided hence instrument should be updated
       empty dict in case of new instrument
     · bo, sdb, sdbadds — BackOffice, SymbolDB (async), SDBAdditional (async) class instances respectively
-    · tree_df — sdb tree DataFrame with limited fields
     · set_la, set_lt — flags showing if lastAvailableDate and lastTradingDate should be set on every contract.
       False if don't set, time string (e.g. 12:00:00) otherwise
     · parent_folder — third level or deeper folder dict, containing series (e.g Root → FUTURE → CME or Root → FUTURE → CME → Equity)
@@ -218,39 +217,35 @@ class Derivative(Instrument):
             exchange: str,
             instrument_type: str,
             instrument: dict,
+            reference: dict = None,
+            parent: Instrument = None,
             env: str = 'prod',
             bo: BackOffice = None,
             sdb: SymbolDB = None,
             sdbadds: SDBAdditional = None,
-            tree_df: DataFrame = None,
             # init parameters
-            reload_cache: bool = True,
             **kwargs
         ):
         self.env = env
-        self.bo, self.sdb, self.sdbadds, self.tree_df = InitThemAll(
+        self.bo, self.sdb, self.sdbadds = InitThemAll(
             bo,
             sdb,
             sdbadds,
-            tree_df,
-            env,
-            reload_cache=reload_cache
+            env
         ).get_instances
-        self.instrument_type = instrument_type
-        self.instrument = instrument
         self.ticker = ticker
         self.exchange = exchange
         self.set_la = False
         self.set_lt = False
         super().__init__(
-            instrument=self.instrument,
+            instrument=instrument,
+            reference=reference,
             instrument_type=self.instrument_type,
+            parent=parent,
             env=self.env,
 
             sdb=self.sdb,
             sdbadds=self.sdbadds,
-            tree_df=self.tree_df,
-            reload_cache=reload_cache,
             option_type=kwargs.get('option_type'),
             calendar_type=kwargs.get('calendar_type')
         )
@@ -297,8 +292,6 @@ class Derivative(Instrument):
             parent_folder_id: str,
             parent_tree: list[dict] = None,
             sdb: SymbolDB = None,
-            tree_df: DataFrame = None,
-            reload_cache: bool = True,
             env: str = 'prod'
         ):
         """
@@ -307,18 +300,14 @@ class Derivative(Instrument):
         :param parent_folder_id: _id of third level or deeper folder, containing series
         :param parent_tree: series_tree of monthly series related to weekly series
         :param sdb: SymbolDB (async) class instance
-        :param tree_df: sdb tree DataFrame
-        :param reload_cache: reload tree_df if tree_df was not passed as param
         :param env: environment
         :return: pair of series instrument dict and series_tree 
         """
-        bo, sdb, sdbadds, tree_df = InitThemAll(
+        bo, sdb, sdbadds = InitThemAll(
             bo=None,
             sdb=sdb,
             sdbadds=None,
-            tree_df=tree_df,
-            env=env,
-            reload_cache=reload_cache
+            env=env
         ).get_instances
         if parent_tree and parent_folder_id:
             instrument = next((
@@ -351,7 +340,6 @@ class Derivative(Instrument):
                 ticker,
                 parent_folder_id,
                 sdb=sdb,
-                tree_df=tree_df,
                 env=env
             )
         return instrument, series_tree
@@ -361,8 +349,7 @@ class Derivative(Instrument):
             ticker: str,
             parent_folder_id: str,
             sdb: SymbolDB = None,
-            tree_df: DataFrame = None,
-            reload_cache: bool = True,
+            sdbadds: SDBAdditional = None,
             env: str = 'prod'
         ):
         """
@@ -370,37 +357,37 @@ class Derivative(Instrument):
         :param ticker: series ticker (monthly or weekly)
         :param parent_folder_id: _id of third level or deeper folder, containing series
         :param sdb: SymbolDB (async) class instance
-        :param tree_df: sdb tree DataFrame
-        :param reload_cache: reload tree_df if tree_df was not passed as param
         :param env: environment
         :return: pair of series instrument dict and series_tree 
         """
-        bo, sdb, sdbadds, tree_df = InitThemAll(
+        bo, sdb, sdbadds = InitThemAll(
             bo=None,
             sdb=sdb,
-            sdbadds=None,
-            tree_df=tree_df,
+            sdbadds=sdbadds,
             env=env,
-            reload_cache=reload_cache
         ).get_instances
-        same_name = tree_df.loc[
-            (tree_df['name'] == ticker)
-            & (tree_df['isAbstract'] == True)
-        ]
-        if not same_name.empty:
-            same_parent = same_name[
-                same_name.apply(
-                    lambda x: parent_folder_id in x['path'],
-                    axis=1
-                )
-            ]
-            instr_id = same_parent.iloc[0]['_id'] if not same_parent.empty else None
-        else:
-            instr_id = None
+        pf_path_len = pd.read_sql(
+            "SELECT cardinality(path) as path_len "
+            "FROM instruments "
+            f"WHERE id = '{parent_folder_id}'",
+            sdbadds.engine
+        ).iloc[0]['path_len']
+        heirs_df = pd.read_sql(
+            'SELECT id as _id, "extraData" as extra '
+            'FROM instruments '
+            f"WHERE path[{pf_path_len}] = '{parent_folder_id}'"
+            'AND "isAbstract" = true',
+            sdbadds.engine
+        )
+        heirs_df['name'] = heirs_df.apply(
+            lambda row: row['extra'].get('name'),
+            axis=1
+        )
+        found_df = heirs_df[heirs_df['name'] == ticker]
+        instr_id = sdbadds.uuid2str(found_df.iloc[0]['_id']) if not found_df.empty else ''
         instrument = asyncio.run(sdb.get(instr_id)) if instr_id else {}
         if instrument.get('message') and instrument.get('description'):
             raise RuntimeError('sdb_tree is out of date')
-        # works for options to reduce sdb requests
         if instrument:
             series_tree = asyncio.run(
                 sdb.get_heirs(
@@ -523,7 +510,6 @@ class Derivative(Instrument):
         """
         creates self.instrument in sdb if not dry_run,
         appends _id to self.instrument document,
-        appends self.instrument to self.tree_df,
         sets self.reference as deepcopy of self.instrument
         :param dry_run: do not post to sdb, print the document
         """
@@ -542,18 +528,10 @@ class Derivative(Instrument):
                 f"Can not create instrument {self.ticker}: {create['message']}"
             )
         self.logger.debug(f'Result: {pformat(create)}')
-        self.instrument['_id'] = create['_id']
-        self.instrument['_rev'] = create['_rev']
-        self.instrument['path'].append(self.instrument['_id'])
-        new_record = pd.DataFrame([{
-            key: val for key, val
-            in self.instrument.items()
-            if key in self.tree_df.columns
-        }], index=[self.instrument['_id']])
-        self.tree_df = pd.concat([self.tree_df, new_record])
-        self.tree_df.replace({np.nan: None})
-
-        self.reference = deepcopy(self.instrument)
+        self._instrument['_id'] = create['_id']
+        self._instrument['_rev'] = create['_rev']
+        self._instrument['path'].append(create['_id'])
+        self._reference = deepcopy(self.instrument)
 
     def update(self, diff: dict = None, dry_run: bool = False):
         """
@@ -574,12 +552,15 @@ class Derivative(Instrument):
         if response.get('message'):
             print(f'Instrument {self.ticker} is not updated, we\'ll try again after expirations are done')
             self.logger.info(pformat(response))
+        else:
+            self._reference = deepcopy(self.instrument)
 
     def clean_up_times(self):
         """
-        removes time from lastAvailableDate and lastTradingDate, presuming that it is set on series document and should be inherited
+        removes time from lastAvailableDate and lastTradingDate,
+        presuming that it is set on series document and should be inherited
         """
-        contracts = asyncio.run(self.sdb.get_heirs(self.instrument['_id'], full=True))
+        contracts = asyncio.run(self.sdb.get_heirs(self._id, full=True))
         to_upd = []
         for c in contracts:
             updated = False

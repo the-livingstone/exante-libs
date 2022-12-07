@@ -4,16 +4,14 @@ import datetime as dt
 from deepdiff import DeepDiff
 import json
 import logging
-import numpy as np
 import pandas as pd
-from pandas import DataFrame
 from pprint import pformat, pp
 import re
 from typing import Dict, Union
 
 from libs.async_symboldb import SymbolDB
 from libs.backoffice import BackOffice
-from libs.async_sdb_additional import SDBAdditional, SdbLists
+from libs.replica_sdb_additional import SDBAdditional, SdbLists
 from libs.new_instruments import (
     Instrument,
     InitThemAll,
@@ -35,11 +33,11 @@ class Option(Derivative):
         series_tree: list[dict] = None,
         option_type: str = None,
         week_number: int = 0,
+        parent: Instrument = None,
         # class instances
         bo: BackOffice = None,
         sdb: SymbolDB = None,
         sdbadds: SDBAdditional = None,
-        tree_df: DataFrame = None,
         env: str = 'prod'
     ):
         self.ticker = ticker
@@ -49,33 +47,25 @@ class Option(Derivative):
         (
             self.bo,
             self.sdb,
-            self.sdbadds,
-            self.tree_df
+            self.sdbadds
         ) = InitThemAll(
             bo,
             sdb,
             sdbadds,
-            tree_df,
-            env,
-            reload_cache=False
+            env
         ).get_instances
 
-        self.instrument_type = 'OPTION'
-        self.instrument = instrument
         super().__init__(
             ticker=ticker,
             exchange=exchange,
             instrument_type='OPTION',
-            instrument=self.instrument,
+            instrument=instrument,
+            reference=reference,
+            parent=parent,
             bo=bo,
             sdb=sdb,
-            sdbadds=sdbadds,
-            tree_df=tree_df,
-            reload_cache=False
+            sdbadds=sdbadds
         )
-        if reference is None:
-            reference = {}
-        self.reference = reference
         self.skipped = set()
         self.allowed_expirations = []
 
@@ -108,47 +98,74 @@ class Option(Derivative):
             parent_folder_id: str = None,
             option_type: str = None,
             week_number: int = 0,
+            parent: Instrument = None,
             parent_tree: list[dict] = None,
             # class instances
             bo: BackOffice = None,
             sdb: SymbolDB = None,
             sdbadds: SDBAdditional = None,
-            tree_df: DataFrame = None,
-            reload_cache: bool = True,
             env: str = 'prod'
         ):
-        bo, sdb, sdbadds, tree_df = InitThemAll(
+        """
+        retreives Option series from sdb,
+        raises NoExchangeError if exchange does not exist in sdb,
+        raises NoInstrumentError if ticker is not found for given exchange
+        :param ticker:
+        :param exchange:
+        :param parent_folder_id: specify in case of ambiguous results of finding series
+            or series located not in Root → OPTION/OPTION ON FUTURE folder,
+            feel free to leave empty
+        :param option_type: 'OPTION' or 'OPTION ON FUTURE',
+            in most cases sets automatically but sometimes may be helpful to specify
+        :param week_number: 0 if series is monthly, 1-5 for corresponding week of month
+        :param parent_tree: (optional) full heirs tree for monthly series to reduce sdb requests
+        :param bo: BackOffice class instance
+        :param sdb: SymbolDB (async) class instance
+        :param sdbadds: SDBAdditional class instance
+        :param env: environment
+        """
+        bo, sdb, sdbadds = InitThemAll(
             bo,
             sdb,
             sdbadds,
-            tree_df,
-            env,
-            reload_cache=reload_cache
+            env
         ).get_instances
-        if not parent_folder_id:
-            parent_folder_id, option_type = Option._find_parent_folder_id(
-                ticker,
-                exchange,
-                sdb,
-                sdbadds,
-                tree_df,
-                option_type=option_type
-            )
-        if not option_type:
-            pf_df = tree_df[tree_df['_id'] == parent_folder_id]
-            if pf_df.empty:
-                raise NoInstrumentError(f'Invalid {parent_folder_id=}')
-            option_folder_id = pf_df.iloc[0]['path'][1]
-            option_type = tree_df[tree_df['_id'] == option_folder_id].iloc[0]['name']
-        if option_type not in ['OPTION', 'OPTION ON FUTURE']:
-            raise NoInstrumentError(f'Invalid {option_type=}')
+        if parent:
+            parent_folder_id = parent._id
+            option_type = parent.option_type
+        else:
+            if not parent_folder_id:
+                parent_folder_id, option_type = Option._find_parent_folder_id(
+                    ticker,
+                    exchange,
+                    sdb,
+                    sdbadds,
+                    option_type=option_type
+                )
+            if not option_type:
+                pf_df = pd.read_sql(
+                    'SELECT id as _id, path '
+                    'FROM instruments '
+                    f"WHERE id = '{parent_folder_id}'",
+                    sdbadds.engine
+                )
+                if pf_df.empty:
+                    raise NoInstrumentError(f'Invalid {parent_folder_id=}')
+                option_folder_id = pd.read_sql(
+                    'SELECT id as _id, path, "extraData" as extra '
+                    'FROM instruments '
+                    f"WHERE id = '{pf_df.iloc[0]['path'][1]}'",
+                    sdbadds.engine
+                )
+                option_type = option_folder_id.iloc[0]['extra']['name']
+            if option_type not in ['OPTION', 'OPTION ON FUTURE']:
+                raise NoInstrumentError(f'Invalid {option_type=}')
 
         instrument, series_tree = Derivative._find_option_series(
             ticker,
             parent_folder_id,
             parent_tree=parent_tree,
             sdb=sdb,
-            tree_df=tree_df,
             env=env
         )
         if not instrument:
@@ -164,11 +181,11 @@ class Option(Derivative):
             series_tree=series_tree,
             option_type=option_type,
             week_number=week_number,
+            parent=parent,
 
             bo=bo,
             sdb=sdb,
             sdbadds=sdbadds,
-            tree_df=tree_df,
             env=env
         )
 
@@ -181,42 +198,64 @@ class Option(Derivative):
             parent_folder_id: str = None,
             option_type: str = None,
             week_number: int = 0,
+            parent: Instrument = None,
             underlying_id: str = None,
             recreate: bool = False,
             # class instances
             bo: BackOffice = None,
             sdb: SymbolDB = None,
             sdbadds: SDBAdditional = None,
-            tree_df: DataFrame = None,
-            reload_cache: bool = True,
             env: str = 'prod',
             **kwargs
         ):
-        bo, sdb, sdbadds, tree_df = InitThemAll(
+        """
+        creates new series document with given ticker, shortname and other fields as kwargs,
+            raises NoExchangeError if exchange does not exist in sdb,
+            raises NoInstrumentError if bad parent_folder_id was given,
+            raises RuntimeError if series exists in sdb and recreate=False
+        :param ticker:
+        :param exchange:
+        :param shortname:
+        :param parent_folder_id: specify if new series should be placed in destination that is not the third level folder
+            (i.e. other than Root → OPTION/OPTION ON FUTURE → <<exchange>>)
+        :param option_type: 'OPTION' or 'OPTION ON FUTURE' in most cases no need to specify it, but sometimes helpful
+        :param week_number: sets week number for weekly option series creation
+        :param underlying_id: symbolId of existing symbol in SDB representing underlying for option series
+        :param recreate: if series exists in sdb drop all settings and replace it with newly created document
+        :param bo: BackOffice class instance
+        :param sdb: SymbolDB (async) class instance
+        :param sdbadds: SDBAdditional class instance
+        :param env: environment
+        :param kwargs: fields, that could be validated via sdb_schemas
+            deeper layer fields could be pointed using path divided by '/' e.g. {'identifiers/ISIN': value} 
+
+        """
+        bo, sdb, sdbadds = InitThemAll(
             bo,
             sdb,
             sdbadds,
-            tree_df,
-            env,
-            reload_cache=reload_cache
+            env
         ).get_instances
-        if not parent_folder_id:
-            parent_folder_id, option_type = Option._find_parent_folder_id(
-                ticker,
-                exchange,
-                sdb,
-                sdbadds,
-                tree_df,
-                option_type=option_type
-            )
-        parent_folder = asyncio.run(sdb.get(parent_folder_id))
-        if not parent_folder or not parent_folder.get('isAbstract'):
-            raise NoInstrumentError(f"Bad {parent_folder_id=}")
+        if parent:
+            parent_folder_id = parent._id
+            option_type = parent.option_type
+            parent_folder = parent.instrument
+        else:
+            if not parent_folder_id:
+                parent_folder_id, option_type = Option._find_parent_folder_id(
+                    ticker,
+                    exchange,
+                    sdb,
+                    sdbadds,
+                    option_type=option_type
+                )
+            parent_folder = asyncio.run(sdb.get(parent_folder_id))
+            if not parent_folder or not parent_folder.get('isAbstract'):
+                raise NoInstrumentError(f"Bad {parent_folder_id=}")
         reference, series_tree = Derivative._find_option_series(
             ticker,
             parent_folder_id,
             sdb=sdb,
-            tree_df=tree_df,
             env=env
         )
         if reference:
@@ -244,19 +283,28 @@ class Option(Derivative):
             instrument.update({
                 'underlying': ticker
             })
-            if underlying_id and not tree_df[tree_df['symbolId'] == underlying_id].empty:
+        if underlying_id:
+            underlying_sym = pd.read_sql(
+                'SELECT min("dataId") '
+                'FROM compiled_instruments_ids '
+                f"WHERE dataId = '{underlying_id}'"
+                'GROUP BY "instrumentId"',
+                sdbadds.engine
+            )
+            if not underlying_sym.empty:
                 instrument.update({
                     'underlyingId': {
                         'id': underlying_id,
                         'type': 'symbolId'
                     }
                 })
-            elif exchange == 'CBOE':
-                instrument.update({
-                    'feeds': {
-                        'gateways': Derivative.less_loaded_feeds('CBOE', env)
-                    }
-                })
+        if exchange == 'CBOE':
+            instrument.update({
+                'feeds': {
+                    'gateways': Derivative.less_loaded_feeds('CBOE', env)
+                }
+            })
+            if not instrument.get('underlyingId'):
                 try:
                     udl_ticker = ticker[:-1] if ticker[-1].isdecimal() else ticker
                     underlying_stock = asyncio.run(sdb.get_v2(
@@ -272,10 +320,10 @@ class Option(Derivative):
                     })
                 except (IndexError, KeyError):
                     logging.warning(f'Can not find underlyingId for {ticker}')
-            elif option_type == 'OPTION':
-                logging.warning(
-                    f"Underlying for {ticker}.{exchange} is not set!"
-                )
+        elif option_type == 'OPTION':
+            logging.warning(
+                f"Underlying for {ticker}.{exchange} is not set!"
+            )
 
         return cls(
             ticker=ticker,
@@ -285,11 +333,11 @@ class Option(Derivative):
             series_tree=series_tree,
             option_type=option_type,
             week_number=week_number,
+            parent=parent,
 
             bo=bo,
             sdb=sdb,
             sdbadds=sdbadds,
-            tree_df=tree_df,
             env=env
         )
 
@@ -298,55 +346,72 @@ class Option(Derivative):
             cls,
             payload: dict,
             recreate: bool = False,
+            week_num: int = 0,
+            parent: Instrument = None,
             # class instances
             bo: BackOffice = None,
             sdb: SymbolDB = None,
             sdbadds: SDBAdditional = None,
-            tree_df: DataFrame = None,
-            reload_cache: bool = True,
             env: str = 'prod'
         ):
-        bo, sdb, sdbadds, tree_df = InitThemAll(
+        bo, sdb, sdbadds = InitThemAll(
             bo,
             sdb,
             sdbadds,
-            tree_df,
-            env,
-            reload_cache=reload_cache
+            env
         ).get_instances
         if len(payload['path']) < 3:
             raise NoInstrumentError(f"Bad path: {payload.get('path')}")
-        check_parent_df = tree_df[tree_df['_id'] == payload['path'][-1]]
+        check_parent_df = pd.read_sql(
+            'SELECT id as _id, path '
+            'FROM instruments '
+            f"WHERE id = '{payload['path'][-2 if payload.get('_id') else -1]}'",
+            sdbadds.engine
+        )
         if check_parent_df.empty:
             raise NoInstrumentError(f"Bad path: {payload.get('path')}")
-        if not check_parent_df.iloc[0]['path'] == payload['path']:
+        parent_path = [
+            sdbadds.uuid2str(x) for x
+            in check_parent_df.iloc[0]['path']
+        ]
+        if not parent_path == payload['path'][:len(parent_path)]:
             raise NoInstrumentError(f"Bad path: {sdbadds.show_path(payload.get('path'))}")
         if payload['path'][1] not in [
-            get_uuid_by_path(['Root', 'OPTION'], tree_df),
-            get_uuid_by_path(['Root', 'OPTION ON FUTURE'], tree_df)
+            get_uuid_by_path(['Root', 'OPTION'], sdbadds.engine),
+            get_uuid_by_path(['Root', 'OPTION ON FUTURE'], sdbadds.engine)
             ]:
             raise NoInstrumentError(f"Bad path: {sdbadds.show_path(payload.get('path'))}")
-
-        if payload.get('_id') and payload['path'][-1] == payload['_id']:
-            parent_folder_id = payload['path'][-2]
-        else:
-            parent_folder_id = payload['path'][-1]
         ticker = payload.get('ticker')
-        # get exchange folder _id from path (Root -> Future -> EXCHANGE), check its name in tree_df
-        exchange_df = tree_df[tree_df['_id'] == payload['path'][2]]
-        if exchange_df.empty:
-            raise NoInstrumentError(
-                f"Bad path: exchange folder with _id {payload['path'][2]} is not found"
+        if parent:
+            parent_folder_id = parent._id
+            exchange = parent.exchange
+            parent_folder = parent.instrument
+            option_type = parent.option_type
+        else:
+            if payload.get('_id') and payload['path'][-1] == payload['_id']:
+                parent_folder_id = payload['path'][-2]
+            else:
+                parent_folder_id = payload['path'][-1]
+            # get exchange folder _id from path (Root -> OPTION/OPTION ON FUTURE -> EXCHANGE), check its name in tree_df
+            exchange_df = pd.read_sql(
+                'SELECT id as _id, "extraData" as extra '
+                'FROM instruments '
+                f"WHERE id = '{payload['path'][2]}'",
+                sdbadds.engine
             )
-        exchange = exchange_df.iloc[0]['name']
-        parent_folder = asyncio.run(sdb.get(parent_folder_id))
-        if not parent_folder or not parent_folder.get('isAbstract'):
-            raise NoInstrumentError(f"Bad {parent_folder_id=}")
+            if exchange_df.empty:
+                raise NoExchangeError(
+                    f"Bad path: exchange folder with _id {payload['path'][2]} is not found"
+                )
+            exchange = exchange_df.iloc[0]['extra']['name']
+            parent_folder = asyncio.run(sdb.get(parent_folder_id))
+            if not parent_folder or not parent_folder.get('isAbstract'):
+                raise NoInstrumentError(f"Bad {parent_folder_id=}")
+            option_type = sdbadds.uuid_to_name(parent_folder['path'][1])[0]
         reference, series_tree = Derivative._find_series(
             ticker,
             parent_folder_id,
             sdb=sdb,
-            tree_df=tree_df,
             env=env
         )
         if reference:
@@ -366,11 +431,12 @@ class Option(Derivative):
             instrument=payload,
             reference=deepcopy(reference),
             series_tree=series_tree,
+            option_type=option_type,
+            week_number=week_num,
 
             bo=bo,
             sdb=sdb,
             sdbadds=sdbadds,
-            tree_df=tree_df,
             env=env
         )
 
@@ -381,7 +447,6 @@ class Option(Derivative):
 
             sdb: SymbolDB,
             sdbadds: SDBAdditional,
-            tree_df: DataFrame,
             option_type: str = None
         ):
         """
@@ -400,20 +465,27 @@ class Option(Derivative):
             # check if we have an existing path to exchange inside selected option_type
             parent_folder_id = get_uuid_by_path(
                     ['Root', o_type, exchange],
-                    tree_df
+                    sdbadds.engine
                 )
             if parent_folder_id:
-                tree_part = tree_df[
-                    tree_df.path.map(
-                        set([parent_folder_id]).issubset
-                    )
-                ]
+                tree_part = pd.read_sql(
+                    'SELECT id as _id, "extraData" as extra, '
+                    '"isAbstract" as is_abstract, "isTrading" as is_trading '
+                    'FROM instruments '
+                    f"WHERE path[3] = '{parent_folder_id}' "
+                    'AND "isAbstract" = true',
+                    sdbadds.engine
+                )
+                tree_part['name'] = tree_part.apply(
+                    lambda row: row['extra'].get('name'),
+                    axis=1
+                )
                 # sometimes we have same exchange both in OPTION and OPTION ON FUTURE
                 # check if we have ticker in selected exchange
                 ticker_is_here = tree_part.loc[
                     (tree_part['name'] == ticker) &
-                    (tree_part['isAbstract']) &
-                    (tree_part['isTrading'] != False)
+                    (tree_part['is_abstract']) &
+                    (tree_part['is_trading'] != False)
                 ]
                 if not ticker_is_here.empty:
                     option_type = o_type
@@ -433,16 +505,16 @@ class Option(Derivative):
             if x[0] == exchange
         ]
         opt_id = get_uuid_by_path(
-            ['Root', 'OPTION'], tree_df
+            ['Root', 'OPTION'], sdbadds.engine
         )
         oof_id = get_uuid_by_path(
-            ['Root', 'OPTION ON FUTURE'], tree_df
+            ['Root', 'OPTION ON FUTURE'], sdbadds.engine
         )
         exchange_folders = asyncio.run(sdb.get_heirs(
-            opt_id,
+            sdbadds.uuid2str(opt_id),
             fields=['name', 'exchangeId', 'path']))
         exchange_folders += asyncio.run(sdb.get_heirs(
-            oof_id,
+            sdbadds.uuid2str(oof_id),
             fields=['name', 'exchangeId', 'path']))
         possible_exchange_folders = [
             x for x in exchange_folders 
@@ -451,11 +523,9 @@ class Option(Derivative):
         if len(possible_exchange_folders) < 1:
             raise NoExchangeError(f'{exchange=} does not exist in SymbolDB')
         elif len(possible_exchange_folders) == 1:
-            parent_folder_id = possible_exchange_folders[0]['_id']
-            option_type = tree_df.loc[
-                tree_df['_id'] == possible_exchange_folders[0]['path'][1]
-            ].iloc[0]['name']
-
+            parent_folder = possible_exchange_folders[0]
+            parent_folder_id = parent_folder['_id']
+            option_type = 'OPTION ON FUTURE' if parent_folder['path'][1] == oof_id else 'OPTION'
         else:
             ticker_folders = [
                 x for pef in possible_exchange_folders for x
@@ -470,9 +540,7 @@ class Option(Derivative):
             ]
             if len(ticker_folders) == 1:
                 parent_folder_id = ticker_folders[0]['path'][2]
-                option_type = tree_df.loc[
-                    tree_df['_id'] == ticker_folders[0]['path'][1]
-                ].iloc[0]['name']
+                option_type = 'OPTION ON FUTURE' if ticker_folders[0]['path'][1] == oof_id else 'OPTION'
             else:
                 raise NoExchangeError(
                     f'{ticker}.{exchange}: cannot select exchange folder'
@@ -484,7 +552,7 @@ class Option(Derivative):
         contract_dicts = [
             x for x
             in series_tree
-            if x['path'][:-1] == self.instrument['path']
+            if x['path'][:-1] == self._instrument['path']
             and not x['isAbstract']
             and x.get('isTrading') is not False
         ]
@@ -510,7 +578,7 @@ class Option(Derivative):
         if not week_number:
             weekly_common_folders = [
                 x for x in series_tree
-                if x['path'][:-1] == self.instrument['path']
+                if x['path'][:-1] == self._instrument['path']
                 and 'weekly' in x['name'].lower()
                 and x['isAbstract']
             ]
@@ -552,7 +620,7 @@ class Option(Derivative):
                     (
                         num for num, x
                         in enumerate(opt.contracts)
-                        if x.instrument['_id'] == uuid
+                        if x._id == uuid
                     ),
                     None
                 )
@@ -586,7 +654,7 @@ class Option(Derivative):
                     x.expiration == expiration_date
                     or x.maturity == maturity
                     or x.contract_name == symbol_id  # expiration: Z2021
-                ) and x.instrument.get('isTrading') is not False
+                ) and x._instrument.get('isTrading') is not False
             ])
             
         if len(present_expirations) == 1:
@@ -620,7 +688,7 @@ class Option(Derivative):
             ticker=ticker,
             uuid=uuid
             )
-        return series.contracts[num] if num is not None and series is not None else None
+        return series.contracts[num] if num is not None and series else None
 
     def _set_target_folder(
             self,
@@ -674,7 +742,7 @@ class Option(Derivative):
     
     def __update_existing_contract(
             self,
-            series,
+            series: 'Option',
             num: int,
             overwrite_old: bool = False,
             payload: dict = None,
@@ -694,18 +762,18 @@ class Option(Derivative):
                 self.logger.warning(
                     f"{series.contracts[num].contract_name}: strikes are not updated!"
                 )
-            new_strikes = series.contracts[num].instrument['strikePrices']
+            new_strikes = series.contracts[num].strikes
             if payload:
                 payload.update({
                     key: val for key, val
-                    in series.contracts[num].instrument.items()
-                    if key[0] == '_' or key in ['path', 'strikePrices']
+                    in series.contracts[num]._instrument.items()
+                    if key[0] == '_'
                 })
-                series.contracts[num].instrument = payload
+                series.contracts[num]._instrument = payload
             else:
                 kwargs.update({
                     key: val for key, val
-                    in series.contracts[num].instrument.items()
+                    in series.contracts[num]._instrument.items()
                     if key[0] == '_'
                 })
                 series.contracts[num] = OptionExpiration.from_scratch(
@@ -719,13 +787,12 @@ class Option(Derivative):
         else:
             series.contracts[num].add_strikes(strikes)
             if payload:
-                series.contracts[num].instrument.update(payload)
+                series.contracts[num]._instrument.update(payload)
             else:
                 for field, val in kwargs.items():
                     series.contracts[num].set_field_value(val, field.split('/'))
 
-        if series.contracts[num].instrument.get('isTrading'):
-            series.contracts[num].instrument.pop('isTrading')
+        series.contracts[num]._instrument.pop('isTrading', None)
         diff = series.contracts[num].get_diff()
         if diff:
             self.logger.info(
@@ -740,7 +807,7 @@ class Option(Derivative):
 
     def __create_new_contract(
             self,
-            series,
+            series: 'Option',
             exp_date: dt.date,
             maturity: str,
             payload: dict = None,
@@ -789,7 +856,8 @@ class Option(Derivative):
             ticker: str = None
         ):
         """
-        Add new expiration (if it does not exist in sdb) or update existing expiration with given dict
+        Add new expiration (if it does not exist in sdb) 
+            or update existing expiration with given dict
         mandatory fields: {
             'expiry': {
                 'year': int,
@@ -1000,8 +1068,14 @@ class Option(Derivative):
             )
             return False
         # check if symbol exists in sdb
-
-        if not self.tree_df[self.tree_df['symbolId'] == symbol_id].empty:
+        underlying_sym = pd.read_sql(
+            'SELECT min("dataId") '
+            'FROM compiled_instruments_ids '
+            f"WHERE dataId = '{symbol_id}'"
+            'GROUP BY "instrumentId"',
+            self.sdbadds.engine
+        )
+        if not underlying_sym.empty:
             self.underlying_dict = {
                         'id': symbol_id,
                         'type': 'symbolId'
@@ -1041,10 +1115,12 @@ class Option(Derivative):
             weekly_common = WeeklyCommon.from_scratch(
                 self,
                 templates=templates,
-                common_name=common_name
+                common_name=common_name,
+                recreate=recreate
             )
             self.weekly_commons.append(weekly_common)
-        weekly_common.mk_weeklies(recreate, week_number)
+        elif recreate:
+            weekly_common.mk_weeklies(recreate, week_number)
         
         return weekly_common
 
@@ -1058,19 +1134,21 @@ class Option(Derivative):
         use week_number = 0 to recreate all weeklies
         '''
         if week_number is None:
-            self.instrument = self.create_series_dict()
-            self.instrument.update({
+            self._instrument = self.create_series_dict()
+            self._instrument.update({
                 key: val for key, val in self.reference.items() if key[0] == '_'
             })
             return None
         elif week_number not in range(6):
             self.logger.error(
-                'week number must be specified as a number between 0 and 5 (0 to recreate all week folders)'
+                'week number must be specified as a number between 0 and 5 '
+                '(0 to recreate all week folders)'
             )
             return None
         if weekly_templates is None:
             self.logger.warning(
-                'weekly template is not specified (use $ to identify week as a number, @ as a letter)'
+                'weekly template is not specified '
+                '(use $ to identify week as a number, @ as a letter)'
             )
             return None
         self.create_weeklies(
@@ -1083,9 +1161,9 @@ class Option(Derivative):
 
     def post_to_sdb(self, dry_run=True) -> dict:
         """
-        · creates (if doesn't exist in sdb) or updates (if there is a diff relative to the self.reference) the series folder from self.instrument dict
-        · updates existing expirations from self.contracts if there is some diff between contract.reference and contract.instrument
-        · creates new expirations from self.new_expirations on base of FutureExpiration().instrument dict
+        · creates (if doesn't exist in sdb) or updates (if there is a diff relative to the self.reference) the series folder from self._instrument dict
+        · updates existing expirations from self.contracts if there is some diff between contract.reference and contract._instrument
+        · creates new expirations from self.new_expirations on base of FutureExpiration()._instrument dict
         :param dry_run: if True prints out what is to be created and updated, post nothing to sdb
         :return: dict
         """
@@ -1094,10 +1172,10 @@ class Option(Derivative):
             return {'error': 'Call post_to_sdb() method only from main series instance (not weeklies)'}
         report = {}
         try_again_series = False
-        self.instrument = self.reduce_instrument()
+        self.reduce_instrument()
         diff = DeepDiff(self.reference, self.instrument)
         # Create folder if need
-        if not self.instrument.get('_id'):
+        if not self._id:
             self.create(dry_run)
         elif diff:
             self.update(diff, dry_run)
@@ -1106,13 +1184,13 @@ class Option(Derivative):
 
         # Create common folder for weekly subfolders
         for wc in self.weekly_commons:
-            if not wc.payload.get('_id'):
+            if not wc._id:
                 wc.create(dry_run)
             elif wc.get_diff():
                 wc.update(wc.get_diff(), dry_run)
             # Create weekly subfolders
             for wf in wc.weekly_folders:
-                if not wf.instrument.get('_id'):
+                if not wf._id:
                     wf.create(dry_run)
                 else:
                     wf_diff = DeepDiff(wf.reference, wf.instrument)
@@ -1135,7 +1213,7 @@ class Option(Derivative):
                 and x.get_diff()
             ]
             # Check if series folder has been changed
-            target.instrument = target.reduce_instrument()
+            target.reduce_instrument()
             diff = DeepDiff(target.reference, target.instrument)
             if diff:
                 target.update(diff, dry_run)
@@ -1203,7 +1281,7 @@ class Option(Derivative):
                     })
         if report and try_again_series and not dry_run:
             self.wait_for_sdb()
-            response = asyncio.run(self.sdb.update(self.instrument))
+            response = asyncio.run(self.sdb.update(self._instrument))
             if response.get('message'):
                 self.logger.error(f'instrument {self.ticker} is not updated:')
                 self.logger.error(pformat(response))
@@ -1220,41 +1298,33 @@ class OptionExpiration(Instrument):
             expiration: dt.date,
             maturity: str,
             strikes: dict,
+            instrument: dict,
             underlying: str = None,
-            custom_fields: dict = None,
             reference: dict = None,
-            reload_cache: bool = False,
             **kwargs
         ):
-        if custom_fields is None:
-            custom_fields = {}
-        if reference is None:
-            reference = {}
         self.ticker = option.ticker
         self.exchange = option.exchange
         self.series_name = option.series_name
         self.option = option
 
-        self.reference = reference
         self.expiration = expiration
         self.maturity = maturity
         self.option_type = option.option_type
         self.week_number = option.week_number
+        self._instrument = instrument
+        self._strikes = self.build_strikes(strikes, self._instrument.get('_id'))
+        self._underlying = None
+        self.set_underlying(underlying)
 
-        self.instrument = custom_fields
-        self.strikes = self.build_strikes(strikes, self.instrument.get('_id'))
-        self.underlying = underlying
-        self.instrument = self.get_instrument
-
-        self.reference = reference
         super().__init__(
-            instrument=self.instrument,
+            instrument=self.get_instrument,
+            reference=reference,
             instrument_type='OPTION',
             parent=option,
             env=option.env,
             sdb=option.sdb,
-            sdbadds=option.sdbadds,
-            reload_cache=reload_cache
+            sdbadds=option.sdbadds
         )
         self.set_la_lt()
         for field, val in kwargs.items():
@@ -1273,7 +1343,6 @@ class OptionExpiration(Instrument):
             strikes: dict = None,
             reference: dict = None,
             underlying: str = None,
-            reload_cache: bool = False,
             **kwargs
         ):
         if not reference:
@@ -1291,9 +1360,9 @@ class OptionExpiration(Instrument):
             expiration,
             maturity,
             strikes=strikes,
+            instrument={},
             underlying=underlying,
             reference=deepcopy(reference),
-            reload_cache=reload_cache,
             **kwargs
         )
 
@@ -1303,13 +1372,11 @@ class OptionExpiration(Instrument):
             option: Option,
             instrument: dict,
             reference: dict = None,
-            reload_cache: bool = False,
             **kwargs
         ):
         if not reference:
             reference = {}
-        if instrument.get('isTrading') is not None:
-            instrument.pop('isTrading')
+        instrument.pop('isTrading', None)
         expiration = Instrument.normalize_date(instrument.get('expiry', {}))
         maturity = Instrument.format_maturity(instrument.get('maturityDate', {}))
         strikes = instrument.get('strikePrices', {})
@@ -1320,9 +1387,8 @@ class OptionExpiration(Instrument):
             maturity,
             strikes=strikes,
             underlying=underlying,
-            custom_fields=instrument,
+            instrument=instrument,
             reference=deepcopy(reference),
-            reload_cache=reload_cache,
             **kwargs
         )
 
@@ -1353,19 +1419,19 @@ class OptionExpiration(Instrument):
 
     @property
     def path(self):
-        if self.option.instrument.get('_id'):
-            p = deepcopy(self.option.instrument['path'])
+        if self.option._id:
+            p = self.option.instrument['path']
         else:
-            p = deepcopy(self.option.instrument['path']) + ['<<series_folder_id>>']
-        if not self.instrument.get('_id'):
+            p = self.option.instrument['path'] + ['<<series_folder_id>>']
+        if not self._id:
             return p
-        return p + [self.instrument['_id']]
+        return p + [self._id]
 
     @property
     def get_custom_fields(self) -> dict:
         return {
             key: val for key, val
-            in self.instrument.items()
+            in self._instrument.items()
             if key not in [
                 'isAbstract',
                 'name',
@@ -1378,26 +1444,12 @@ class OptionExpiration(Instrument):
         }
 
     @property
-    def get_strikes(self) -> dict[str, list[dict]]:
-        return self.build_strikes(
-            self.strikes,
-            self.instrument.get('_id')
-        )
+    def strikes(self) -> dict[str, list[dict]]:
+        return deepcopy(self._strikes)
 
     @property
-    def get_underlying(self) -> dict:
-        if self.underlying:
-            existing_future = self.option.tree_df[self.option.tree_df['symbolId'] == self.underlying]
-            if not existing_future.empty:
-                return {
-                    'id': self.underlying,
-                    'type': 'symbolId'
-                }
-            else:
-                self.logger.warning(
-                    f'{self.contract_name}: '
-                    f'{self.underlying} is not found in sdb, underlying is not set'
-                )
+    def underlying(self) -> str:
+        return self._underlying
 
     @property
     def get_instrument(self) -> dict:
@@ -1414,16 +1466,18 @@ class OptionExpiration(Instrument):
                 'year': int(self.maturity.split('-')[0])
             },
             'path': self.path,
-            'strikePrices': self.get_strikes,
+            'strikePrices': self.strikes,
         }
         if len(self.maturity.split('-')) == 3:
             instrument_dict['maturityDate'].update({
                 'day': int(self.maturity.split('-')[2])
             })
-        underlying = self.get_underlying
-        if underlying:
+        if self.underlying:
             instrument_dict.update({
-                'underlyingId': underlying
+                'underlyingId': {
+                    'id': self.underlying,
+                    'type': 'symbolId'
+                }
             })
         instrument_dict.update(self.get_custom_fields)
         return instrument_dict
@@ -1443,48 +1497,6 @@ class OptionExpiration(Instrument):
                 ['lastTrading']
             )
             self.set_field_value(self.option.set_lt, ['lastTrading', 'time'])
-
-    def check_underlying_future(self, symbol_id: str) -> str:
-        # check if symbol exists in sdb
-        underlying = asyncio.run(self.option.sdb.get(
-            symbol_id,
-            fields=[
-                'expiryTime',
-                'name',
-                'path',
-                '_id'
-            ]
-        ))
-        if not underlying:
-            logging.warning(
-                f'{symbol_id} does not exist in sdb!'
-            )
-            return None
-        try:
-            instr_dt_expiry = dt.datetime.fromisoformat(
-                self.option.sdbadds.compile_expiry_time(
-                    self.get_instrument
-                )[:-1]
-            )
-            udl_dt_expiry = dt.datetime.fromisoformat(
-                underlying['expiryTime'][:-1]
-            )
-        except TypeError:
-            logging.warning(
-                f'Cannot compile {self.contract_name} expiry time!'
-            )
-            return None
-        if instr_dt_expiry > udl_dt_expiry:
-            logging.warning(
-                f"{symbol_id} could not be an underlying "
-                f"for {self.contract_name} as it expires earlier"
-            )
-            return None
-        udl_compiled_expiry = asyncio.run(
-            self.option.sdbadds.get_inherited_value(underlying, fields=['expiry'])
-        )
-        udl_expiry_local_time = udl_compiled_expiry.get('expiry', {}).get('time', False)
-        return udl_expiry_local_time
 
     @staticmethod
     def build_strikes(strikes: dict, uuid: str = None) -> Dict[str, list[dict]]:
@@ -1539,6 +1551,49 @@ class OptionExpiration(Instrument):
             }
             return prepared_strikes
 
+    def set_underlying(self, underlying: str = None):
+        if not underlying:
+            if self.underlying:
+                self.logger.warning(
+                        f'{self.contract_name}: '
+                        f'underlying has been removed'
+                    )
+            self._underlying = None
+            return
+        existing_future_df = pd.read_sql(
+            'SELECT cid."instrumentId" as _id, ci."expiryTime" as expiry_time, min(cid."dataId") as symbol_id '
+            'FROM compiled_instruments_ids cid '
+            'LEFT JOIN compiled_instruments ci ON cid."instrumentId" = ci."instrumentId" '
+            f"WHERE cid.\"dataId\" = '{underlying}'"
+            'GROUP BY cid."instrumentId", ci."expiryTime"',
+            self.option.sdbadds.engine
+        )
+        if existing_future_df.empty:
+            self.logger.warning(
+                f'{self.contract_name}: '
+                f'{underlying} is not found in sdb, {self.underlying=}'
+            )
+            return
+        udl_dt_expiry = existing_future_df.iloc[0]['expiry_time'].to_pydatetime()
+        try:
+            instr_dt_expiry = dt.datetime.fromisoformat(
+                self.option.sdbadds.compile_expiry_time(
+                    self.get_instrument
+                )[:-1]
+            )
+        except TypeError:
+            logging.warning(
+                f'Cannot compile {self.contract_name} expiry time!'
+            )
+            return
+        if instr_dt_expiry > udl_dt_expiry:
+            logging.warning(
+                f"{underlying} could not be an underlying "
+                f"for {self.contract_name} as it expires earlier"
+            )
+            return
+        self._underlying = underlying
+
     def add_strikes(self, strikes: dict) -> dict:
         strikes = self.build_strikes(strikes)
         added = {}
@@ -1552,8 +1607,8 @@ class OptionExpiration(Instrument):
                 ]
             ]
             added.update({side: new_strikes})
-            self.strikes[side].extend(new_strikes)
-            self.strikes[side] = sorted(
+            self._strikes[side].extend(new_strikes)
+            self._strikes[side] = sorted(
                 self.strikes[side],
                 key=lambda sp: sp['strikePrice']
             )
@@ -1703,7 +1758,7 @@ class OptionExpiration(Instrument):
             )
             if hard:
                 # replace self_strikes with given ones enriched with preserved
-                self.strikes[side] = sorted(
+                self._strikes[side] = sorted(
                     strikes[side],
                     key=lambda sp: sp['strikePrice']
                 )
@@ -1721,13 +1776,13 @@ class OptionExpiration(Instrument):
 
     def enable_strikes(self, strikes: dict, enable: bool = True):
         """
-        Sets isAvailable flag on strikes in self.instrument['strikePrices']
-        on base of given strikes, adds new strikes if any stikes in given dict are absent in self.instrument
+        Sets isAvailable flag on strikes in self._instrument['strikePrices']
+        on base of given strikes, adds new strikes if any stikes in given dict are absent in self._instrument
         :param strikes: dict {'CALL': list[float], 'PUT': list[float]} for which isAvailable flag should be updated
         :param enable: sets isAvailable: True if True, False if False or None
         """
         for side in ['PUT', 'CALL']:
-            self.strikes.setdefault(side, [])
+            self._strikes.setdefault(side, [])
             side_strikes_nums = [
                 num for num, x
                 in enumerate(self.strikes[side])
@@ -1742,19 +1797,19 @@ class OptionExpiration(Instrument):
                 ]
             })
             [
-                self.strikes[side][num].update({
+                self._strikes[side][num].update({
                     'isAvailable': True if enable else False
                 }) for num
                 in side_strikes_nums
             ]
             [
-                self.strikes[side].append({
+                self._strikes[side].append({
                     'strikePrice': strike,
                     'isAvailable': True if enable else False
                 }) for strike
                 in new_strikes
             ]
-            self.strikes[side] = sorted(
+            self._strikes[side] = sorted(
                 self.strikes[side],
                 key=lambda s: s['strikePrice']
             )
@@ -1764,7 +1819,7 @@ class OptionExpiration(Instrument):
         for side in ['PUT', 'CALL']:
             added = [
                 x['strikePrice'] for x
-                in self.get_strikes.get(side, [])
+                in self.strikes.get(side, [])
                 if x.get('isAvailable')
                 and x['strikePrice'] not in [
                     y['strikePrice'] for y
@@ -1780,7 +1835,7 @@ class OptionExpiration(Instrument):
                     if x.get('isAvailable')
                     and x['strikePrice'] not in [
                         y['strikePrice'] for y
-                        in self.get_strikes[side]
+                        in self.strikes[side]
                         if x.get('isAvailable')                        
                     ]
                 ]
@@ -1813,88 +1868,28 @@ class WeeklyCommon(Instrument):
             option: Option,
             common_name: str = 'Weekly',
             templates: dict = None,
-            custom_fields: dict = None,
+            instrument: dict = None,
             reference: dict = None
         ):
-        if custom_fields is None:
-            custom_fields = {}
-        self.reference = reference
-        if self.reference is None:
-            self.reference = {}
+        if templates is None:
+            templates = {}
         self.templates = templates
-        if self.templates is None:
-            self.templates = {}
         self.option = option
+        self.option_type = self.option.option_type
+        self.exchange = self.option.exchange
         self.common_name = common_name
         self.weekly_folders: list[Option] = []
-        self.payload = custom_fields
-        self.payload = self.get_payload
+        self._instrument = instrument
 
-    def __repr__(self):
-        return f"WeeklyCommon({self.option.series_name}, {self.common_name=})"
-
-    def __find_weekly_folders(self):
-        weekly_folders: list[Option] = []
-        existing_tickers = [
-            x['ticker'] for x
-            in self.option.series_tree
-            if x.get('ticker')
-            and x['path'][:-1] == self.path
-            and x['isAbstract']
-        ]
-        for x in existing_tickers:
-            if x and re.search(r'[12345]', x):
-                try:
-                    weekly_folder = Option.from_sdb(
-                        ticker=x,
-                        exchange=self.option.exchange,
-                        parent_folder_id=self.payload.get('_id'),
-                        reload_cache=False,
-                        week_number=int(re.search(r'[12345]', x).group()),
-                        parent_tree=self.option.series_tree,
-                        bo=self.option.bo,
-                        sdb=self.option.sdb,
-                        sdbadds=self.option.sdbadds
-                    )
-                    weekly_folders.append(weekly_folder)
-                except NoInstrumentError:
-                    self.logger.warning(
-                        f"Weekly folder {x}.{self.option.exchange} is not found, "
-                        "check if folder name and ticker are the same"
-                    )
-        return weekly_folders
-
-    @property
-    def get_custom_fields(self) -> dict:
-        return {
-            key: val for key, val
-            in self.payload.items()
-            if key not in [
-                'isAbstract',
-                'name',
-                'path'
-            ]
-        }
-
-    @property
-    def path(self):
-        if self.option.instrument.get('_id'):
-            p = deepcopy(self.option.instrument['path'])
-        else:
-            p = deepcopy(self.option.instrument['path']) + ['<<series_folder_id>>']
-        if not self.payload.get('_id'):
-            return p
-        return p + [self.payload['_id']]
-
-    @property
-    def get_payload(self):
-        payload_dict = {
-            'isAbstract': True,
-            'name': self.common_name,
-            'path': self.path
-        }
-        payload_dict.update(self.get_custom_fields)
-        return payload_dict
+        super().__init__(
+            instrument=self.get_instrument,
+            reference=reference,
+            instrument_type='OPTION',
+            parent=option,
+            env=option.env,
+            sdb=option.sdb,
+            sdbadds=option.sdbadds
+        )
 
     @classmethod
     def from_dict(
@@ -1909,7 +1904,7 @@ class WeeklyCommon(Instrument):
         cw = cls(
             option,
             common_name=common_name,
-            custom_fields=payload,
+            instrument=payload,
             reference=deepcopy(reference)
         )
         cw.weekly_folders = cw.__find_weekly_folders()
@@ -1936,71 +1931,140 @@ class WeeklyCommon(Instrument):
         ):
         if reference is None:
             reference = {}
+        instrument = {
+            key: val for key, val
+            in reference.items()
+            if key[0] == '_'
+        }
         cw = cls(
             option,
             common_name,
             templates=templates,
+            instrument=instrument,
             reference=deepcopy(reference)
         )
-        cw.templates = templates
-        if reference:
-            cw.payload.update({
-                key: val for key, val
-                in reference.items()
-                if key[0] == '_'
-            })
+        if cw._id:
             cw.update(dry_run)
             cw.__find_weekly_folders()
-        cw.create(dry_run)
-        cw.mk_weeklies(recreate)
+        else:
+            cw.create(dry_run)
+            cw.mk_weeklies(recreate)
         return cw
+
+    def __repr__(self):
+        return f"WeeklyCommon({self.option.series_name}, {self.common_name=})"
+
+    def __find_weekly_folders(self):
+        weekly_folders: list[Option] = []
+        existing_tickers = [
+            x['ticker'] for x
+            in self.option.series_tree
+            if x.get('ticker')
+            and x['path'][:-1] == self.path
+            and x['isAbstract']
+        ]
+        for x in existing_tickers:
+            if x and re.search(r'[12345]', x):
+                try:
+                    weekly_folder = Option.from_sdb(
+                        ticker=x,
+                        exchange=self.option.exchange,
+                        parent_folder_id=self.payload.get('_id'),
+                        week_number=int(re.search(r'[12345]', x).group()),
+                        parent_tree=self.option.series_tree,
+                        bo=self.option.bo,
+                        sdb=self.option.sdb,
+                        sdbadds=self.option.sdbadds
+                    )
+                    weekly_folders.append(weekly_folder)
+                except NoInstrumentError:
+                    self.logger.warning(
+                        f"Weekly folder {x}.{self.option.exchange} is not found, "
+                        "check if folder name and ticker are the same"
+                    )
+        return weekly_folders
+
+    @property
+    def get_custom_fields(self) -> dict:
+        return {
+            key: val for key, val
+            in self._instrument.items()
+            if key not in [
+                'isAbstract',
+                'name',
+                'path'
+            ]
+        }
+
+    @property
+    def path(self):
+        if self.option._id:
+            p = self.option.instrument['path']
+        else:
+            p = self.option.instrument['path'] + ['<<series_folder_id>>']
+        if not self._id:
+            return p
+        return p + [self._id]
+
+    @property
+    def get_instrument(self):
+        instrument_dict = {
+            'isAbstract': True,
+            'name': self.common_name,
+            'path': self.path
+        }
+        instrument_dict.update(self.get_custom_fields)
+        return instrument_dict
 
     def create(self, dry_run: bool = False):
         if dry_run:
-            print(f"Dry run. New folder {self.get_payload['name']} to create:")
-            pp(self.get_payload)
-            self.payload['_id'].append(
-                f"<<new {self.option.ticker}.{self.option.exchange} {self.get_payload['name']} id>>"
+            print(f"Dry run. New folder {self.get_instrument['name']} to create:")
+            pp(self.get_instrument)
+            self._instrument['_id'] = (
+                f"<<new {self.option.series_name} "
+                f"{self.get_instrument['name']} id>>"
             )
-        elif self.option.instrument.get('_id'):
+            self._instrument['path'].append(
+                f"<<new {self.option.series_name} "
+                f"{self.get_instrument['name']} id>>"
+            )
+
+        elif self.option._id:
             self.option.wait_for_sdb()
-            create = asyncio.run(self.option.sdb.create(self.get_payload))
+            create = asyncio.run(self.option.sdb.create(self.get_instrument))
             if not create.get('_id'):
                 self.option.logger.error(pformat(create))
                 raise RuntimeError(
-                    f"Can not create common weekly folder {self.option.ticker}: {create['message']}"
+                    f"Can not create common weekly folder {self.option.ticker}: "
+                    f"{create['message']}"
                 )
             self.option.logger.debug(f'Result: {pformat(create)}')
-            self.payload['_id'] = create['_id']
-            self.payload['_rev'] = create['_rev']
-            self.payload['path'].append(create['_id'])
-            self.reference = deepcopy(self.payload)
-            new_record = DataFrame([{
-                key: val for key, val
-                in self.get_payload.items()
-                if key in self.option.tree_df.columns
-            }], index=[self.payload['_id']])
-            self.option.tree_df = pd.concat([self.option.tree_df, new_record])
-            self.option.tree_df.replace({np.nan: None})
+            self._instrument['_id'] = create['_id']
+            self._instrument['_rev'] = create['_rev']
+            self._instrument['path'].append(create['_id'])
+            self._reference = deepcopy(self.get_instrument)
 
     def update(self, diff: dict, dry_run: bool = False):
         self.option.logger.info(
-            f"{self.option.ticker}.{self.option.exchange}, {self.get_payload['name']}: "
+            f"{self.option.ticker}.{self.option.exchange}, {self.get_instrument['name']}: "
             "following changes have been made:"
         )
         self.option.logger.info(pformat(diff))
         if dry_run:
-            print(f"Dry run. The folder {self.get_payload['name']} to update:")
+            print(f"Dry run. The folder {self.get_instrument['name']} to update:")
             pp(diff)
             return {}
         self.option.wait_for_sdb()
-        response = asyncio.run(self.option.sdb.update(self.get_payload))
+        response = asyncio.run(self.option.sdb.update(self.get_instrument))
         if response.get('message'):
-            self.option.logger.warning(
-                f"{self.option.ticker}.{self.option.exchange}, {self.get_payload['name']}: "
+            self.option.logger.error(
+                f"{self.option.ticker}.{self.option.exchange}, {self.get_instrument['name']}: "
                 "folder is not updated"
             )
-            self.option.logger.warning(pformat(response))
+            self.option.logger.error(pformat(response))
+        else:
+            self._reference = deepcopy(self.get_instrument)
+
 
     def mk_weeklies(self, recreate: bool = False, week_number: int = 0):
         '''
@@ -2021,7 +2085,7 @@ class WeeklyCommon(Instrument):
                 in enumerate(self.weekly_folders)
                 if x.week_number == num
             ), None)
-            shortname = self.option.instrument.get('description')
+            shortname = self.option._instrument.get('description')
             shortname = re.sub(r'( )?[Oo]ptions( )?([Oo]n )?', '', shortname)
             shortname += f" {num}{endings[num]} Week"
             ticker_template: str = self.templates.get('ticker')
@@ -2040,54 +2104,57 @@ class WeeklyCommon(Instrument):
                 ticker=weekly_ticker,
                 exchange=self.option.exchange,
                 shortname=shortname,
-                parent_folder_id=self.get_payload.get('_id'),
+                parent_folder_id=self._id,
                 week_number=num,
-                reload_cache=False,
+                parent=self,
                 bo=self.option.bo,
                 sdb=self.option.sdb,
                 sdbadds=self.option.sdbadds,
 
                 name=weekly_name
             )
-            # new_weekly.instrument['name'] = weekly_name
-            if not new_weekly.instrument.get('_id') or recreate:
-                if [x for x in self.templates if x != 'ticker']:
-                    feed_providers = [
-                        x[0] for x
-                        in asyncio.run(
-                            self.option.sdbadds.get_list_from_sdb(
-                                SdbLists.FEED_PROVIDERS.value
-                            )
-                        )
-                    ]
-                    broker_providers = [
-                        x[0] for x
-                        in asyncio.run(
-                            self.option.sdbadds.get_list_from_sdb(
-                                SdbLists.BROKER_PROVIDERS.value
-                            )
-                        )
-                    ]
-                    for provider in self.templates:
-                        if provider not in feed_providers + broker_providers:
-                            continue
-                        for item, value in self.templates[provider].items():
-                            if not isinstance(value, str):
-                                continue
-                            if '$' in value:
-                                self.templates[provider][item] = value.replace('$', str(num))
-                            if '@' in value:
-                                self.templates[provider][item] = value.replace('@', letters[num])
-                        new_weekly.set_provider_overrides(provider, **self.templates[provider])
+            # new_weekly._instrument['name'] = weekly_name
+            if new_weekly._id and not recreate:
+                continue
+            feed_providers = [
+                x[0] for x
+                in asyncio.run(
+                    self.option.sdbadds.get_list_from_sdb(
+                        SdbLists.FEED_PROVIDERS.value
+                    )
+                )
+            ]
+            broker_providers = [
+                x[0] for x
+                in asyncio.run(
+                    self.option.sdbadds.get_list_from_sdb(
+                        SdbLists.BROKER_PROVIDERS.value
+                    )
+                )
+            ]
+            for provider in self.templates:
+                if provider not in feed_providers + broker_providers:
+                    continue
+                overrides: dict = deepcopy(self.templates[provider])
+                overrides = {
+                    item: value.replace(
+                            '$', str(num)
+                        ).replace(
+                            '@', letters[num]
+                        ) if isinstance(value, str) else value for item, value
+                    in overrides.items()
+                }
+                new_weekly.set_provider_overrides(provider, **overrides)
 
             if isinstance(existing, int) and recreate:
                 self.weekly_folders[existing] = new_weekly
             elif existing is None:
                 if recreate:
                     self.option.logger.warning(
-                        f"{new_weekly.ticker}.{new_weekly.exchange} week folder is not found, it will be created as new"
+                        f"{new_weekly.ticker}.{new_weekly.exchange} "
+                        "week folder is not found, it will be created as new"
                     )
                 self.weekly_folders.append(new_weekly)
 
     def get_diff(self):
-        return DeepDiff(self.reference, self.get_payload)
+        return DeepDiff(self.reference, self.get_instrument)
