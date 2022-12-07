@@ -1,7 +1,7 @@
 import asyncio
 import datetime as dt
 import json
-from pandas import DataFrame
+import pandas as pd
 import logging
 from copy import copy, deepcopy
 from typing import Any, Union
@@ -10,7 +10,7 @@ from sqlalchemy.engine import Engine
 from libs.editor_interactive import EditInstrument
 from libs.async_symboldb import SymbolDB
 from libs.parsers import DxfeedParser, FtxParser, DscopeParser, ExchangeParser
-from libs.async_sdb_additional import SDBAdditional, Months, SdbLists
+from libs.replica_sdb_additional import SDBAdditional, Months, SdbLists
 from libs.new_instruments import (
     Option,
     OptionExpiration,
@@ -75,7 +75,6 @@ class DerivativeAdder:
 
             sdb: SymbolDB = None,
             sdbadds: SDBAdditional = None,
-            tree_df: DataFrame = None,
             env: str = 'prod'
         ):
         self.errormsg = ''
@@ -86,12 +85,10 @@ class DerivativeAdder:
         (
             self.bo,
             self.sdb,
-            self.sdbadds,
-            self.tree_df
+            self.sdbadds
         ) = InitThemAll(
             sdb=sdb,
             sdbadds=sdbadds,
-            tree_df=tree_df,
             env=env
         ).get_instances
         self.croned = croned
@@ -138,24 +135,19 @@ class DerivativeAdder:
             weekly: bool = False,
             allowed_expirations: list = None,
             max_timedelta: int = None,
-            reload_cache: bool = True,
             croned: bool = False,
 
             sdb: SymbolDB = None,
             sdbadds: SDBAdditional = None,
-            tree_df: DataFrame = None,
             env='prod'
         ):
         (
             bo,
             sdb,
-            sdbadds,
-            tree_df
+            sdbadds
         ) = InitThemAll(
             sdb=sdb,
             sdbadds=sdbadds,
-            tree_df=tree_df,
-            reload_cache=reload_cache,
             env=env
         ).get_instances
         if derivative.replace(' ', '_') not in DerivativeType.__members__:
@@ -169,7 +161,6 @@ class DerivativeAdder:
             bo=bo,
             sdb=sdb,
             sdbadds=sdbadds,
-            reload_cache=False,
             env=env        
         ) # raises NoExchangeError (if exchange does not exist)
         # or NoInstrumentError (if ticker does not exist on particular exchange)
@@ -206,24 +197,19 @@ class DerivativeAdder:
             weekly: bool = False,
             allowed_expirations: list = None,
             max_timedelta: int = None,
-            reload_cache: bool = True,
             croned: bool = False,
 
             sdb: SymbolDB = None,
             sdbadds: SDBAdditional = None,
-            tree_df: DataFrame = None,
             env='prod'
         ):
         (
             bo,
             sdb,
-            sdbadds,
-            tree_df
+            sdbadds
         ) = InitThemAll(
             sdb=sdb,
             sdbadds=sdbadds,
-            tree_df=tree_df,
-            reload_cache=reload_cache,
             env=env
         ).get_instances
         errormsg = ''
@@ -244,7 +230,6 @@ class DerivativeAdder:
 
             sdb=sdb,
             sdbadds=sdbadds,
-            tree_df=tree_df,
             logger=logger,
             errormsg=errormsg
         )
@@ -260,7 +245,6 @@ class DerivativeAdder:
 
             sdb=sdb,
             sdbadds=sdbadds,
-            tree_df=tree_df,
             env=env
         )
         drv.new_ticker_parsed = parsed
@@ -274,24 +258,19 @@ class DerivativeAdder:
         contracts_payload: list[dict] = None,
 
         weekly: bool = False,
-        reload_cache: bool = True,
         croned: bool = False,
 
         sdb: SymbolDB = None,
         sdbadds: SDBAdditional = None,
-        tree_df: DataFrame = None,
         env='prod'
     ):
         (
             bo,
             sdb,
-            sdbadds,
-            tree_df
+            sdbadds
         ) = InitThemAll(
             sdb=sdb,
             sdbadds=sdbadds,
-            tree_df=tree_df,
-            reload_cache=reload_cache,
             env=env
         ).get_instances
         if derivative.replace(' ', '_') not in DerivativeType.__members__:
@@ -303,8 +282,6 @@ class DerivativeAdder:
             bo=bo,
             sdb=sdb,
             sdbadds=sdbadds,
-            tree_df=tree_df,
-            reload_cache=reload_cache,
             env=env
         )
         if not contracts_payload:
@@ -319,7 +296,6 @@ class DerivativeAdder:
 
             sdb=sdb,
             sdbadds=sdbadds,
-            tree_df=tree_df,
             env=env
         )
         if contracts_payload and not weekly:
@@ -411,9 +387,9 @@ class DerivativeAdder:
         payload = {
             'provider': main_prov_name,
             'prov_id': main_feed_source,
-            'derivative_type': instrument.sdbadds.tree_df.loc[
-                instrument.sdbadds.tree_df['_id'] == instrument.instrument['path'][1]
-            ].iloc[0]['name'],
+            'derivative_type': instrument.sdbadds.uuid_to_name(
+                instrument.instrument['path'][1]
+            )[0],
             'exchange_id': instrument.instrument.get(
                 'exchangeId',
                 instrument.compiled_parent.get('exchangeId')
@@ -767,7 +743,7 @@ class DerivativeAdder:
             try:
                 target.add_payload(contract, **additional)
             except Exception as e:
-                self.logger.warning(f"{e.__class__.__name__}: expiration {contract['name']} is not added")
+                self.logger.warning(f"{e.__class__.__name__} {e}: expiration {contract['name']} is not added")
 
     def validate_series(
             self, 
@@ -1032,7 +1008,7 @@ class DerivativeAdder:
                 suggested_path[-1],
                 get_uuid_by_path(
                     suggested_path,
-                    sdbadds.tree_df
+                    sdbadds.engine
                 )
             )
             # follback to main folder if category folder does not exist
@@ -1041,7 +1017,7 @@ class DerivativeAdder:
                     suggested_path[-2],
                     get_uuid_by_path(
                         suggested_path,
-                        sdbadds.tree_df
+                        sdbadds.engine
                     )
                 )
         return new_folder_destination, suggested_path
@@ -1089,7 +1065,6 @@ class DerivativeAdder:
 
             sdb: SymbolDB = None,
             sdbadds: SDBAdditional = None,
-            tree_df: DataFrame = None,
             logger: logging.Logger = None,
             errormsg: str = None
         ):
@@ -1126,22 +1101,32 @@ class DerivativeAdder:
         # you should choose the folder where series folder meant to be placed (generally the exchange folder)
         # but if you choose the old series folder I won't judge you, it's also ok:)
         if new_folder_destination[0] == ticker:
-            old_folder = tree_df.loc[
-                tree_df['_id'] == new_folder_destination[1]
-            ].iloc[0]
-            destination_path = tree_df.loc[
-                tree_df['_id'] ==  old_folder['path'][-2]
-            ].iloc[0]['path']
+            old_folder = pd.read_sql(
+                'SELECT id as _id, path '
+                'FROM instruments '
+                f"WHERE id = '{new_folder_destination[1]}'",
+                sdbadds.engine
+            ).iloc[0]
+            destination_path = pd.read_sql(
+                'SELECT id as _id, path '
+                'FROM instruments '
+                f"WHERE id = '{old_folder['path'][-2]}'",
+                sdbadds.engine
+            ).iloc[0]['path']
         else:
-            destination_path = tree_df.loc[
-                tree_df['_id'] == new_folder_destination[1]
-            ].iloc[0]['path']
-
+            destination_path = pd.read_sql(
+                'SELECT id as _id, path '
+                'FROM instruments '
+                f"WHERE id = '{new_folder_destination[1]}'",
+                sdbadds.engine
+            ).iloc[0]['path']
         # check the derivative_type one more time
-        inherited_type = tree_df.loc[
-            tree_df['_id'] == destination_path[1]
-        ].iloc[0]['name']
-
+        inherited_type = pd.read_sql(
+                'SELECT id as _id, "extraData" as extra '
+                'FROM instruments '
+                f"WHERE id = '{new_folder_destination[1]}'",
+                sdbadds.engine
+            ).iloc[0]['extra']['name']
         # inherited_type = next(x['name'] for x in tree if x['_id'] == destination_path[1])
         if inherited_type in ['OPTION', 'OPTION ON FUTURE'] and derivative_type in ['OPTION', 'OPTION ON FUTURE']:
             if derivative_type != inherited_type:
@@ -1164,8 +1149,7 @@ class DerivativeAdder:
             instrument_type=derivative_type,
             env=sdb.env,
             sdb=sdb,
-            sdbadds=sdbadds,
-            tree_df=tree_df
+            sdbadds=sdbadds
         )
         overrides = DerivativeAdder.get_overrides(
             ticker,
@@ -1223,11 +1207,9 @@ class DerivativeAdder:
             shortname=shortname,
             parent_folder_id=destination_path[-1],
             recreate=recreate,
-            reload_cache=False,
 
             sdb=sdb,
-            sdbadds=sdbadds,
-            tree_df=tree_df
+            sdbadds=sdbadds
         ) # raises RuntimeError if not recreate and series exists in sdb
         
         # set CQG overrides
