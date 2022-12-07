@@ -909,7 +909,7 @@ class Option(Derivative):
             week_num = int((exp_date.day - 1)/7) + 1
         elif isinstance(week_num, int) and week_num > 5:
             raise ExpirationError(
-                f"Week number, could not be greater than 5, {week_num=}"
+                f"Week number could not be greater than 5, {week_num=}"
             )
         if self.week_number:
             if week_num and week_num != self.week_number:
@@ -973,7 +973,7 @@ class Option(Derivative):
         if week_num is True:
             week_num = int((exp_date.day - 1)/7) + 1
         elif isinstance(week_num, int) and week_num > 5:
-            raise ExpirationError(f"Week number, could not be greater than 5, {week_num=}")
+            raise ExpirationError(f"Week number could not be greater than 5, {week_num=}")
         if self.week_number:
             if week_num and week_num != self.week_number:
                 self.logger.error(
