@@ -1108,7 +1108,7 @@ class Option(Derivative):
         weekly_common = next((
             x for x
             in self.weekly_commons
-            if x.payload['name'] == common_name
+            if x.instrument['name'] == common_name
             or x.templates.get('ticker') == ticker_template
         ), None)
         if not weekly_common:
@@ -1969,7 +1969,7 @@ class WeeklyCommon(Instrument):
                     weekly_folder = Option.from_sdb(
                         ticker=x,
                         exchange=self.option.exchange,
-                        parent_folder_id=self.payload.get('_id'),
+                        parent_folder_id=self._id,
                         week_number=int(re.search(r'[12345]', x).group()),
                         parent_tree=self.option.series_tree,
                         bo=self.option.bo,
