@@ -240,7 +240,7 @@ class Derivative(Instrument):
         super().__init__(
             instrument=instrument,
             reference=reference,
-            instrument_type=self.instrument_type,
+            instrument_type=instrument_type,
             parent=parent,
             env=self.env,
 
