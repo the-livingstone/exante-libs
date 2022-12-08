@@ -377,8 +377,8 @@ class Option(Derivative):
         if not parent_path == payload['path'][:len(parent_path)]:
             raise NoInstrumentError(f"Bad path: {sdbadds.show_path(payload.get('path'))}")
         if payload['path'][1] not in [
-            get_uuid_by_path(['Root', 'OPTION'], sdbadds.engine),
-            get_uuid_by_path(['Root', 'OPTION ON FUTURE'], sdbadds.engine)
+            sdbadds.uuid2str(get_uuid_by_path(['Root', 'OPTION'], sdbadds.engine)),
+            sdbadds.uuid2str(get_uuid_by_path(['Root', 'OPTION ON FUTURE'], sdbadds.engine))
             ]:
             raise NoInstrumentError(f"Bad path: {sdbadds.show_path(payload.get('path'))}")
         ticker = payload.get('ticker')
