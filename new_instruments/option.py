@@ -1380,7 +1380,10 @@ class OptionExpiration(Instrument):
         expiration = Instrument.normalize_date(instrument.get('expiry', {}))
         maturity = Instrument.format_maturity(instrument.get('maturityDate', {}))
         strikes = instrument.get('strikePrices', {})
-        underlying = instrument.get('underlyingId', {}).get('id')
+        if option.option_type == 'OPTION ON FUTURE':
+            underlying = instrument.get('underlyingId', {}).get('id')
+        else:
+            underlying = None
         return cls(
             option,
             expiration,
