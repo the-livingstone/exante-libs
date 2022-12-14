@@ -479,6 +479,8 @@ class Instrument:
         Make well-formed maturity string (YYYY-MM-DD or YYYY-MM)
         from literally every possible input
         """
+        if not input_data:
+            return None
         if isinstance(input_data, dict):
             maturity = f"{input_data['year']}-{input_data['month']:0>2}"
             if input_data.get('day'):
