@@ -1068,8 +1068,9 @@ class SpreadExpiration(Instrument):
         self.far_maturity = far_maturity
         self._leg_gap = leg_gap
         
-        if self.instrument.get('spreadType'):
-            self.calendar_type = self.instrument['spreadType']
+        self.calendar_type = None
+        if instrument.get('spreadType'):
+            self.calendar_type = instrument['spreadType']
         elif spread.calendar_type:
             self.calendar_type = spread.calendar_type
         else:
@@ -1289,6 +1290,7 @@ class SpreadExpiration(Instrument):
                     'year': int(self.maturity.split('-')[0])
                 }
             })
+            return instrument_dict
         elif self.spread_type == 'CALENDAR_SPREAD':
             instrument_dict.update({
                 'name': f"{self.near_maturity} {self.far_maturity}",
@@ -1301,6 +1303,7 @@ class SpreadExpiration(Instrument):
                     'year': int(self.far_maturity.split('-')[0])
                 }
             })
+            return instrument_dict
 
     def set_la_lt(self):
         if self.spread.set_la:
@@ -1378,8 +1381,6 @@ class SpreadExpiration(Instrument):
         return None
 
     def mk_calendar_legs(self):
-        if calendar_type is None:
-            calendar_type = self.spread.calendar_type
         first_leg = next((
             x for x
             in self.spread.leg_futures
@@ -1391,7 +1392,7 @@ class SpreadExpiration(Instrument):
             if x.maturity == self.far_maturity
         ), None)
         if first_leg and second_leg:
-            if self.spread.calendar_type == 'FORWARD':
+            if self.calendar_type == 'FORWARD':
                 legs = [
                     {
                         'quantity': 1,
@@ -1402,7 +1403,7 @@ class SpreadExpiration(Instrument):
                         'exanteId': second_leg.contract_name
                     }
                 ]
-            elif self.spread.calendar_type == 'REVERSE':
+            elif self.calendar_type == 'REVERSE':
                 legs = [
                     {
                         'quantity': -1,
