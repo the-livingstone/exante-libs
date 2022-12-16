@@ -1149,7 +1149,9 @@ class DerivativeAdder:
 
         # try to get inherited overrides
         parent = Instrument(
-            instrument=asyncio.run(sdb.get(destination_path[-1])),
+            instrument=asyncio.run(
+                sdb.get(sdbadds.uuid2str(destination_path[-1]))
+            ),
             instrument_type=derivative_type,
             env=sdb.env,
             sdb=sdb,
@@ -1209,7 +1211,7 @@ class DerivativeAdder:
             ticker,
             exchange,
             shortname=shortname,
-            parent_folder_id=destination_path[-1],
+            parent_folder_id=sdbadds.uuid2str(destination_path[-1]),
             recreate=recreate,
 
             sdb=sdb,
