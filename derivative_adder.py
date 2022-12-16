@@ -233,6 +233,10 @@ class DerivativeAdder:
             logger=logger,
             errormsg=errormsg
         )
+        if not target:
+            raise RuntimeError(
+                f"{ticker}.{exchange}: cannot set up new {derivative} series"
+            )
         drv = cls(
             ticker,
             exchange,
@@ -1089,7 +1093,7 @@ class DerivativeAdder:
         # check if it is ok and maybe correct it
         if not new_folder_destination:
             logger.error('New folder destination is not set')
-            return None
+            return None, None
         # We don't like to add smth out of category if categories are present
         heirs = asyncio.run(sdb.get_heirs(new_folder_destination[1], fields=['ticker']))
         if len([x for x in heirs if x.get('ticker')]) < len(heirs)/2:
@@ -1097,7 +1101,7 @@ class DerivativeAdder:
                 f"{ticker}.{exchange}: "
                 f"Cannot set destination folder (suggested: {'→'.join(suggested)})" + "\n"
             )
-            return None
+            return None, None
         # you should choose the folder where series folder meant to be placed (generally the exchange folder)
         # but if you choose the old series folder I won't judge you, it's also ok:)
         if new_folder_destination[0] == ticker:
@@ -1124,7 +1128,7 @@ class DerivativeAdder:
         inherited_type = pd.read_sql(
                 'SELECT id as _id, "extraData" as extra '
                 'FROM instruments '
-                f"WHERE id = '{new_folder_destination[1]}'",
+                f"WHERE id = '{destination_path[1]}'",
                 sdbadds.engine
             ).iloc[0]['extra']['name']
         # inherited_type = next(x['name'] for x in tree if x['_id'] == destination_path[1])
@@ -1137,7 +1141,7 @@ class DerivativeAdder:
                 f"You should not place new {derivative_type.lower()}s here: "
                 f"{sdbadds.show_path(destination_path)}"
             )
-            return None
+            return None, None
 
         if derivative_type.replace(' ', '_') not in DerivativeType.__members__:
             raise TypeUndefined(f'{derivative_type=} is unknown type')
@@ -1166,13 +1170,13 @@ class DerivativeAdder:
                 logger.error(
                     'Feed provider is not defined, cannot create new folder'
                 )
-                return None
+                return None, None
             gateway = DerivativeAdder.__set_feed_provider(overrides, sdbadds)
             if not gateway:
                 logger.error(
                     'Feed provider is not set, cannot create new folder'
                 )
-                return None
+                return None, None
 
 
         # reuters with its reutersProperties is somewhat special
