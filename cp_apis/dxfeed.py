@@ -116,6 +116,8 @@ class DxFeed:
                 decoded_line[0] = 'TYPE'
                 type_keys_tuples[type_] = decoded_line
                 continue
+            if line == '##COMPLETE':
+                break
             if type_keys_tuples and decoded_line:
                 if decoded_line[0] in type_keys_tuples:
                     data.append(dict(zip(type_keys_tuples[decoded_line[0]], decoded_line)))
