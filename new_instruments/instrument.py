@@ -1132,7 +1132,12 @@ class Instrument:
                 in type_mapping.items()
                 if y == type(val)
             )
-            path = self.navi.find_path(prop, field_type, *additional)
+
+            path = self.navi.find_path(
+                '/'.join(additional + [prop]),
+                field_type,
+                *additional
+            )
             if not path:
                 self.logger.warning(f'Cannot find a path to {prop}')
                 return False
@@ -1190,7 +1195,10 @@ class Instrument:
         for arg in args:
             if arg in ['broker', 'feed']:
                 continue
-            path = self.navi.find_path(arg, *additional)
+            path = self.navi.find_path(
+                '/'.join(additional + [arg]),
+                *additional
+            )
             if not path:
                 self.logger.warning(f'Cannot find a path to {arg}')
                 continue
