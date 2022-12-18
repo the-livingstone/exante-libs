@@ -81,11 +81,11 @@ class Spread(Derivative):
         self.skipped = set()
         self.allowed_expirations = []
 
-        self.new_expirations: list[SpreadExpiration] = []
         self.leg_futures: list[FutureExpiration] = []
+        self.new_expirations: list[SpreadExpiration] = []
         self.series_tree = series_tree
-        self.contracts, self.gap_folders = self.__set_contracts(series_tree)
-        self.leg_futures = self.__set_leg_futures()
+        self.__set_leg_futures()
+        self.__set_contracts(series_tree)
         self._align_expiry_la_lt()
 
     @property
@@ -330,38 +330,45 @@ class Spread(Derivative):
         gap_folders = []
         if self.spread_type in ['CALENDAR', 'CALENDAR_SPREAD']:
             gap_folders = [
-                x for x
+                GapFolder.from_dict(
+                    self,
+                    payload=x,
+                    reference=x
+                ) for x
                 in series_tree
                 if x['path'][:-1] == self.instrument['path']
                 and x['isAbstract']
                 and re.match(r'\d{1,2} month', x['name'])
             ]
-        for parent_folder in [self.instrument] + gap_folders:
-            contract_dicts = [
-                x for x
-                in series_tree
-                if x['path'][:-1] == parent_folder['path']
-                and not x['isAbstract']
-                and x.get('isTrading') is not False
-            ]
-            for item in contract_dicts:
-                try:
-                    contracts.append(
-                        SpreadExpiration.from_dict(self, instrument=item, reference=item)
+            gap_folders = [x for x in gap_folders if x]
+        self.gap_folders = gap_folders
+        contract_dicts = [
+            x for x
+            in series_tree
+            if not x['isAbstract']
+            and x.get('isTrading') is not False
+        ]
+        for item in contract_dicts:
+            try:
+                contracts.append(
+                    SpreadExpiration.from_dict(
+                        self,
+                        instrument=item, 
+                        reference=item
                     )
-                except Exception as e:
-                    # Don't bother with old shit
-                    expiration_date = self.sdb.sdb_to_date(item.get('expiry', {}))
-                    if expiration_date and dt.date.today() - expiration_date < dt.timedelta(days=1100): # ~3 years
-                        raise e
-                    message = f"{self.ticker}.{self.exchange}: {e.__class__.__name__}: {e}"
-                    self.logger.info(message)
-                    self.logger.info(
-                        f"Cannot initialize contract {item['name']=}, {item['_id']=}."
-                        "Anyway, it's too old to worry about"
-                    )
-
-        return sorted(contracts), gap_folders
+                )
+            except Exception as e:
+                # Don't bother with old shit
+                expiration_date = self.sdb.sdb_to_date(item.get('expiry', {}))
+                if expiration_date and dt.date.today() - expiration_date < dt.timedelta(days=1100): # ~3 years
+                    raise e
+                message = f"{self.ticker}.{self.exchange}: {e.__class__.__name__}: {e}"
+                self.logger.info(message)
+                self.logger.info(
+                    f"Cannot initialize contract {item['name']=}, {item['_id']=}."
+                    "Anyway, it's too old to worry about"
+                )
+        self.contracts = sorted(contracts)
 
     def __set_leg_futures(self):
         leg_futures: list[FutureExpiration] = []
@@ -385,7 +392,7 @@ class Spread(Derivative):
                     f'{leg_ticker}.{self.exchange} '
                     'futures are not found in sdb! Create them in first place'
                 )
-        return leg_futures
+        self.leg_futures = leg_futures
 
     def find_product_expiration(
             self,
@@ -540,6 +547,21 @@ class Spread(Derivative):
             )
         return series.contracts[num] if num is not None and series is not None else None
 
+    def __get_leg_gap(self, series: 'Spread', num: int) -> int:
+        etn = series.contracts[num].get_provider_overrides(
+            'ETN_CQG',
+            'legGap',
+            compiled=True if series.gap_folders else False,
+            silent=True
+        )
+        cqg = series.contracts[num].get_provider_overrides(
+            'CQG',
+            'legGap',
+            compiled=True if series.gap_folders else False,
+            silent=True
+        )
+        return etn.get('legGap') if etn else cqg.get('legGap')
+
     def __update_existing_contract(
             self,
             series: 'Spread',
@@ -550,14 +572,27 @@ class Spread(Derivative):
             payload: dict = None,
             **kwargs
         ):
+        leg_gap_to_set = None
         exp_date = series.contracts[num].expiration
         maturity = series.contracts[num].maturity
         near_maturity = series.contracts[num].near_maturity
         far_maturity = series.contracts[num].far_maturity
+        if self.spread_type == 'CALENDAR_SPREAD':
+            payload_leg_gap = payload.pop('leg_gap', None) if payload else None
+            existing_leg_gap = self.__get_leg_gap(series, num)
+            leg_gap_to_set = leg_gap if leg_gap \
+                else payload_leg_gap if payload_leg_gap \
+                else existing_leg_gap
+            if not leg_gap_to_set:
+                series.logger.error(
+                    f'{series.contracts[num].contract_name}: leg gap is not set! '
+                    'Please, specify leg gap'
+                )
+                return {}
+            
         if overwrite_old:
             if payload:
-                leg_gap = payload.pop('leg_gap', None)
-                if leg_gap:
+                if leg_gap_to_set:
                     series.contracts[num]._leg_gap = leg_gap
                 if payload.get('spreadType'):
                     calendar_type = payload['spreadType']
@@ -593,6 +628,7 @@ class Spread(Derivative):
         else:
             for field, val in kwargs.items():
                 series.contracts[num].set_field_value(val, field.split('/'))
+        series.contracts[num].set_leg_gap(leg_gap_to_set)
 
         series.contracts[num].instrument.pop('isTrading', None)
         diff = series.contracts[num].get_diff()
@@ -854,77 +890,17 @@ class Spread(Derivative):
         )
         return create
 
-    def create_gap_folder(self, gap: int, sibling_folder: dict, dry_run: bool):
-        new_folder = {
-            key: val for key, val
-            in deepcopy(sibling_folder).items()
-            if key[0] != '_'
-        }
-        new_folder['path'].pop(-1)
-
-        str_gap = f'{gap:0>2}'
-        new_folder['name'] = re.sub(r'\d{1,2}', str_gap, new_folder['name'])
-        sibling_months = int(re.search(r'\d{1,2}', sibling_folder['name']).group())
-        sibling_leggap = next((
-            val for key, val
-            in sibling_folder.get('brokers', {}).get('providerOverrides', {}).items()
-            if key == 'legGap'
-        ), None)
-        multiplier = sibling_months / sibling_leggap if sibling_leggap else 1
+    def create_gap_folder(self, gap: int, sibling_folder: 'GapFolder', dry_run: bool):
+        multiplier = sibling_folder.month_gap / sibling_folder.leg_gap if sibling_folder.leg_gap else 1
         true_leg_gap = gap * multiplier
-        for prov, overrides in new_folder['brokers']['providerOverrides'].items():
-            if overrides.get('legGap'):
-                new_folder['brokers']['providerOverrides'][prov]['legGap'] = true_leg_gap
-        if dry_run:
-            print(f"Dry run. New folder {new_folder['name']} to create:")
-            pp(new_folder)
-            return None
-        else:
-            self.wait_for_sdb()
-            create = asyncio.run(self.sdb.create(new_folder))
-            if not create.get('_id'):
-                self.logger.error(pformat(create))
-                return None
-            self.logger.debug(f'Result: {pformat(create)}')
-            new_folder['_id'] = create['_id']
-            new_folder['_rev'] = create['_rev']
-            new_folder['path'].append(create['_id'])
-        return new_folder
-
-    def replace_id_fillers(self, dry_run: bool):
-        if dry_run:
-            return None
-        for contract in self.new_expirations + self.contracts:
-            series_filler = next((
-                num for num, x
-                in enumerate(contract.instrument['path'])
-                if x == '<<series_id>>'
-            ), None)
-            if series_filler is not None:
-                contract.instrument['path'][series_filler] = self.instrument['_id']
-            gap_folder_filler = next((
-                (num, int(re.match(r'<<(\d{1,2}) month folder>>', x).groups()[0])) for num, x
-                in enumerate(contract.instrument['path'])
-                if re.match(r'<<(\d{1,2}) month folder>>', x)
-            ), (None, None))
-            if gap_folder_filler[0] is not None:
-                gap_folder = next((
-                    x for x
-                    in self.gap_folders
-                    if re.search(rf'{gap_folder_filler[1]:0>2}', x)
-                ), None)
-                if not gap_folder:
-                    self.logger.error(
-                        f'Gap folder for {gap_folder_filler[1]} does not exist in sdb!'
-                    )
-                    self.logger.error(
-                        f'Contract {contract} will not be created (or updated)'
-                    )
-                    contract.instrument = {}
-                contract.instrument['path'][gap_folder_filler[0]] = gap_folder['_id']
-        self.new_expirations = [x for x in self.new_expirations if x.instrument]
-        self.contracts = [x for x in self.contracts if x.instrument]
-
+        new_gap_folder = GapFolder.from_scratch(
+            self,
+            month_gap=gap,
+            leg_gap=true_leg_gap
+        )
+        if new_gap_folder:
+            new_gap_folder.create(dry_run)
+        return new_gap_folder
 
     def post_to_sdb(self, dry_run=True) -> dict:
         """
@@ -938,12 +914,6 @@ class Spread(Derivative):
         update_result = ''
         report = {}
         try_again_series = False
-        update_expirations = [
-            x for x
-            in self.contracts
-            if x.expiration >= dt.date.today()
-            and x.get_diff()
-        ]
         self.reduce_instrument()
         diff = DeepDiff(self.reference, self.instrument)
         # Create folder if need
@@ -957,11 +927,11 @@ class Spread(Derivative):
         gap_folders_to_create = set([
             x.instrument['path'][-1] for x
             in self.new_expirations
-            if re.match(r'<<\d{1,2} month folder>>', x.instrument['path'][-1])
+            if re.match(r'<<\d{1,2} month folder>>', x.get_instrument['path'][-1])
         ] + [
             x.instrument['path'][-2] for x
             in self.contracts
-            if re.match(r'<<\d{1,2} month folder>>', x.instrument['path'][-2])
+            if re.match(r'<<\d{1,2} month folder>>', x.get_instrument['path'][-2])
         ])
         for gf in gap_folders_to_create:
             month_gap = int(re.match(r'<<(\d{1,2}) month folder>>', gf).groups()[0])
@@ -972,13 +942,23 @@ class Spread(Derivative):
             )
             if new_gap_folder:
                 self.gap_folders.append(new_gap_folder)
-        # self.replace_id_fillers(dry_run)
+        
         update_expirations = [
             x for x
             in self.contracts
-            if x.expiration >= dt.date.today()
-            and x.get_diff()
+            # if x.expiration >= dt.date.today()
+            if x.get_diff()
+            and (
+                self.spread_type == 'SPREAD' or x.leg_gap
+                # we are not going to update calendar spreads w/o leg gaps
+            )
         ]
+        if self.spread_type == 'CALENDAR_SPREAD':
+            for c in self.contracts:
+                if not c.leg_gap:
+                    self.logger.error(
+                        f"{c.contract_name}: leg_gap is not set! Set the correct value and post to sdb"
+                    )
 
         if self.new_expirations and dry_run:
             print(f"Dry run, new expirations to create:")
@@ -1059,7 +1039,6 @@ class SpreadExpiration(Instrument):
         self.exchange = spread.exchange
         self.series_name = spread.series_name
         self.spread_type = spread.spread_type
-        self.leg_futures = spread.leg_futures
         self.spread = spread
 
         self.expiration = expiration
@@ -1067,7 +1046,17 @@ class SpreadExpiration(Instrument):
         self.near_maturity = near_maturity
         self.far_maturity = far_maturity
         self._leg_gap = leg_gap
-        
+        self.leg_futures = [
+            x for x
+            in spread.leg_futures
+            if (
+                x.ticker == self.ticker
+                and x.maturity in [self.near_maturity, self.far_maturity]
+            ) or (
+                x.ticker in [self.first_ticker, self.second_ticker]
+                and x.maturity == self.maturity
+            )
+        ]
         self.calendar_type = None
         if instrument.get('spreadType'):
             self.calendar_type = instrument['spreadType']
@@ -1089,6 +1078,8 @@ class SpreadExpiration(Instrument):
         self.set_la_lt()
         for field, val in kwargs.items():
             self.set_field_value(val, field.split('/'))
+        if leg_gap:
+            self.set_leg_gap(leg_gap)
 
     @classmethod
     def from_scratch(
@@ -1115,11 +1106,15 @@ class SpreadExpiration(Instrument):
         far_maturity = Instrument.format_maturity(far_maturity)
         if spread.spread_type == 'SPREAD' and not maturity:
             raise ExpirationError(f'maturity should be set for {spread.spread_type=}')
-        if spread.spread_type == 'CALENDARSPREAD' \
-            and not (near_maturity and far_maturity):
-            raise ExpirationError(
-                f'both near_maturity and far_maturity should be set for {spread.spread_type=}'
-            )
+        if spread.spread_type == 'CALENDAR_SPREAD':
+            if not (near_maturity and far_maturity):
+                raise ExpirationError(
+                    f'Both near_maturity and far_maturity should be set for {spread.spread_type=}'
+                )
+            if not leg_gap and not spread.gap_folders:
+                raise ExpirationError(
+                    f'leg_gap is not set and no gap folders are present'
+                )
         return cls(
             spread,
             expiration,
@@ -1145,6 +1140,15 @@ class SpreadExpiration(Instrument):
         if not reference:
             reference = {}
         instrument.pop('isTrading', None)
+        given_leg_gap = instrument.pop('leg_gap', None)
+        existing_leg_gap = next((
+            y['legGap'] for x, y
+            in instrument.get('brokers', {}).get('providerOverrides', {}).items()
+            if y.get('legGap')
+        ), None)
+        leg_gap = given_leg_gap if given_leg_gap \
+            else leg_gap if leg_gap \
+            else existing_leg_gap
         expiration = Instrument.normalize_date(instrument.get('expiry', {}))
         maturity = Instrument.format_maturity(instrument.get('maturityDate', {}))
         near_maturity = Instrument.format_maturity(instrument.get('nearMaturityDate', {}))
@@ -1152,11 +1156,18 @@ class SpreadExpiration(Instrument):
         calendar_type = instrument.get('spreadType', spread.calendar_type)
         if spread.spread_type == 'SPREAD' and not maturity:
             raise ExpirationError(f'maturity should be set for {spread.spread_type=}')
-        if spread.spread_type == 'CALENDARSPREAD' \
-            and not (near_maturity and far_maturity):
-            raise ExpirationError(
-                f'both near_maturity and far_maturity should be set for {spread.spread_type=}'
-            )
+        if spread.spread_type == 'CALENDAR_SPREAD':
+            if not (near_maturity and far_maturity):
+                raise ExpirationError(
+                    f'both near_maturity and far_maturity should be set for {spread.spread_type=}'
+                )
+            if not leg_gap and not spread.gap_folders:
+                # we don't allow to init new calendar spread contracts without leg gap or gap folders
+                # but we have to init existing contracts in order to be able to update them
+                if not instrument.get('_id'):
+                    raise ExpirationError(
+                        f'leg_gap is not set and no gap folders are present'
+                    )
         return cls(
             spread,
             expiration=expiration,
@@ -1236,8 +1247,12 @@ class SpreadExpiration(Instrument):
             return f"{self.ticker}.{self.exchange}.{symbolic_date}"
 
     @property
+    def leg_gap(self):
+        return self._leg_gap
+
+    @property
     def path(self):
-        if self.spread.instrument.get('_id'):
+        if self.spread._id:
             p = deepcopy(self.spread.instrument['path'])
         else:
             p = deepcopy(self.spread.instrument['path']) + ['<<series_folder_id>>']
@@ -1290,6 +1305,7 @@ class SpreadExpiration(Instrument):
                     'year': int(self.maturity.split('-')[0])
                 }
             })
+            instrument_dict.update(self.get_custom_fields)
             return instrument_dict
         elif self.spread_type == 'CALENDAR_SPREAD':
             instrument_dict.update({
@@ -1303,6 +1319,8 @@ class SpreadExpiration(Instrument):
                     'year': int(self.far_maturity.split('-')[0])
                 }
             })
+            self.set_leg_gap(self.leg_gap)
+            instrument_dict.update(self.get_custom_fields)
             return instrument_dict
 
     def set_la_lt(self):
@@ -1320,6 +1338,32 @@ class SpreadExpiration(Instrument):
                 ['lastTrading']
             )
             self.set_field_value(self.spread.set_lt, ['lastTrading', 'time'])
+    
+    def set_leg_gap(self, leg_gap: int):
+        if self.spread_type == 'SPREAD':
+            self._leg_gap = None
+            self.logger.warning(
+                f'{self.contract_name}: '
+                'you should not set leg gap for product spread, not updated'
+            )
+            return None
+        if not leg_gap or not isinstance(leg_gap, int) or leg_gap < 0:
+            self.logger.error(
+                f"{self.contract_name}: you are trying to set invalid {leg_gap=}, not updated"
+            )
+            if self._leg_gap is None:
+                self.logger.warning(
+                    f"{self.contract_name}: leg gap is not set! Set the leg gap before posting to the sdb"
+                )
+            return None
+        self._leg_gap = leg_gap
+        if not self.spread.gap_folders:
+            self.set_provider_overrides(
+                'ETN_CQG', legGap=leg_gap
+            )
+            self.set_provider_overrides(
+                'CQG', legGap=leg_gap
+            )
 
     def get_gap_folder_id(self):
         days_delta =  (
@@ -1327,30 +1371,29 @@ class SpreadExpiration(Instrument):
             dt.date.fromisoformat(f"{self.near_maturity}-01")
         ).days
         month_gap = int(round(days_delta / 30.41, 0)) # 30.41 = 365 / 12
-        gap_folder = next(
-            (
-                x for x in self.spread.gap_folders
-                if re.search(r'(?P<month>\d{1,2}) month', x['name'])
-                and int(re.search(
-                    r'(?P<month>\d{1,2}) month',
-                    x['name']).group('month')
-                ) == month_gap
-            ), None)
+        gap_folder = next((
+            x for x in self.spread.gap_folders
+            if x.month_gap == month_gap
+        ), None)
         if gap_folder:
-            return gap_folder['_id']
+            self._leg_gap = gap_folder.leg_gap
+            return gap_folder._id
         elif self.spread.gap_folders:
+            gf_month = self.spread.gap_folders[0].month_gap
+            gf_leg = self.spread.gap_folders[0].leg_gap
+            self._leg_gap = int(month_gap * gf_leg / gf_month)
             return f'<<{month_gap} month folder>>'
 
     def mk_product_legs(self):
         first_leg = next((
             x for x
-            in self.spread.leg_futures
+            in self.leg_futures
             if x.ticker == self.spread.first_ticker
             and x.maturity == self.maturity
         ), None)
         second_leg = next((
             x for x
-            in self.spread.leg_futures
+            in self.leg_futures
             if x.ticker == self.spread.second_ticker
             and x.maturity == self.maturity
         ), None)
@@ -1383,12 +1426,12 @@ class SpreadExpiration(Instrument):
     def mk_calendar_legs(self):
         first_leg = next((
             x for x
-            in self.spread.leg_futures
+            in self.leg_futures
             if x.maturity == self.near_maturity
         ), None)
         second_leg = next((
             x for x
-            in self.spread.leg_futures
+            in self.leg_futures
             if x.maturity == self.far_maturity
         ), None)
         if first_leg and second_leg:
@@ -1430,7 +1473,174 @@ class SpreadExpiration(Instrument):
         return None
 
     def get_diff(self) -> dict:
-        return DeepDiff(self.reference, self.instrument)
+        return DeepDiff(self.reference, self.get_instrument)
 
     def get_expiration(self) -> tuple[dict, str]:
-        return self.instrument, self.contract_name
+        return self.get_instrument, self.contract_name
+
+class GapFolder(Instrument):
+    def __init__(
+            self,
+            spread: Spread,
+            month_gap: int,
+            leg_gap: int,
+            instrument: dict = None,
+            reference: dict = None
+        ):
+        self.sdb=spread.sdb
+        self.sdbadds=spread.sdbadds
+        self._month_gap = month_gap
+        self._leg_gap = leg_gap
+        self.spread = spread
+        self.exchange = self.spread.exchange
+        self._instrument = instrument
+
+        super().__init__(
+            instrument=self.get_instrument,
+            reference=reference,
+            instrument_type='OPTION',
+            parent=spread,
+            env=spread.env,
+            sdb=spread.sdb,
+            sdbadds=spread.sdbadds
+        )
+        self.set_provider_overrides(
+            'ETN_CQG', legGap=self.leg_gap
+        )
+        self.set_provider_overrides(
+            'CQG', legGap=self.leg_gap
+        )
+
+    
+    @classmethod
+    def from_dict(
+            cls,
+            spread: Spread,
+            payload: dict,
+            reference: dict = None
+        ):
+        if reference is None:
+            reference = {}
+        match = re.match(r'(?P<month>\d{1,2}) month', payload['name'])
+        if not match:
+            spread.logger.warning(f'Cannot get month gap: {pformat(payload)}')
+            return None
+        month_gap = int(match.group('month'))
+        leg_gap = None
+        for po in payload.get('brokers', {}).get('providerOverrides', {}):
+            leg_gap = payload['brokers']['providerOverrides'][po].get('legGap')
+            if leg_gap:
+                break
+        if not leg_gap:
+            spread.logger.warning(
+                f'Cannot get leg gap from providerOverrides: {pformat(payload)}'
+            )
+            return None
+        return cls(
+            spread,
+            month_gap=month_gap,
+            leg_gap=leg_gap,
+            instrument=payload,
+            reference=deepcopy(reference)
+        )
+
+    @classmethod
+    def from_scratch(
+            cls,
+            spread: Spread,
+            month_gap: int,
+            leg_gap: int,
+            reference: dict = None
+        ):
+        if reference is None:
+            reference = {}
+        instrument = {
+            key: val for key, val
+            in reference.items()
+            if key[0] == '_'
+        }
+        return cls(
+            spread,
+            month_gap=month_gap,
+            leg_gap=leg_gap,
+            instrument=instrument,
+            reference=deepcopy(reference)
+        )
+
+
+    def __repr__(self):
+        return f"GapFolder({self.spread.series_name}, {self.month_gap=})"
+
+
+    @property
+    def get_custom_fields(self) -> dict:
+        return {
+            key: val for key, val
+            in self._instrument.items()
+            if key not in [
+                'isAbstract',
+                'name',
+                'path'
+            ]
+        }
+    
+    @property
+    def month_gap(self):
+        return self._month_gap
+    
+    @property
+    def leg_gap(self):
+        return self._leg_gap
+
+    @property
+    def get_name(self):
+        return f"{self.month_gap:0>2} month{'s' if self.month_gap > 1 else ''} gap"
+
+    @property
+    def path(self):
+        if self.spread._id:
+            p = self.spread.instrument['path']
+        else:
+            p = self.spread.instrument['path'] + ['<<series_folder_id>>']
+        if not self._id:
+            return p
+        return p + [self._id]
+
+    @property
+    def get_instrument(self):
+        instrument_dict = {
+            'isAbstract': True,
+            'name': self.get_name,
+            'path': self.path
+        }
+        try:
+            self.set_provider_overrides(
+                'ETN_CQG', legGap=self.leg_gap
+            )
+            self.set_provider_overrides(
+                'CQG', legGap=self.leg_gap
+            )
+        except AttributeError:
+            pass
+        instrument_dict.update(self.get_custom_fields)
+
+        return instrument_dict
+
+    def create(self, dry_run: bool = False):
+        if dry_run:
+            print(f"Dry run. New folder {self.get_instrument['name']} to create:")
+            pp(self.get_instrument)
+        elif self.spread._id:
+            self.spread.wait_for_sdb()
+            create = asyncio.run(self.spread.sdb.create(self.get_instrument))
+            if not create.get('_id'):
+                self.logger.error(pformat(create))
+                raise RuntimeError(
+                    f"Can not create gap folder {self.month_gap=}: "
+                    f"{create['message']}"
+                )
+            self.logger.debug(f'Result: {pformat(create)}')
+            self._instrument['_id'] = create['_id']
+            self._instrument['_rev'] = create['_rev']
+            self._instrument['path'].append(create['_id'])
+            self._reference = deepcopy(self.get_instrument)
