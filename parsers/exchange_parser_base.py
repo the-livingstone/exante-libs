@@ -690,10 +690,16 @@ class ExchangeParser(ABC):
                         )
                     )
                 except ValidationError as valerr:
-                    self.logger.warning(
-                        f"{c.get('ticker')}.{c.get('exchange')} {c.get('maturity')}: "
-                        "contract validation has failed"
-                    )
+                    if c.get('far_maturity_'):
+                        self.logger.warning(
+                            f"{c.get('ticker')}.{c.get('exchange')} {c.get('maturity')}-{c.get('far_maturity_')}: "
+                            "contract validation has failed"
+                        )
+                    else:
+                        self.logger.warning(
+                            f"{c.get('ticker')}.{c.get('exchange')} {c.get('maturity')}: "
+                            "contract validation has failed"
+                        )
                     self.logger.warning(valerr.errors())
         return results
 
