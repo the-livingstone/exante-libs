@@ -800,20 +800,21 @@ class Instrument:
         reduced_instrument = go_deeper(self.instrument, self.compiled_parent)
         self._instrument = reduced_instrument
 
-    def validate_instrument(self):
+    def validate_instrument(self, contract: bool = False):
+        instrument_dict = self.get_instrument if contract else self.instrument
         if self.compiled_parent:
             compiled_instrument = asyncio.run(self.sdbadds.build_inheritance(
-                [self.compiled_parent, self.instrument], include_self=True
+                [self.compiled_parent, instrument_dict], include_self=True
             ))
         else:
             compiled_instrument = asyncio.run(self.sdbadds.build_inheritance(
-                self.instrument, include_self=True
+                instrument_dict, include_self=True
             ))
         try:
             self.schema(**compiled_instrument)
             return True
         except ValidationError as valerr:
-            if self.instrument.get('isAbstract') is False:
+            if instrument_dict.get('isAbstract') is False:
                 self.logger.error(valerr)
             else:
                 self.logger.info(valerr)
