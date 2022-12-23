@@ -890,7 +890,12 @@ class Spread(Derivative):
         )
         return create
 
-    def create_gap_folder(self, gap: int, sibling_folder: 'GapFolder', dry_run: bool):
+    def create_gap_folder(
+            self,
+            gap: int,
+            sibling_folder: 'GapFolder',
+            dry_run: bool
+        ):
         multiplier = sibling_folder.month_gap / sibling_folder.leg_gap if sibling_folder.leg_gap else 1
         true_leg_gap = gap * multiplier
         new_gap_folder = GapFolder.from_scratch(
