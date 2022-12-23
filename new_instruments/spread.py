@@ -900,7 +900,7 @@ class Spread(Derivative):
             dry_run: bool
         ):
         multiplier = sibling_folder.month_gap / sibling_folder.leg_gap if sibling_folder.leg_gap else 1
-        true_leg_gap = gap * multiplier
+        true_leg_gap = int(gap * multiplier)
         new_gap_folder = GapFolder.from_scratch(
             self,
             month_gap=gap,
