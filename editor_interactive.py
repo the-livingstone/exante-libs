@@ -10,7 +10,7 @@ from typing import Union
 from libs import sdb_schemas
 from libs import sdb_schemas_cprod as cdb_schemas
 from libs.async_symboldb import SymbolDB
-from libs.async_sdb_additional import SDBAdditional, SdbLists
+from libs.replica_sdb_additional import SDBAdditional, SdbLists
 from libs.sdb_schemas import type_mapping
 from libs.terminal_tools import pick_from_list_tm, clear, StatusColor
 
