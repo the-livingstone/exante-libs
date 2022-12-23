@@ -697,7 +697,8 @@ class Spread(Derivative):
                 )
                 return {}
         if payload:
-            leg_gap = payload.pop('leg_gap', None)
+            if not leg_gap:
+                leg_gap = payload.pop('leg_gap', None)
             new_contract = SpreadExpiration.from_dict(
                 series,
                 payload,
