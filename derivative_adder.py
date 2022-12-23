@@ -404,7 +404,7 @@ class DerivativeAdder:
                 'ticker': ticker,
                 'exchange': exchange
             })
-        for source in feed_sources:
+        for source in set(feed_sources):
             prov_name = next((
                 x[0] for x
                 in asyncio.run(
@@ -414,13 +414,14 @@ class DerivativeAdder:
                 )
                 if x[1] == source
             ), None)
-            payload.setdefault(prov_name, {})
             overrides_to_get = common + provider_specific.get(prov_name, [])
-            payload[prov_name] = instrument.get_provider_overrides(
-                prov_name,
-                *overrides_to_get,
-                compiled=True,
-                silent=True
+            payload.setdefault(prov_name, {}).update(
+                instrument.get_provider_overrides(
+                    prov_name,
+                    *overrides_to_get,
+                    compiled=True,
+                    silent=True
+                )
             )
             if not parent:
                 payload[prov_name].update(
@@ -771,7 +772,7 @@ class DerivativeAdder:
             highlighted = {}
             # we need to reload compiled parent instrument here
             some_contract.set_instrument(some_contract.instrument, target)
-            validated = some_contract.validate_instrument()
+            validated = some_contract.validate_instrument(contract=True)
             if isinstance(validated, dict) and validated.get('validation_errors'):
                 for v in validated['validation_errors']:
                     highlighted.update({
@@ -841,7 +842,7 @@ class DerivativeAdder:
                 symbolid = exp.get_expiration()[1]
                 highlighted = {}
                 exp.set_instrument(exp.instrument, self.series)
-                validated = exp.validate_instrument()
+                validated = exp.validate_instrument(contract=True)
                 if isinstance(validated, dict) and validated.get('validation_errors'):
                     for v in validated['validation_errors']:
                         highlighted.update({
