@@ -933,13 +933,13 @@ class Spread(Derivative):
             self.logger.info(f"{self.series_name}.*: No changes have been made")
 
         gap_folders_to_create = set([
-            x.instrument['path'][-1] for x
+            x.path[-1] for x
             in self.new_expirations
-            if re.match(r'<<\d{1,2} month folder>>', x.get_instrument['path'][-1])
+            if re.match(r'<<\d{1,2} month folder>>', x.path[-1])
         ] + [
-            x.instrument['path'][-2] for x
+            x.path[-2] for x
             in self.contracts
-            if re.match(r'<<\d{1,2} month folder>>', x.get_instrument['path'][-2])
+            if re.match(r'<<\d{1,2} month folder>>', x.path[-2])
         ])
         for gf in gap_folders_to_create:
             month_gap = int(re.match(r'<<(\d{1,2}) month folder>>', gf).groups()[0])
