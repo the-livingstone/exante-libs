@@ -864,14 +864,14 @@ class SDBAdditional:
         #         'type'
         #     ]
         # ))
-        first_level = pd.read_sql(
+        first_level_dicts = pd.read_sql(
             'SELECT id as _id, path '
             'FROM instruments '
             'WHERE cardinality(path) = 2',
-            self.engine,
-            index_col='_id'
+            self.engine
         ).to_dict('records')
-        self.__get_names(first_level)
+        self.__get_names(first_level_dicts)
+        first_level = [x['name'] for x in first_level_dicts]
         first_level.append('.')
         # there is an option to browse the instrument through the instrument tree
         # dunno if it's really useful
@@ -922,7 +922,7 @@ class SDBAdditional:
             )
         else:
             search_sdb = asyncio.run(self.sdb.get_v2(
-                input_path[0],
+                search_string,
                 fields=[
                     'expiryTime',
                     'exchangeId',
