@@ -135,6 +135,7 @@ class Spread(Derivative):
             raise NoInstrumentError(
                 f'{ticker}.{exchange} series does not exist in SymbolDB'
             )
+        calendar_type = instrument['spreadType'] if instrument.get('spreadType') else 'FORWARD'
         
         return cls(
             ticker=ticker,
@@ -142,6 +143,7 @@ class Spread(Derivative):
             instrument=instrument,
             reference=deepcopy(instrument),
             series_tree=series_tree,
+            calendar_type=calendar_type,
 
             bo=bo,
             sdb=sdb,
