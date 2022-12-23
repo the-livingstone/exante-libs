@@ -187,13 +187,18 @@ class SchemaNavigation:
             # check if it is valid path
             if len(self.schema_lookup(path)) == 1:
                 return path
-
+            root_member = path.pop(0)
+            if path and path[0] == 'providerOverrides':
+                path.pop(0)
         # ignore providerId in providerOverrides and list indices
+        provider_ids = [
+            x[1] for x
+            in ValidationLists.feed_providers + ValidationLists.broker_providers
+        ]
         lookup_item = next(
             p for p in path
             if not p.isdecimal()
-            and p not in [x[1] for x in ValidationLists.feed_providers]
-            and p not in [x[1] for x in ValidationLists.broker_providers]
+            and p not in provider_ids
         )
         definitions = [
             key for key, val in self.schema['definitions'].items()
@@ -258,9 +263,11 @@ class SchemaNavigation:
                     definition = None
             else:
                 definition = next((
-                    x for x in mentions
-                    if x.lower() in [y.lower() for y in args]
-                    or len(mentions) == 1), None)
+                    x for x
+                    in mentions
+                    if len(mentions) == 1
+                    or x.lower() in [y.lower() for y in args]
+                ), None)
             possible_fields = list()
             if not definition:
                 # what's going on here:
@@ -279,7 +286,8 @@ class SchemaNavigation:
                 definition = next(x for x in mentions if possible_fields[0] in mentions[x])
             new_entry = possible_fields[0] if possible_fields else mentions[definition][0]
             if new_entry in ['providerOverrides', 'gateways', 'accounts']:
-                path.insert(0, 'dummy')
+                if path and not (isinstance(path[0], int) or path[0] in provider_ids):
+                    path.insert(0, 'dummy')
             path.insert(0, new_entry)
             if definition == 'root':
                 break
