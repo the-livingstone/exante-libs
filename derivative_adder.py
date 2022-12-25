@@ -882,7 +882,7 @@ class DerivativeAdder:
                         symbolid,
                         exp.instrument,
                         instrument_type=self.derivative_type.split(' ')[0],
-                        env=self.env,
+                        env=self.sdb.env,
                         sdb=self.sdb,
                         sdbadds=self.sdbadds
                     ).edit_instrument(highlight=highlighted)
