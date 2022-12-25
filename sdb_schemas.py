@@ -1714,11 +1714,16 @@ class Accounts(BaseModel):
         if not existing_account:
             raise ValueError(f"{values.get('account_id')=} is not valid account id")
         account: Account = values.get('account')
-        if account.provider_id != existing_account[1]['account']['providerId']:
-            raise ValueError(f'{account.provider_id=} is not valid provider id')
+        try:
+            if account.provider_id != existing_account[1]['account']['providerId']:
+                raise ValueError(f'{account.provider_id=} is not valid provider id')
 
-        if account.gateway_id != existing_account[1]['account']['gatewayId']:
-            raise ValueError(f'{account.gateway_id=} is not valid gateway id')
+            if account.gateway_id != existing_account[1]['account']['gatewayId']:
+                raise ValueError(f'{account.gateway_id=} is not valid gateway id')
+        except AttributeError as ae:
+            raise ValueError(
+                f'{ae}'.replace('NoneType', existing_account[0])
+            )
 
         wo_scheme_accounts = next(
             x[2] for x
