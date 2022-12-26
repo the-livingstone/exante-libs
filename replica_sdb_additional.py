@@ -376,17 +376,25 @@ class SDBAdditional:
         return await asyncio.gather(*tasks)
 
     def __get_names(self, heirs: list[dict]):
-        ids = [f"'{x['_id']}'" for x in heirs]
+        ids = [
+            f"'{x['_id']}'" for x
+            in heirs
+            if isinstance(x['_id'], UUID)
+            or self.sdb.is_uuid(x['_id'])
+        ]
         extra_df = pd.read_sql(
             f"SELECT id as _id, \"extraData\" as extra FROM instruments WHERE id in ({', '.join(ids)})",
-            self.engine,
-            index_col='_id'
+            self.engine
         )
-        for _id, row in extra_df.iterrows():
-            heir = next((x for x in heirs if x['_id'] == _id), None)
-            if heir is None:
-                continue
-            heir['name'] = row['extra'].get('name', '')
+        for h in heirs:
+            h.setdefault('name', self.uuid2str(h['_id']))
+            try:
+                index_id = h['_id'] if isinstance(h['_id'], UUID) else UUID(h['_id'])
+                name_df = extra_df[extra_df['_id'] == index_id]
+                if not name_df.empty:
+                    h['name'] = name_df.iloc[0]['extra'].get('name', '')
+            except ValueError:
+                pass        
 
     def __mk_query(
             self,
@@ -1783,7 +1791,7 @@ class SDBAdditional:
         if isinstance(path, list):
             id_list = [
                 {
-                    '_id': x if isinstance(x, UUID) else UUID(x)
+                    '_id': x
                 } for x in path
             ]
         elif isinstance(path, str):
@@ -1792,13 +1800,13 @@ class SDBAdditional:
                 return None
             id_list = [
                 {
-                    '_id': x if isinstance(x, UUID) else UUID(x)
+                    '_id': x
                 } for x in get_instr['path']
             ]
         elif isinstance(path, dict):
             id_list = [
                 {
-                    '_id': x if isinstance(x, UUID) else UUID(x)
+                    '_id': x
                 } for x in path.get('path', [])
             ]
             if not id_list:
