@@ -839,9 +839,8 @@ class DerivativeAdder:
             attempts = 0
             dropped = False
             while True:
-                symbolid = exp.get_expiration()[1]
                 highlighted = {}
-                exp.set_instrument(exp.instrument, self.series)
+                exp.set_instrument(exp.get_instrument, self.series)
                 validated = exp.validate_instrument(contract=True)
                 if isinstance(validated, dict) and validated.get('validation_errors'):
                     for v in validated['validation_errors']:
@@ -856,31 +855,31 @@ class DerivativeAdder:
 
                     if self.croned:
                         self.logger.error(
-                            f"{symbolid}: Expiration validation has been failed on following fields:"
+                            f"{exp.contract_name}: Expiration validation has been failed on following fields:"
                         )
                         self.logger.error(pformat(highlighted))
-                        self.errormsg += f"{symbolid}: Expiration validation has been failed on following fields:"
+                        self.errormsg += f"{exp.contract_name}: Expiration validation has been failed on following fields:"
                         self.errormsg += '\n' + pformat(highlighted) + '\n'
-                        drop_expirations.append(symbolid)
+                        drop_expirations.append(exp.contract_name)
                         dropped = True
                         break
                 elif validated is True:
                     break
                 if attempts > 0 and not self.croned:
-                    message = f"Validation of {symbolid} has failed. Do you want to edit it once more or drop it?"
+                    message = f"Validation of {exp.contract_name} has failed. Do you want to edit it once more or drop it?"
                     edit_expiration = pick_from_list_tm(
                         ['Drop', 'Edit more'],
                         message=message,
                         clear_screen=False
                     )
                     if not edit_expiration:
-                        drop_expirations.append(symbolid)
+                        drop_expirations.append(exp.contract_name)
                         dropped = True
                         break
                 if not dropped:
-                    exp.instrument = EditInstrument(
-                        symbolid,
-                        exp.instrument,
+                    exp._instrument = EditInstrument(
+                        exp.contract_name,
+                        exp.get_instrument,
                         instrument_type=self.derivative_type.split(' ')[0],
                         env=self.sdb.env,
                         sdb=self.sdb,
