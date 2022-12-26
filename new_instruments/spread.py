@@ -340,7 +340,7 @@ class Spread(Derivative):
                 in series_tree
                 if x['path'][:-1] == self.instrument['path']
                 and x['isAbstract']
-                and re.match(r'\d{1,2} month', x['name'])
+                and re.match(r'\d{1,3} month', x['name'])
             ]
             gap_folders = [x for x in gap_folders if x]
         self.gap_folders = gap_folders
@@ -935,14 +935,14 @@ class Spread(Derivative):
         gap_folders_to_create = set([
             x.path[-1] for x
             in self.new_expirations
-            if re.match(r'<<\d{1,2} month folder>>', x.path[-1])
+            if re.match(r'<<\d{1,3} month folder>>', x.path[-1])
         ] + [
             x.path[-2] for x
             in self.contracts
-            if re.match(r'<<\d{1,2} month folder>>', x.path[-2])
+            if re.match(r'<<\d{1,3} month folder>>', x.path[-2])
         ])
         for gf in gap_folders_to_create:
-            month_gap = int(re.match(r'<<(\d{1,2}) month folder>>', gf).groups()[0])
+            month_gap = int(re.match(r'<<(\d{1,3}) month folder>>', gf).groups()[0])
             new_gap_folder = self.create_gap_folder(
                 month_gap,
                 self.gap_folders[0],
@@ -1157,6 +1157,7 @@ class SpreadExpiration(Instrument):
         leg_gap = given_leg_gap if given_leg_gap \
             else leg_gap if leg_gap \
             else existing_leg_gap
+        leg_gap = int(leg_gap) if leg_gap else leg_gap
         expiration = Instrument.normalize_date(instrument.get('expiry', {}))
         maturity = Instrument.format_maturity(instrument.get('maturityDate', {}))
         near_maturity = Instrument.format_maturity(instrument.get('nearMaturityDate', {}))
@@ -1529,7 +1530,7 @@ class GapFolder(Instrument):
         ):
         if reference is None:
             reference = {}
-        match = re.match(r'(?P<month>\d{1,2}) month', payload['name'])
+        match = re.match(r'(?P<month>\d{1,3}) month', payload['name'])
         if not match:
             spread.logger.warning(f'Cannot get month gap: {pformat(payload)}')
             return None
