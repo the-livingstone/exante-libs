@@ -1,4 +1,4 @@
-from authdb import keyload
+from .authdb import keyload
 from tenacity import retry, stop_after_attempt, wait_fixed, retry_if_exception_type
 from aiohttp.client_exceptions import ClientConnectionError, ClientResponseError, ServerDisconnectedError, ClientPayloadError, ContentTypeError
 from typing import Any, Dict
