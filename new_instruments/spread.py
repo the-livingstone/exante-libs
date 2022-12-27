@@ -584,7 +584,8 @@ class Spread(Derivative):
             existing_leg_gap = self.__get_leg_gap(series, num)
             leg_gap_to_set = leg_gap if leg_gap \
                 else payload_leg_gap if payload_leg_gap \
-                else existing_leg_gap
+                else existing_leg_gap if existing_leg_gap \
+                else series.contracts[num].leg_gap
             if not leg_gap_to_set:
                 series.logger.error(
                     f'{series.contracts[num].contract_name}: leg gap is not set! '
@@ -600,7 +601,7 @@ class Spread(Derivative):
                     calendar_type = payload['spreadType']
                 else:
                     calendar_type = series.calendar_type
-                series.contracts[num]._calendar_type = calendar_type
+                series.contracts[num].calendar_type = calendar_type
 
                 payload.update({
                     key: val for key, val
@@ -630,7 +631,8 @@ class Spread(Derivative):
         else:
             for field, val in kwargs.items():
                 series.contracts[num].set_field_value(val, field.split('/'))
-        series.contracts[num].set_leg_gap(leg_gap_to_set)
+        if leg_gap_to_set:
+            series.contracts[num].set_leg_gap(leg_gap_to_set)
 
         series.contracts[num].instrument.pop('isTrading', None)
         diff = series.contracts[num].get_diff()
@@ -1053,7 +1055,6 @@ class SpreadExpiration(Instrument):
         self.maturity = maturity
         self.near_maturity = near_maturity
         self.far_maturity = far_maturity
-        self._leg_gap = leg_gap
         self.leg_futures = [
             x for x
             in spread.leg_futures
@@ -1073,12 +1074,11 @@ class SpreadExpiration(Instrument):
         else:
             self.calendar_type = self.compiled_parent.get('spreadType')
         self._instrument = instrument
-
         super().__init__(
             instrument=instrument,
             reference=reference,
             instrument_type=self.spread_type,
-            parent=spread,
+            parent=self.gap_folder if self.gap_folder else spread,
             env=spread.env,
             sdb=spread.sdb,
             sdbadds=spread.sdbadds
@@ -1260,15 +1260,41 @@ class SpreadExpiration(Instrument):
         return self._leg_gap
 
     @property
+    def gap_folder(self):
+        if self.spread.gap_folders:
+            days_delta = (
+                dt.date.fromisoformat(f"{self.far_maturity}-01") - \
+                dt.date.fromisoformat(f"{self.near_maturity}-01")
+            ).days
+            month_gap = int(round(days_delta / 30.41, 0)) # 30.41 = 365 / 12
+            gap_folder = next((
+                x for x in self.spread.gap_folders
+                if x.month_gap == month_gap
+            ), None)
+            if gap_folder:
+                self._leg_gap = gap_folder.leg_gap
+            else:
+                gf_month = self.spread.gap_folders[0].month_gap
+                gf_leg = self.spread.gap_folders[0].leg_gap
+                self._leg_gap = int(month_gap * gf_leg / gf_month)
+            return gap_folder
+        return None
+
+    @property
     def path(self):
         if self.spread._id:
             p = deepcopy(self.spread.instrument['path'])
         else:
             p = deepcopy(self.spread.instrument['path']) + ['<<series_folder_id>>']
-        if self.spread.gap_folders:
-            gf_id = self.get_gap_folder_id()
-            if gf_id:
-                p.append(gf_id)
+        if self.gap_folder:
+            p.append(self.gap_folder._id)
+        elif self.spread.gap_folders:
+            days_delta = (
+                dt.date.fromisoformat(f"{self.far_maturity}-01") - \
+                dt.date.fromisoformat(f"{self.near_maturity}-01")
+            ).days
+            month_gap = int(round(days_delta / 30.41, 0)) # 30.41 = 365 / 12
+            p.append(f'<<{month_gap} month folder>>')
         if not self.instrument.get('_id'):
             return p
         return p + [self.instrument['_id']]
@@ -1292,7 +1318,8 @@ class SpreadExpiration(Instrument):
 
     @property
     def legs(self):
-        return self.mk_product_legs() if self.spread_type == 'SPREAD' else self.mk_calendar_legs()
+        return self.mk_product_legs() if self.spread_type == 'SPREAD' \
+            else self.mk_calendar_legs()
 
     @property
     def get_instrument(self):
@@ -1373,25 +1400,6 @@ class SpreadExpiration(Instrument):
             self.set_provider_overrides(
                 'CQG', legGap=leg_gap
             )
-
-    def get_gap_folder_id(self):
-        days_delta =  (
-            dt.date.fromisoformat(f"{self.far_maturity}-01") - \
-            dt.date.fromisoformat(f"{self.near_maturity}-01")
-        ).days
-        month_gap = int(round(days_delta / 30.41, 0)) # 30.41 = 365 / 12
-        gap_folder = next((
-            x for x in self.spread.gap_folders
-            if x.month_gap == month_gap
-        ), None)
-        if gap_folder:
-            self._leg_gap = gap_folder.leg_gap
-            return gap_folder._id
-        elif self.spread.gap_folders:
-            gf_month = self.spread.gap_folders[0].month_gap
-            gf_leg = self.spread.gap_folders[0].leg_gap
-            self._leg_gap = int(month_gap * gf_leg / gf_month)
-            return f'<<{month_gap} month folder>>'
 
     def mk_product_legs(self):
         first_leg = next((
