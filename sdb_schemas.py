@@ -1930,185 +1930,67 @@ class OrderAutomation(BaseModel):
         alias='recurrentAttempts',
         title='recurrentAttempts'
     )
-# continue reordering from here
+
 class CommonSchema(BaseModel):  
-    sym_type: str = Field(
-        alias='type',
-        title='type',
-        opts_list=ValidationLists.sym_types
-    )
-    is_abstract: bool = Field(
-        alias='isAbstract',
-        title='isAbstract'
-    )
-    is_trading: bool = Field(
-        alias='isTrading',
-        title='isTrading'
-    )
-    asset_informations: Optional[AssetInformations] = Field(
-        alias='assetInformations',
-        title='assetInformations'
-    )
-    search_weight: Optional[int] = Field(
-        alias='searchWeight',
-        title='searchWeight'
-    )
-    path: List[str] = Field(
-        alias='path',
-        title='path'
-    )
-    name: str = Field(
-        alias='name',
-        title='name'
-    )
-    ticker: Optional[str] = Field(
-        alias='ticker',
-        title='ticker'
-    )
-    market_data_group: Optional[str] = Field(
-        alias='marketDataGroup',
-        title='marketDataGroup',
-        opts_list=ValidationLists.market_data_groups
-    )
-    shortname: str = Field(
-        alias='shortName',
-        title='shortName'
-    )
-    description: Optional[str] = Field(
-        alias='description',
-        title='description'
-    )
-    identifiers: Optional[Identifiers] = Field(
-        alias='identifiers',
-        title='identifiers'
-    )
-    expiry: Optional[SdbDate] = Field(
-        alias='expiry',
-        title='expiry'
-    )
-    ompi: float = Field(
-        alias='orderMinPriceIncrement',
-        title='orderMinPriceIncrement'
-    )
-    fmpi: float = Field(
-        alias='feedMinPriceIncrement',
-        title='feedMinPriceIncrement'
-    )
-    currency: str = Field(
-        alias='currency',
-        title='currency',
-        opts_list=[x[1] for x in ValidationLists.currencies]
-    )
-    country: Optional[str] = Field(
-        alias='country',
-        title='country',
-        opts_list=[(x, y) for x, y in ValidationLists.countries.items()]
-    )
-    feeds: Optional[Feeds] = Field(
-        alias='feeds',
-        title='feeds'
-    )
-    brokers: Optional[Brokers] = Field(
-        alias='brokers',
-        title='brokers'
-    )
-    schedule_id: str = Field(
-        alias='scheduleId',
-        title='scheduleId',
-        opts_list=ValidationLists.schedules
-    )
-    comments: Optional[str] = Field(
-        alias='comments',
-        title='comments'
-    )
-    exchange_link: Optional[str] = Field(
-        alias='exchangeLink',
-        title='exchangeLink'
-    )
-    use_historical_quotes: Optional[bool] = Field(
-        alias='useHistoricalQuotes',
-        title='useHistoricalQuotes'
-    )
-    min_order_quantity: Optional[int] = Field(
-        alias='minOrderQuantity',
-        title='minOrderQuantity'
-    )
-    min_lot_size: Optional[int] = Field(
-        alias='minLotSize',
-        title='minLotSize'
-    )
-    lot_size: Optional[float] = Field(
-        alias='lotSize',
-        title='lotSize'
-    )
-    contract_multiplier: float = Field(
-        alias='contractMultiplier',
-        title='contractMultiplier'
-    )
-    price_unit: Optional[float] = Field(
-        alias='priceUnit',
-        title='priceUnit'
-    )
-    face_value: Optional[float] = Field(
-        alias='faceValue',
-        title='faceValue'
-    )
-    initial_margin: Optional[float] = Field(
-        alias='initialMargin',
-        title='initialMargin'
-    )
-    maintenance_margin: Optional[float] = Field(
-        alias='maintenanceMargin',
-        title='maintenanceMargin'
-    )
-    units: Optional[str] = Field(
-        alias='units',
-        title='units'
-    )
-    value_date_delta: Optional[int] = Field(
-        alias='valueDateDelta',
-        title='valueDateDelta'
-    )
-    is_liquid: Optional[bool] = Field(
-        alias='isLiquid',
-        title='isLiquid'
-    )
-    is_replace_enabled: Optional[bool] = Field(
-        alias='isReplaceEnabled',
-        title='isReplaceEnabled'
-    )
-    has_negative_price: Optional[bool] = Field(
-        alias='hasNegativePrice',
-        title='hasNegativePrice'
-    )
-    is_robot_tradable: Optional[bool] = Field(
-        alias='isRobotTradable',
-        title='isRobotTradable'
-    )
-    quote_filters: Optional[QuoteFilters] = Field(
-        alias='quoteFilters',
-        title='quoteFilters'
+    aodt: Aodt = Field(
+        alias='availableOrderDurationTypes',
+        title='availableOrderDurationTypes'
     )
     available_order_types: Optional[List[str]] = Field(
         alias='availableOrderTypes',
         title='availableOrderTypes',
         opts_list=ValidationLists.order_types
     )
-    aodt: Aodt = Field(
-        alias='availableOrderDurationTypes',
-        title='availableOrderDurationTypes'
+    asset_informations: Optional[AssetInformations] = Field(
+        alias='assetInformations',
+        title='assetInformations'
     )
-    max_close_by_market_volume: Optional[int] = Field(
-        alias='maxCloseByMarketVolume',
-        title='maxCloseByMarketVolume'
+    aux_data_calc_settings: Optional[AuxDataCalcSettings] = Field(
+        alias='auxDataCalcSettings',
+        title='auxDataCalcSettings'
     )
-    leverage_rate: Optional[float] = Field(
-        alias='leverageRate',
-        title='leverageRate'
+    brokers: Optional[Brokers] = Field(
+        alias='brokers',
+        title='brokers'
     )
-    leverage_rate_short: Optional[float] = Field(
-        alias='leverageRateShort',
-        title='leverageRateShort'
+    comments: Optional[str] = Field(
+        alias='comments',
+        title='comments'
+    )
+    contract_multiplier: float = Field(
+        alias='contractMultiplier',
+        title='contractMultiplier'
+    )
+    country: Optional[str] = Field(
+        alias='country',
+        title='country',
+        opts_list=[(x, y) for x, y in ValidationLists.countries.items()]
+    )
+    currency: str = Field(
+        alias='currency',
+        title='currency',
+        opts_list=[x[1] for x in ValidationLists.currencies]
+    )
+    delay_feed_depth: Optional[int] = Field(
+        alias='delayFeedDepth',
+        title='delayFeedDepth'
+    )
+    description: Optional[str] = Field(
+        alias='description',
+        title='description'
+    )
+    exchange_id: str = Field(
+        alias='exchangeId',
+        title='exchangeId',
+        opts_list=ValidationLists.exchanges
+    )
+    exchange_link: Optional[str] = Field(
+        alias='exchangeLink',
+        title='exchangeLink'
+    )
+    expiry: Optional[SdbDate] = Field(
+        alias='expiry',
+        title='expiry'
     )
     extreme_leverage_rate: Optional[float] = Field(
         alias='extremeLeverageRate',
@@ -2118,26 +2000,132 @@ class CommonSchema(BaseModel):
         alias='extremeLeverageRateShort',
         title='extremeLeverageRateShort'
     )
-    aux_data_calc_settings: Optional[AuxDataCalcSettings] = Field(
-        alias='auxDataCalcSettings',
-        title='auxDataCalcSettings'
+    face_value: Optional[float] = Field(
+        alias='faceValue',
+        title='faceValue'
     )
-    exchange_id: str = Field(
-        alias='exchangeId',
-        title='exchangeId',
-        opts_list=ValidationLists.exchanges
+    feeds: Optional[Feeds] = Field(
+        alias='feeds',
+        title='feeds'
+    )
+    fmpi: float = Field(
+        alias='feedMinPriceIncrement',
+        title='feedMinPriceIncrement'
+    )
+    has_negative_price: Optional[bool] = Field(
+        alias='hasNegativePrice',
+        title='hasNegativePrice'
+    )
+    identifiers: Optional[Identifiers] = Field(
+        alias='identifiers',
+        title='identifiers'
+    )
+    initial_margin: Optional[float] = Field(
+        alias='initialMargin',
+        title='initialMargin'
     )
     instant_execution: Optional[InstantExecution] = Field(
         alias='instantExecution',
         title='instantExecution'
     )
-    trade_data_available: Optional[bool] = Field(
-        alias='tradeDataAvailable',
-        title='tradeDataAvailable'
+    is_abstract: bool = Field(
+        alias='isAbstract',
+        title='isAbstract'
     )
-    underlying: Optional[str] = Field(
-        alias='underlying',
-        title='underlying'
+    is_liquid: Optional[bool] = Field(
+        alias='isLiquid',
+        title='isLiquid'
+    )
+    is_replace_enabled: Optional[bool] = Field(
+        alias='isReplaceEnabled',
+        title='isReplaceEnabled'
+    )
+    is_robot_tradable: Optional[bool] = Field(
+        alias='isRobotTradable',
+        title='isRobotTradable'
+    )
+    is_trading: bool = Field(
+        alias='isTrading',
+        title='isTrading'
+    )
+    leverage_rate: Optional[float] = Field(
+        alias='leverageRate',
+        title='leverageRate'
+    )
+    leverage_rate_short: Optional[float] = Field(
+        alias='leverageRateShort',
+        title='leverageRateShort'
+    )
+    lot_size: Optional[float] = Field(
+        alias='lotSize',
+        title='lotSize'
+    )
+    maintenance_margin: Optional[float] = Field(
+        alias='maintenanceMargin',
+        title='maintenanceMargin'
+    )
+    market_data_group: Optional[str] = Field(
+        alias='marketDataGroup',
+        title='marketDataGroup',
+        opts_list=ValidationLists.market_data_groups
+    )
+    max_close_by_market_volume: Optional[int] = Field(
+        alias='maxCloseByMarketVolume',
+        title='maxCloseByMarketVolume'
+    )
+    min_lot_size: Optional[int] = Field(
+        alias='minLotSize',
+        title='minLotSize'
+    )
+    min_order_quantity: Optional[int] = Field(
+        alias='minOrderQuantity',
+        title='minOrderQuantity'
+    )
+    name: str = Field(
+        alias='name',
+        title='name'
+    )
+    ompi: float = Field(
+        alias='orderMinPriceIncrement',
+        title='orderMinPriceIncrement'
+    )
+    order_automation: Optional[OrderAutomation] = Field(
+        alias='orderAutomation',
+        title='orderAutomation'
+    )
+    path: List[str] = Field(
+        alias='path',
+        title='path'
+    )
+    price_unit: Optional[float] = Field(
+        alias='priceUnit',
+        title='priceUnit'
+    )
+    quote_filters: Optional[QuoteFilters] = Field(
+        alias='quoteFilters',
+        title='quoteFilters'
+    )
+    quote_lifetime: Optional[int] = Field(
+        alias='quoteLifetime',
+        title='quoteLifetime'
+    )
+    schedule_id: str = Field(
+        alias='scheduleId',
+        title='scheduleId',
+        opts_list=ValidationLists.schedules
+    )
+    search_weight: Optional[int] = Field(
+        alias='searchWeight',
+        title='searchWeight'
+    )
+    section_id: str = Field(
+        alias='sectionId',
+        title='sectionId',
+        opts_list=ValidationLists.sections
+    )
+    shortname: str = Field(
+        alias='shortName',
+        title='shortName'
     )
     synthetic_feed: Optional[SyntheticFeed] = Field(
         alias='syntheticFeed',
@@ -2147,22 +2135,38 @@ class CommonSchema(BaseModel):
         alias='symbolId',
         title='symbolId'
     )
-    quote_lifetime: Optional[int] = Field(
-        alias='quoteLifetime',
-        title='quoteLifetime'
+    sym_type: str = Field(
+        alias='type',
+        title='type',
+        opts_list=ValidationLists.sym_types
     )
-    delay_feed_depth: Optional[int] = Field(
-        alias='delayFeedDepth',
-        title='delayFeedDepth'
+    tags: Optional[List[str]] = Field(
+        alias='tags',
+        title='tags'
     )
-    order_automation: Optional[OrderAutomation] = Field(
-        alias='orderAutomation',
-        title='orderAutomation'
+    ticker: Optional[str] = Field(
+        alias='ticker',
+        title='ticker'
     )
-    section_id: str = Field(
-        alias='sectionId',
-        title='sectionId',
-        opts_list=ValidationLists.sections
+    trade_data_available: Optional[bool] = Field(
+        alias='tradeDataAvailable',
+        title='tradeDataAvailable'
+    )
+    underlying: Optional[str] = Field(
+        alias='underlying',
+        title='underlying'
+    )
+    units: Optional[str] = Field(
+        alias='units',
+        title='units'
+    )
+    use_historical_quotes: Optional[bool] = Field(
+        alias='useHistoricalQuotes',
+        title='useHistoricalQuotes'
+    )
+    value_date_delta: Optional[int] = Field(
+        alias='valueDateDelta',
+        title='valueDateDelta'
     )
 
     @validator('market_data_group', allow_reuse=True)
@@ -2222,29 +2226,30 @@ class CommonSchema(BaseModel):
     
 
 class Rating(BaseModel):
-    snp: Optional[str]
-    moodys: Optional[str]
     fitch: Optional[str]
+    moodys: Optional[str]
+    snp: Optional[str]
 
 class BondCalcDataSettings(BaseModel):
+    aci_enabled: bool = Field(
+        alias='aciEnabled',
+        title='aciEnabled'
+    )
     day_count_type: str = Field(
         default=None,
         alias='dayCountType',
         title='dayCountType',
         opts_list=ValidationLists.day_count_types
     )
-    ytm_enabled: bool = Field(
-        alias='ytmEnabled',
-        title='ytmEnabled'
-    )
     enabled: bool = Field(
         alias='enabled',
         title='enabled'
     )
-    aci_enabled: bool = Field(
-        alias='aciEnabled',
-        title='aciEnabled'
+    ytm_enabled: bool = Field(
+        alias='ytmEnabled',
+        title='ytmEnabled'
     )
+
     @validator('day_count_type', allow_reuse=True)
     def check_day_count_type(cls, day_count_type):
         if day_count_type not in ValidationLists.day_count_types:
@@ -2253,48 +2258,9 @@ class BondCalcDataSettings(BaseModel):
 
 class BondSchema(CommonSchema):
 
-    sym_type: str = Field(
-        'BOND',
-        const=True,
-        alias='type',
-        title='type'
-    )
-    issuer_type: str = Field(
-        alias='issuerType',
-        title='issuerType',
-        opts_list=ValidationLists.issuer_types
-    )
-    coupon_rate: float = Field(
-        alias='couponRate',
-        title='couponRate'
-    )
-    payment_frequency: int = Field(
-        alias='paymentFrequency',
-        title='paymentFrequency'
-    )
-    maturity_date: SdbDate = Field(
-        alias='maturityDate',
-        title='maturityDate'
-    )
-    last_trading: Optional[SdbDate] = Field(
-        alias='lastTrading',
-        title='lastTrading'
-    )
-    last_available: Optional[SdbDate] = Field(
-        alias='lastAvailable',
-        title='lastAvailable'
-    )
-    rating: Optional[Rating] = Field(
-        alias='rating',
-        title='rating'
-    )
-    payment_dates: Optional[Dict[str, List[float]]] = Field(
-        alias='paymentDates',
-        title='paymentDates'
-    )
-    is_sinkable: Optional[bool] = Field(
-        alias='isSinkable',
-        title='isSinkable'
+    act_pre_first_days: Optional[int] = Field(
+        alias='actPreFirstDays',
+        title='actPreFirstDays'
     )
     amt_issued: Optional[int] = Field(
         alias='amtIssued',
@@ -2304,66 +2270,9 @@ class BondSchema(CommonSchema):
         alias='amtOutstanding',
         title='amtOutstanding'
     )
-    floater: Optional[str] = Field(
-        alias='floater',
-        title='floater',
-        opts_list=['Y', 'N']
-    )
-    coupon_dates: Optional[List[str]] = Field(
-        alias='couponDates',
-        title='couponDates'
-    )
-    first_coupon_period_type: Optional[str] = Field(
-        alias='firstCouponPeriodType',
-        title='firstCouponPeriodType',
-        opts_list=ValidationLists.coupon_period_types
-    )
-    last_coupon_period_type: Optional[str] = Field(
-        alias='lastCouponPeriodType',
-        title='lastCouponPeriodType',
-        opts_list=ValidationLists.coupon_period_types
-    )
     bond_calc_data_settings: Optional[BondCalcDataSettings] = Field(
         alias='bondCalcDataSettings',
         title='bondCalcDataSettings'
-    )
-    redemption_value: int = Field(
-        alias='redemptionValue',
-        title='redemptionValue'
-    )
-    face_value: float = Field(
-        alias='faceValue',
-        title='faceValue'
-    )
-    next_coupon_date: Optional[SdbDate] = Field(
-        alias='nextCouponDate',
-        title='nextCouponDate'
-    )
-    first_coupon_date: Optional[SdbDate] = Field(
-        alias='firstCouponDate',
-        title='firstCouponDate'
-    )
-    coupon_type: Optional[str] = Field(
-        alias='couponType',
-        title='couponType',
-        opts_list=ValidationLists.coupon_types
-    )
-    maturity_type: Optional[str] = Field(
-        alias='maturityType',
-        title='maturityType',
-        opts_list=ValidationLists.maturity_types
-    )
-    process_accrued_interest: Optional[bool] = Field(
-        alias='processAccruedInterest',
-        title='processAccruedInterest'
-    )
-    previous_coupon_date: Optional[SdbDate] = Field(
-        alias='previousCouponDate',
-        title='previousCouponDate'
-    )
-    min_increment: Optional[int] = Field(
-        alias='minIncrement',
-        title='minIncrement'
     )
     country: str = Field(
         alias='country',
@@ -2375,87 +2284,183 @@ class BondSchema(CommonSchema):
         title='countryRisk',
         opts_list=[(x, y) for x, y in ValidationLists.countries.items()]
     )
-    min_piece: Optional[int] = Field(
-        alias='minPiece',
-        title='minPiece'
-    )
-    sinking_fund_factor: Optional[int] = Field(
-        alias='sinkingFundFactor',
-        title='sinkingFundFactor'
-    )
-    issue_date: Optional[SdbDate] = Field(
-        alias='issueDate',
-        title='issueDate'
-    )
     coupon_calculation_type: Optional[str] = Field(
         alias='couponCalculationType',
         title='couponCalculationType',
         # opts_list=ValidationLists.coupon
     )
-    glits_ex_dividend_date: Optional[SdbDate] = Field(
-        alias='glitsExDividendDate',
-        title='glitsExDividendDate'
+    coupon_dates: Optional[List[str]] = Field(
+        alias='couponDates',
+        title='couponDates'
     )
-    ex_dividend_schedule: Optional[List[str]] = Field(
-        alias='exDividendSchedule',
-        title='exDividendSchedule'
+    coupon_rate: float = Field(
+        alias='couponRate',
+        title='couponRate'
     )
-    ex_dividend_days: Optional[int] = Field(
-        alias='exDividendDays',
-        title='exDividendDays'
+    coupon_type: Optional[str] = Field(
+        alias='couponType',
+        title='couponType',
+        opts_list=ValidationLists.coupon_types
     )
-    tree_path_override: List[str] = Field(
-        alias='treePathOverride',
-        title='treePathOverride'
+    coupon_type_specific: Optional[str] = Field(
+        alias='couponTypeSpecific',
+        title='couponTypeSpecific'
     )
     default_date: Optional[SdbDate] = Field(
         alias='defaultDate',
         title='defaultDate'
     )
-    act_pre_first_days: Optional[int] = Field(
-        alias='actPreFirstDays',
-        title='actPreFirstDays'
+    ex_dividend_calendar: Optional[str] = Field(
+        alias='exDividendCalendar',
+        title='exDividendCalendar'
+    )
+    ex_dividend_days: Optional[int] = Field(
+        alias='exDividendDays',
+        title='exDividendDays'
+    )
+    ex_dividend_schedule: Optional[List[str]] = Field(
+        alias='exDividendSchedule',
+        title='exDividendSchedule'
+    )
+    face_value: float = Field(
+        alias='faceValue',
+        title='faceValue'
+    )
+    first_coupon_date: Optional[SdbDate] = Field(
+        alias='firstCouponDate',
+        title='firstCouponDate'
+    )
+    first_coupon_period_type: Optional[str] = Field(
+        alias='firstCouponPeriodType',
+        title='firstCouponPeriodType',
+        opts_list=ValidationLists.coupon_period_types
+    )
+    floater: Optional[str] = Field(
+        alias='floater',
+        title='floater',
+        opts_list=['Y', 'N']
+    )
+    glits_ex_dividend_date: Optional[SdbDate] = Field(
+        alias='glitsExDividendDate',
+        title='glitsExDividendDate'
+    )
+    issue_date: Optional[SdbDate] = Field(
+        alias='issueDate',
+        title='issueDate'
     )
     issuer: Optional[str] = Field(
         alias='issuer',
         title='issuer'
+    )
+    issuer_type: str = Field(
+        alias='issuerType',
+        title='issuerType',
+        opts_list=ValidationLists.issuer_types
+    )
+    is_sinkable: Optional[bool] = Field(
+        alias='isSinkable',
+        title='isSinkable'
+    )
+    last_available: Optional[SdbDate] = Field(
+        alias='lastAvailable',
+        title='lastAvailable'
+    )
+    last_coupon_period_type: Optional[str] = Field(
+        alias='lastCouponPeriodType',
+        title='lastCouponPeriodType',
+        opts_list=ValidationLists.coupon_period_types
+    )
+    last_trading: Optional[SdbDate] = Field(
+        alias='lastTrading',
+        title='lastTrading'
+    )
+    maturity_date: SdbDate = Field(
+        title='maturityDate'
+    )
+    maturity_type: Optional[str] = Field(
+        alias='maturityType',
+        title='maturityType',
+        opts_list=ValidationLists.maturity_types
+    )
+    min_increment: Optional[int] = Field(
+        alias='minIncrement',
+        title='minIncrement'
+    )
+    min_piece: Optional[int] = Field(
+        alias='minPiece',
+        title='minPiece'
+    )
+    next_coupon_date: Optional[SdbDate] = Field(
+        alias='maturityDate',
+        alias='nextCouponDate',
+        title='nextCouponDate'
+    )
+    payment_dates: Optional[Dict[str, List[float]]] = Field(
+        alias='paymentDates',
+        title='paymentDates'
+    )
+    payment_frequency: int = Field(
+        alias='paymentFrequency',
+        title='paymentFrequency'
+    )
+    previous_coupon_date: Optional[SdbDate] = Field(
+        alias='previousCouponDate',
+        title='previousCouponDate'
+    )
+    process_accrued_interest: Optional[bool] = Field(
+        alias='processAccruedInterest',
+        title='processAccruedInterest'
+    )
+    rating: Optional[Rating] = Field(
+        alias='rating',
+        title='rating'
+    )
+    redemption_value: int = Field(
+        alias='redemptionValue',
+        title='redemptionValue'
+    )
+    sinkable: Optional[str] = Field(
+        alias='sinkable',
+        title='sinkable'
+    )
+    sinking_fund_factor: Optional[int] = Field(
+        alias='sinkingFundFactor',
+        title='sinkingFundFactor'
+    )
+    sink_schedule: Optional[Dict[str, List[str]]] = Field(
+        alias='sinkSchedule',
+        title='sinkSchedule'
     )
     sink_schedule_amount_type: Optional[str] = Field(
         alias='sinkScheduleAmountType',
         title='sinkScheduleAmountType',
         opts_list=['Percent', 'Cash']
     )
-    sink_schedule: Optional[Dict[str, List[str]]] = Field(
-        alias='sinkSchedule',
-        title='sinkSchedule'
-    )
-    ex_dividend_calendar: Optional[str] = Field(
-        alias='exDividendCalendar',
-        title='exDividendCalendar'
-    )
-    step_up_date: Optional[SdbDate] = Field(
-        alias='stepUpDate',
-        title='stepUpDate'
+    source_type: Optional[str] = Field(
+        alias='sourceType',
+        title='sourceType'
     )
     step_up_coupon: Optional[float] = Field(
         alias='stepUpCoupon',
         title='stepUpCoupon'
     )
-    coupon_type_specific: Optional[str] = Field(
-        alias='couponTypeSpecific',
-        title='couponTypeSpecific'
+    step_up_date: Optional[SdbDate] = Field(
+        alias='stepUpDate',
+        title='stepUpDate'
     )
-    source_type: Optional[str] = Field(
-        alias='sourceType',
-        title='sourceType'
+    sym_type: str = Field(
+        'BOND',
+        const=True,
+        alias='type',
+        title='type'
+    )
+    tree_path_override: List[str] = Field(
+        alias='treePathOverride',
+        title='treePathOverride'
     )
     use_aci_correction: Optional[bool] = Field(
         alias='useACICorrection',
         title='useACICorrection'
-    )
-    sinkable: Optional[str] = Field(
-        alias='sinkable',
-        title='sinkable'
     )
 
     @validator('issuer_type', allow_reuse=True)
@@ -2501,60 +2506,60 @@ class BondSchema(CommonSchema):
         return item
 
 class UnderlyingId(BaseModel):
+    instrument_id: str = Field(
+        alias='id',
+        title='id'
+    )
     instrument_type: str = Field(
         'symbolId',
         alias='type',
         title='type',
         const=True
     )
-    instrument_id: str = Field(
-        alias='id',
-        title='id'
-    )
 
 class ExecutionMonitoring(BaseModel):
-    size: Optional[float] = Field(
-        alias='size',
-        title='size'
-    )
-    price_multiplier: Optional[float] = Field(
-        alias='priceMultiplier',
-        title='priceMultiplier'
-    )
-    is_enabled: Optional[bool] = Field(
-        alias='isEnabled',
-        title='isEnabled'
-    )
     aodt: Optional[Aodt] = Field(
         alias='availableOrderDurationTypes',
         title='availableOrderDurationTypes'
-    )
-    quote_freshness: Optional[int] = Field(
-        alias='quoteFreshness',
-        title='quoteFreshness'
-    )
-    interval: Optional[int] = Field(
-        alias='interval',
-        title='interval'
     )
     delay: Optional[int] = Field(
         alias='delay',
         title='delay'
     )
+    interval: Optional[int] = Field(
+        alias='interval',
+        title='interval'
+    )
+    is_enabled: Optional[bool] = Field(
+        alias='isEnabled',
+        title='isEnabled'
+    )
+    price_multiplier: Optional[float] = Field(
+        alias='priceMultiplier',
+        title='priceMultiplier'
+    )
+    quote_freshness: Optional[int] = Field(
+        alias='quoteFreshness',
+        title='quoteFreshness'
+    )
+    size: Optional[float] = Field(
+        alias='size',
+        title='size'
+    )
 
 class StampDuty(BaseModel):
-    eligible_for_stamp_duty: bool = Field(
-        alias='eligibleForStampDuty',
-        title='eligibleForStampDuty'
+    country_of_incorporation: str = Field(
+        alias='countryOfIncorporation',
+        title='countryOfIncorporation',
+        opts_list=[(x, y) for x, y in ValidationLists.countries.items()]
     )
     eligible_for_levy_fee: bool = Field(
         alias='eligibleForLevyFee',
         title='eligibleForLevyFee'
     )
-    country_of_incorporation: str = Field(
-        alias='countryOfIncorporation',
-        title='countryOfIncorporation',
-        opts_list=[(x, y) for x, y in ValidationLists.countries.items()]
+    eligible_for_stamp_duty: bool = Field(
+        alias='eligibleForStampDuty',
+        title='eligibleForStampDuty'
     )
     override_sinc_data: bool = Field(
         alias='overrideSincData',
@@ -2572,104 +2577,104 @@ class LocalizedDescription(BaseModel):
 
 class StockSchema(CommonSchema):
     
-    sym_type: str = Field(
-        'STOCK',
-        const=True,
-        alias='type',
-        title='type'
-    )
-    popular: Optional[bool] = Field(
-        alias='popular',
-        title='popular'
-    )
-    intraday_coefficient: Optional[float] = Field(
-        alias='intradayCoefficient',
-        title='intradayCoefficient'
-    )
-    exchange_name: Optional[str] = Field(
-        alias='exchangeName',
-        title='exchangeName'
+    apply_execution_scheme: Optional[bool] = Field(
+        alias='applyExecutionScheme',
+        title='applyExecutionScheme'
     )
     country: Optional[str] = Field(
         alias='country',
         title='country',
         opts_list=[(x, y) for x, y in ValidationLists.countries.items()]
     )
-    is_imported: Optional[bool] = Field(
-        alias='isImported',
-        title='isImported'
-    )
-    show_as_fund: Optional[bool] = Field(
-        alias='showAsFund',
-        title='showAsFund'
-    )
-    ticker_icon: Optional[str] = Field(
-        alias='tickerIcon',
-        title='tickerIcon'
-    )
     commission_rule: Optional[str] = Field(
         alias='commissionRule',
         title='commissionRule'
     )
-    apply_execution_scheme: Optional[bool] = Field(
-        alias='applyExecutionScheme',
-        title='applyExecutionScheme'
-    )
-    mic: Optional[str] = Field(
-        alias='MIC',
-        title='MIC'
-    )
-    quote_monitor_schedule_id: Optional[str] = Field(
-        alias='quoteMonitorScheduleId',
-        title='quoteMonitorScheduleId'
+    exchange_name: Optional[str] = Field(
+        alias='exchangeName',
+        title='exchangeName'
     )
     execution_monitoring: Optional[ExecutionMonitoring] = Field(
         alias='executionMonitoring',
         title='executionMonitoring'
     )
-    max_market_order_value: Optional[int] = Field(
-        alias='maxMarketOrderValue',
-        title='maxMarketOrderValue'
+    intraday_coefficient: Optional[float] = Field(
+        alias='intradayCoefficient',
+        title='intradayCoefficient'
     )
-    stamp_duty: Optional[StampDuty] = Field(
-        alias='stampDuty',
-        title='stampDuty'
-    )
-    voice_trading_only: Optional[bool] = Field(
-        alias='voiceTradingOnly',
-        title='voiceTradingOnly'
-    )
-    rating: Optional[Rating] = Field(
-        alias='rating',
-        title='rating'
-    )
-    synthetic_feed: Optional[SyntheticFeed] = Field(
-        alias='syntheticFeed',
-        title='syntheticFeed'
-    )
-    order_price_max_deviation: Optional[float] = Field(
-        alias='orderPriceMaxDeviation',
-        title='orderPriceMaxDeviation'
-    )
-    max_price_deviation: Optional[float] = Field(
-        alias='maxPriceDeviation',
-        title='maxPriceDeviation'
+    is_imported: Optional[bool] = Field(
+        alias='isImported',
+        title='isImported'
     )
     localized_description: Optional[LocalizedDescription] = Field(
         alias='localizedDescription',
         title='localizedDescription'
     )
-    stop_trigger_policy: Optional[str] = Field(
-        alias='stopTriggerPolicy',
-        title='stopTriggerPolicy'
+    max_market_order_value: Optional[int] = Field(
+        alias='maxMarketOrderValue',
+        title='maxMarketOrderValue'
+    )
+    max_price_deviation: Optional[float] = Field(
+        alias='maxPriceDeviation',
+        title='maxPriceDeviation'
+    )
+    mic: Optional[str] = Field(
+        alias='MIC',
+        title='MIC'
+    )
+    order_price_max_deviation: Optional[float] = Field(
+        alias='orderPriceMaxDeviation',
+        title='orderPriceMaxDeviation'
+    )
+    popular: Optional[bool] = Field(
+        alias='popular',
+        title='popular'
     )
     price_unit: Optional[float] = Field(
         alias='priceUnit',
         title='priceUnit'
     )
+    quote_monitor_schedule_id: Optional[str] = Field(
+        alias='quoteMonitorScheduleId',
+        title='quoteMonitorScheduleId'
+    )
+    rating: Optional[Rating] = Field(
+        alias='rating',
+        title='rating'
+    )
     real_exchange_name: Optional[str] = Field(
         alias='realExchangeName',
         title='realExchangeName'
+    )
+    show_as_fund: Optional[bool] = Field(
+        alias='showAsFund',
+        title='showAsFund'
+    )
+    stamp_duty: Optional[StampDuty] = Field(
+        alias='stampDuty',
+        title='stampDuty'
+    )
+    stop_trigger_policy: Optional[str] = Field(
+        alias='stopTriggerPolicy',
+        title='stopTriggerPolicy'
+    )
+    sym_type: str = Field(
+        'STOCK',
+        const=True,
+        alias='type',
+        title='type'
+    )
+    synthetic_feed: Optional[SyntheticFeed] = Field(
+        alias='syntheticFeed',
+        title='syntheticFeed'
+    )
+    ticker_icon: Optional[str] = Field(
+        alias='tickerIcon',
+        title='tickerIcon'
+    )
+    voice_trading_only: Optional[bool] = Field(
+        alias='voiceTradingOnly',
+        title='voiceTradingOnly'
     )
 
     @validator('country', allow_reuse=True)
@@ -2680,72 +2685,72 @@ class StockSchema(CommonSchema):
 
 class FutureSchema(CommonSchema):
 
+    commodity_base: Optional[str] = Field(
+        alias='commodityBase',
+        title='commodityBase',
+        opts_list=ValidationLists.commodity_bases
+    )
+    commodity_details: Optional[str] = Field(
+        alias='commodityDetails',
+        title='commodityDetails'
+    )
+    far_maturity_date: Optional[SdbDate] = Field(
+        alias='farMaturityDate',
+        title='farMaturityDate'
+    )
+    first_notice_day: Optional[SdbDate] = Field(
+        alias='firstNoticeDay',
+        title='firstNoticeDay'
+    )
+    is_physical_delivery: bool = Field(
+        alias='isPhysicalDelivery',
+        title='isPhysicalDelivery'
+    )
+    is_settle_pnl_on_expiry_date: Optional[bool] = Field(
+        alias='isSettlePNLOnExpiryDate',
+        title='isSettlePNLOnExpiryDate'
+    )
+    last_available: Optional[SdbDate] = Field(
+        alias='lastAvailable',
+        title='lastAvailable'
+    )
+    last_trading: Optional[SdbDate] = Field(
+        alias='lastTrading',
+        title='lastTrading'
+    )
+    legs: Optional[List[Legs]] = Field(
+        alias='legs',
+        title='legs'
+    )
+    maturity_date: SdbDate = Field(
+        alias='maturityDate',
+        title='maturityDate'
+    )
+    maturity_name: Optional[str] = Field(
+        alias='maturityName',
+        title='maturityName'
+    )
+    near_maturity_date: Optional[SdbDate] = Field(
+        alias='nearMaturityDate',
+        title='nearMaturityDate'
+    )
+    portfolio_margin: Optional[bool] = Field(
+        alias='portfolioMargin',
+        title='portfolioMargin'
+    )
+    show_as_fund: Optional[bool] = Field(
+        alias='showAsFund',
+        title='showAsFund'
+    )
     sym_type: str = Field(
         'FUTURE',
         const=True,
         alias='type',
         title='type'
     )
-    maturity_date: SdbDate = Field(
-        alias='maturityDate',
-        title='maturityDate'
-    )
-    last_trading: Optional[SdbDate] = Field(
-        alias='lastTrading',
-        title='lastTrading'
-    )
-    last_available: Optional[SdbDate] = Field(
-        alias='lastAvailable',
-        title='lastAvailable'
-    )
     underlying_id: Optional[UnderlyingId] = Field(
         alias='underlyingId',
         title='underlyingId'
-    )
-    legs: Optional[List[Legs]] = Field(
-        alias='legs',
-        title='legs'
-    )
-    is_physical_delivery: bool = Field(
-        alias='isPhysicalDelivery',
-        title='isPhysicalDelivery'
-    )
-    maturity_name: Optional[str] = Field(
-        alias='maturityName',
-        title='maturityName'
-    )
-    is_settle_pnl_on_expiry_date: Optional[bool] = Field(
-        alias='isSettlePNLOnExpiryDate',
-        title='isSettlePNLOnExpiryDate'
-    )
-    portfolio_margin: Optional[bool] = Field(
-        alias='portfolioMargin',
-        title='portfolioMargin'
-    )
-    first_notice_day: Optional[SdbDate] = Field(
-        alias='firstNoticeDay',
-        title='firstNoticeDay'
-    )
-    commodity_details: Optional[str] = Field(
-        alias='commodityDetails',
-        title='commodityDetails'
-    )
-    commodity_base: Optional[str] = Field(
-        alias='commodityBase',
-        title='commodityBase',
-        opts_list=ValidationLists.commodity_bases
-    )
-    near_maturity_date: Optional[SdbDate] = Field(
-        alias='nearMaturityDate',
-        title='nearMaturityDate'
-    )
-    far_maturity_date: Optional[SdbDate] = Field(
-        alias='farMaturityDate',
-        title='farMaturityDate'
-    )
-    show_as_fund: Optional[bool] = Field(
-        alias='showAsFund',
-        title='showAsFund'
     )
 
     @validator('commodity_base', allow_reuse=True)
@@ -2755,17 +2760,17 @@ class FutureSchema(CommonSchema):
         return item
 
 class StrikePrice(BaseModel):
-    strike_price: float = Field(
-        alias='strikePrice',
-        title='strikePrice'
+    identifiers: Optional[Identifiers] = Field(
+        alias='identifiers',
+        title='identifiers'
     )
     is_available: Optional[bool] = Field(
         alias='isAvailable',
         title='isAvailable'
     )
-    identifiers: Optional[Identifiers] = Field(
-        alias='identifiers',
-        title='identifiers'
+    strike_price: float = Field(
+        alias='strikePrice',
+        title='strikePrice'
     )
 
 class StrikePrices(BaseModel):
@@ -2780,53 +2785,53 @@ class StrikePrices(BaseModel):
 
 class OptionSchema(CommonSchema):
  
-    sym_type: str = Field(
-        'OPTION',
-        const=True,
-        alias='type',
-        title='type'
+    exercise_style: str = Field(
+        alias='exerciseStyle',
+        title='exerciseStyle',
+        opts_list=ValidationLists.exercise_styles
+    )
+    is_physical_delivery: bool = Field(
+        alias='isPhysicalDelivery',
+        title='isPhysicalDelivery'
+    )
+    last_available: Optional[SdbDate] = Field(
+        alias='lastAvailable',
+        title='lastAvailable'
+    )
+    last_trading: Optional[SdbDate] = Field(
+        alias='lastTrading',
+        title='lastTrading'
     )
     margining_style: str = Field(
         alias='marginingStyle',
         title='marginingStyle',
         opts_list=ValidationLists.margining_styles
     )
-    strike_to_underlying_scale: Optional[float] = Field(
-        alias='strikeToUnderlyingScale',
-        title='strikeToUnderlyingScale'
+    maturity_date: SdbDate = Field(
+        alias='maturityDate',
+        title='maturityDate'
     )
-    is_physical_delivery: bool = Field(
-        alias='isPhysicalDelivery',
-        title='isPhysicalDelivery'
-    )
-    exercise_style: str = Field(
-        alias='exerciseStyle',
-        title='exerciseStyle',
-        opts_list=ValidationLists.exercise_styles
-    )
-    underlying_id: UnderlyingId = Field(
-        alias='underlyingId',
-        title='underlyingId'
+    price_unit: Optional[float] = Field(
+        alias='priceUnit',
+        title='priceUnit'
     )
     strike_prices: StrikePrices = Field(
         alias='strikePrices',
         title='strikePrices'
     )
-    maturity_date: SdbDate = Field(
-        alias='maturityDate',
-        title='maturityDate'
+    strike_to_underlying_scale: Optional[float] = Field(
+        alias='strikeToUnderlyingScale',
+        title='strikeToUnderlyingScale'
     )
-    last_trading: Optional[SdbDate] = Field(
-        alias='lastTrading',
-        title='lastTrading'
+    sym_type: str = Field(
+        'OPTION',
+        const=True,
+        alias='type',
+        title='type'
     )
-    last_available: Optional[SdbDate] = Field(
-        alias='lastAvailable',
-        title='lastAvailable'
-    )
-    price_unit: Optional[float] = Field(
-        alias='priceUnit',
-        title='priceUnit'
+    underlying_id: UnderlyingId = Field(
+        alias='underlyingId',
+        title='underlyingId'
     )
 
     @validator('margining_style', allow_reuse=True)
@@ -2920,60 +2925,60 @@ class OptionSchema(CommonSchema):
 
 class CalendarSpreadSchema(CommonSchema):
 
-    sym_type: str = Field(
-        'CALENDAR_SPREAD',
-        const=True,
-        alias='type',
-        title='type'
+    apply_execution_scheme: Optional[bool] = Field(
+        alias='applyExecutionScheme',
+        title='applyExecutionScheme'
+    )
+    country: Optional[str] = Field(
+        alias='country',
+        title='country'
+    )
+    far_maturity_date: SdbDate = Field(
+        alias='farMaturityDate',
+        title='farMaturityDate'
+    )
+    first_notice_day: Optional[SdbDate] = Field(
+        alias='firstNoticeDay',
+        title='firstNoticeDay'
+    )
+    is_physical_delivery: bool = Field(
+        alias='isPhysicalDelivery',
+        title='isPhysicalDelivery'
+    )
+    legs: List[Legs] = Field(
+        alias='legs',
+        title='legs'
+    )
+    # leg_gap: Optional[int] = Field(
+    #     alias='legGap',
+    #     title='legGap'
+    # )
+    near_maturity_date: SdbDate = Field(
+        alias='nearMaturityDate',
+        title='nearMaturityDate'
+    )
+    quote_monitor_schedule_id: Optional[str] = Field(
+        alias='quoteMonitorScheduleId',
+        title='quoteMonitorScheduleId'
+    )
+    send_long_fix_originator: Optional[bool] = Field(
+        alias='sendLongFixOriginator',
+        title='sendLongFixOriginator'
     )
     spread_type: str = Field(
         alias='spreadType',
         title='spreadType',
         opts_list=ValidationLists.spread_types
     )
-    near_maturity_date: SdbDate = Field(
-        alias='nearMaturityDate',
-        title='nearMaturityDate'
-    )
-    far_maturity_date: SdbDate = Field(
-        alias='farMaturityDate',
-        title='farMaturityDate'
-    )
-    legs: List[Legs] = Field(
-        alias='legs',
-        title='legs'
-    )
-    send_long_fix_originator: Optional[bool] = Field(
-        alias='sendLongFixOriginator',
-        title='sendLongFixOriginator'
-    )
-    country: Optional[str] = Field(
-        alias='country',
-        title='country'
-    )
-    apply_execution_scheme: Optional[bool] = Field(
-        alias='applyExecutionScheme',
-        title='applyExecutionScheme'
-    )
-    is_physical_delivery: bool = Field(
-        alias='isPhysicalDelivery',
-        title='isPhysicalDelivery'
-    )
     stop_trigger_policy: Optional[str] = Field(
         alias='stopTriggerPolicy',
         title='stopTriggerPolicy'
     )
-    leg_gap: Optional[int] = Field(
-        alias='legGap',
-        title='legGap'
-    )
-    first_notice_day: Optional[SdbDate] = Field(
-        alias='firstNoticeDay',
-        title='firstNoticeDay'
-    )
-    quote_monitor_schedule_id: Optional[str] = Field(
-        alias='quoteMonitorScheduleId',
-        title='quoteMonitorScheduleId'
+    sym_type: str = Field(
+        'CALENDAR_SPREAD',
+        const=True,
+        alias='type',
+        title='type'
     )
     trade_price_multiplier: Optional[int] = Field(
         alias='tradePriceMultiplier',
@@ -2988,11 +2993,21 @@ class CalendarSpreadSchema(CommonSchema):
 
 class SpreadSchema(CommonSchema):
 
-    sym_type: str = Field(
-        'FUTURE',
-        const=True,
-        alias='type',
-        title='type'
+    apply_execution_scheme: Optional[bool] = Field(
+        alias='applyExecutionScheme',
+        title='applyExecutionScheme'
+    )
+    country: Optional[str] = Field(
+        alias='country',
+        title='country'
+    )
+    first_notice_day: Optional[SdbDate] = Field(
+        alias='firstNoticeDay',
+        title='firstNoticeDay'
+    )
+    is_physical_delivery: bool = Field(
+        alias='isPhysicalDelivery',
+        title='isPhysicalDelivery'
     )
     maturity_date: SdbDate = Field(
         alias='maturityDate',
@@ -3006,25 +3021,15 @@ class SpreadSchema(CommonSchema):
         alias='sendLongFixOriginator',
         title='sendLongFixOriginator'
     )
-    country: Optional[str] = Field(
-        alias='country',
-        title='country'
-    )
-    apply_execution_scheme: Optional[bool] = Field(
-        alias='applyExecutionScheme',
-        title='applyExecutionScheme'
-    )
-    is_physical_delivery: bool = Field(
-        alias='isPhysicalDelivery',
-        title='isPhysicalDelivery'
-    )
     stop_trigger_policy: Optional[str] = Field(
         alias='stopTriggerPolicy',
         title='stopTriggerPolicy'
     )
-    first_notice_day: Optional[SdbDate] = Field(
-        alias='firstNoticeDay',
-        title='firstNoticeDay'
+    sym_type: str = Field(
+        'FUTURE',
+        const=True,
+        alias='type',
+        title='type'
     )
     quote_monitor_schedule_id: Optional[str] = Field(
         alias='quoteMonitorScheduleId',
@@ -3036,14 +3041,15 @@ class SpreadSchema(CommonSchema):
     )
 
 class SyntheticSettings(BaseModel):
-    sources: List[SyntheticSources] = Field(
-        alias='sources',
-        title='sources'
-    )
     enable_market_depth: bool = Field(
         alias='enableMarketDepth',
         title='enableMarketDepth'
     )
+    sources: List[SyntheticSources] = Field(
+        alias='sources',
+        title='sources'
+    )
+# continue reordering from here
 
 class FxSpotSchema(CommonSchema):
 
