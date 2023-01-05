@@ -2391,7 +2391,6 @@ class BondSchema(CommonSchema):
         title='minPiece'
     )
     next_coupon_date: Optional[SdbDate] = Field(
-        alias='maturityDate',
         alias='nextCouponDate',
         title='nextCouponDate'
     )
