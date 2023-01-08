@@ -3,6 +3,7 @@ import asyncio
 import datetime as dt
 import logging
 import operator
+import pandas as pd
 from copy import copy, deepcopy
 from functools import reduce
 from pprint import pp, pformat
@@ -636,16 +637,23 @@ class EditInstrument:
                 if not new_underlying_name:
                     return old_value
 
-                found_in_tree = self.sdbadds.tree_df.loc[self.sdbadds.tree_df['_id'] == new_underlying_id]
+                found_in_tree = pd.read_sql(
+                    'SELECT cid."instrumentId" as _id, MIN(cid."dataId"), ci."isTradable" as is_trading, ci."isExpired" as is_expired '
+                    'FROM compiled_instruments_ids cid '
+                    'LEFT JOIN compiled_instruments ci ON cid."instrumentId" = ci."instrumentId" '
+                    f'WHERE cid."instrumentId" = \'{new_underlying_id}\' '
+                    'GROUP BY cid."instrumentId", ci."isTradable", ci."isExpired" ',
+                    self.sdbadds.engine
+                )
                 if found_in_tree.empty:
                     input(f"Can't find {new_underlying_id} in tree :(")
                     continue
                 found_in_tree = found_in_tree.iloc[0]
-                if found_in_tree['isAbstract'] or self.sdbadds.isexpired(found_in_tree.to_dict()) or found_in_tree['isTrading'] is False:
+                if found_in_tree['isExpired'] or found_in_tree['isTrading'] is False:
                     input('Underlying should be a tradable, not expired instrument! try again')
                     continue
                 break
-            underlying_symbol_id = found_in_tree.get('symbolId', self.sdbadds.compile_symbol_id(found_in_tree['_id']))
+            underlying_symbol_id = found_in_tree['symbolId']
             if underlying_symbol_id:
                 return {
                     'type': 'symbolId',
