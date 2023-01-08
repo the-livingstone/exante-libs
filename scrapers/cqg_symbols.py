@@ -132,10 +132,10 @@ class CqgSymbols:
             instrument_type = 'OPTION'
         if instrument_type not in self.derivative_types:
             logging.warning(f"{instrument_type=} is invalid")
-            return None
+            return pd.DataFrame()
         if not description or not exchange:
             logging.warning(f'Invalid {description=} or {exchange=}')
-            return None
+            return pd.DataFrame()
         candidates_df = self.symbols_df[
             (self.symbols_df['Instrument'] == instrument_type.lower()) &
             (self.symbols_df['Exchange'] == exchange)
