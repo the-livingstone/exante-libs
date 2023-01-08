@@ -796,12 +796,13 @@ class SDBAdditional:
                 self.sdb.get_by_shortname(
                     search_string,
                     fields=[
+                        'type',
+                        'symbolId',
+                        'name',
+                        'ticker',
+                        'shortName',
                         'expiryTime',
                         'exchangeId',
-                        'ticker',
-                        'symbolId',
-                        'description',
-                        'type',
                         '_id',
                         'isAbstract',
                         'path'
@@ -812,22 +813,29 @@ class SDBAdditional:
             search_sdb = asyncio.run(self.sdb.get_v2(
                 input_path[0],
                 fields=[
+                    'type',
+                    'symbolId',
+                    'name',
+                    'ticker',
+                    'shortName',
                     'expiryTime',
                     'exchangeId',
-                    'ticker',
-                    'symbolId',
-                    'description',
-                    'type',
                     '_id',
                     'isAbstract',
                     'path'
                 ]
             ))
         for sym in search_sdb:
-            if sym['isAbstract']:
-                sym.update({
-                    'symbolId': sym['name']
-                })
+            if not sym.get('symbolId'):
+                if sym['isAbstract']:
+                    sym.update({
+                        'symbolId': sym['name']
+                    })
+                else:
+                    sym.update({
+                        'symbolId': self.compile_symbol_id(sym)
+                    })
+            
             # if we request the exact name of instrument we won't bother with suggestions list
         if len(search_sdb) == 1:
             sym_uuid = {
@@ -866,12 +874,12 @@ class SDBAdditional:
                     'symbol_type': entry_type,
                     'is_expired': is_expired
                 }
-                if entry.get('description') is not None:
-                    entry_payload['columns'].append(entry['description'])
+                if entry.get('shortName'):
+                    entry_payload['columns'].append(entry['shortName'])
                     if is_shortname:
                         match = re.search(
                             rf'{input_path[0].lower()}',
-                            entry['description'].lower()
+                            entry['shortName'].lower()
                         )
                         entry_payload.update({'highlight': match.span()})
                 else:
