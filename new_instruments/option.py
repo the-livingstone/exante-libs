@@ -198,7 +198,7 @@ class Option(Derivative):
             parent_folder_id: str = None,
             option_type: str = None,
             week_number: int = 0,
-            parent: Instrument = None,
+            parent: 'Option' = None,
             underlying_id: str = None,
             recreate: bool = False,
             # class instances
@@ -252,6 +252,10 @@ class Option(Derivative):
             parent_folder = asyncio.run(sdb.get(parent_folder_id))
             if not parent_folder or not parent_folder.get('isAbstract'):
                 raise NoInstrumentError(f"Bad {parent_folder_id=}")
+        if not shortname:
+            raise RuntimeError(
+                    f'{ticker}.{exchange}: Cannot create option seies without shortname'
+                )
         reference, series_tree = Derivative._find_option_series(
             ticker,
             parent_folder_id,
