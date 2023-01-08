@@ -1211,9 +1211,9 @@ class DerivativeAdder:
             parsed['series'].pop('shortName', None)
         series_class: Union[Option, Future, Spread] = DerivativeType[derivative_type.replace(' ', '_')].value
         additional = {}
-        if isinstance(series_class, Option):
+        if derivative_type in ['OPTION', 'OPTION ON FUTURE']:
             additional.update({'option_type': derivative_type})
-        if isinstance(series_class, Spread):
+        if derivative_type in ['SPREAD', 'CALENDAR_SPREAD']:
             additional.update({'calendar_type': parsed['series'].get('spreadType', 'FORWARD')})
         series = series_class.from_scratch(
             ticker,
