@@ -190,7 +190,6 @@ class DerivativeAdder:
 
             shortname: str = None,
             parent_folder_id: str = None,
-            option_type: str = None,
             calendar_type: str = None,
             recreate: bool = False,
 
@@ -1161,8 +1160,12 @@ class DerivativeAdder:
             ticker,
             exchange,
             parent,
-            parent=False
+            parent=True
         )
+        overrides.update({
+            'ticker': ticker,
+            'exchange': exchange
+        })
         feed_provider = overrides.get('provider')
         gateway = None
 
@@ -1203,10 +1206,15 @@ class DerivativeAdder:
                 'feeds/gateways': [gateway]
             })
         if not shortname:
-            shortname = parsed['series'].pop('shortName')
+            shortname = parsed['series'].pop('shortName', None)
         else:
-            parsed['series'].pop('shortName')
+            parsed['series'].pop('shortName', None)
         series_class: Union[Option, Future, Spread] = DerivativeType[derivative_type.replace(' ', '_')].value
+        additional = {}
+        if isinstance(series_class, Option):
+            additional.update({'option_type': derivative_type})
+        if isinstance(series_class, Spread):
+            additional.update({'calendar_type': parsed['series'].get('spreadType', 'FORWARD')})
         series = series_class.from_scratch(
             ticker,
             exchange,
@@ -1215,7 +1223,8 @@ class DerivativeAdder:
             recreate=recreate,
 
             sdb=sdb,
-            sdbadds=sdbadds
+            sdbadds=sdbadds,
+            **additional
         ) # raises RuntimeError if not recreate and series exists in sdb
         
         # set CQG overrides
