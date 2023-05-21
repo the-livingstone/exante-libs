@@ -8,7 +8,7 @@ import requests
 
 from abc import ABCMeta, abstractmethod
 from copy import deepcopy
-from datetime import datetime, timezone
+from datetime import datetime, date, time, timezone, timedelta
 from dateutil import parser
 from decimal import Decimal, InvalidOperation
 from itertools import islice
@@ -17,6 +17,7 @@ from urllib3.util import Retry
 from typing import Dict, List, Optional, Set, Union
 from urllib.parse import quote as urlencode
 import json
+import re
 
 """
 Helpers
@@ -30,21 +31,54 @@ class CommitLockedError(Exception):
 class DecodeError(Exception):
     pass
 
+regex = {
+    'decimal': re.compile(r'^\d+(\.\d+)$'),
+    'dt': [
+        # ISO and 2022.12.31 with time? and timezone?
+        re.compile(
+            r'^(?P<year>\d{4})[-\.](?P<month>\d{2})[-\.](?P<day>\d{2})([T ](?P<time>\d{2}:\d{2}:\d{2}(\.\d{3}(\d{3})?)?)(?P<tz>Z|[+-]\d{2}:?\d{2})?)?$',
+        ),
+        # US format: 12/31/2022, 5/1/2022, 5/1/22
+        re.compile(
+            r'^(?P<month>\d{1,2})[\/](?P<day>\d{1,2})[\/](?P<year>(\d{2}|\d{4}))( (?P<time>\d{2}:\d{2}:\d{2}(\.\d{3}(\d{3})?)?)Z?)?$'
+        ),
+        # 
+        re.compile(
+            r'^(?P<day>\d{1,2})\.(?P<month>\d{1,2})\.(?P<year>(\d{2}|\d{4}))([T ](?P<time>\d{2}:\d{2}:\d{2}(\.\d{3}(\d{3})?)?)Z?)?$'
+        )
+    ]
+}
 
-def json_decoder(obj):
+def json_decoder(obj: dict):
     for key, value in obj.items():
         if isinstance(value, str):
-            try:
+            if re.match(regex['decimal'], value):
                 value = Decimal(value)
-            except (InvalidOperation, ValueError):
-                try:
-                    value = datetime.strptime(value, '%Y-%m-%d %H:%M:%S.%f')
-                    value = value.replace(tzinfo=timezone.utc)
-                except ValueError:
+            else:
+                match = next((re.match(x) for x in regex['dt'] if re.match(x)), None)
+                if match:
                     try:
-                        value = datetime.strptime(value, '%Y-%m-%dT%H:%M:%S.%fZ')
-                        value = value.replace(tzinfo=timezone.utc)
+                        val_date = date(
+                            int(match.group('year')),
+                            int(match.group('month')),
+                            int(match.group('day'))
+                        )
+                        if match.group('time'):
+                            val_time = time.fromisoformat(match.group('time'))
+                        else:
+                            val_time = time(0,0)
+                        value = datetime.combine(val_date, val_time)
+                        if not match.group('tz') or match.group('tz') in ['Z', '+0000', '-0000']:
+                            value = value.replace(tzinfo=timezone.utc)
+                        else:
+                            hours = match.group('tz')[1:3]
+                            mins = match.group('tz')[3:]
+                            direction = match.group('tz')[0]
+                            value.replace(tzinfo=timezone(
+                                timedelta(hours=hours, minutes=mins) if direction == '+' else -timedelta(hours=hours, minutes=mins)
+                            ))
                     except ValueError:
+                        logging.error('Dattime conversion has failed')
                         pass
         obj[key] = value
     return obj
@@ -84,8 +118,7 @@ def key_generator(item, interval='1day'):
 def json_encoder(value):
     if isinstance(value, datetime):
         return str(int(value.timestamp() * 1000))
-    elif isinstance(value, Decimal) or isinstance(value, int) or \
-            isinstance(value, float):
+    elif isinstance(value, (Decimal, int, float)):
         return str(value)
     else:
         return value
@@ -295,8 +328,8 @@ class Trade(MarketData, iDictator):
     def from_dict(data):
         try:
             timestamp = parser.parse(data['time'])
-            price = Decimal(data['price'])
-            volume = Decimal(data['size'])
+            price = Decimal(str(data['price']))
+            volume = Decimal(str(data['size']))
         except KeyError as e:
             raise ValueError(f'Invalid dict for Trade - reason {e}')
         except IndexError as e:
@@ -318,12 +351,16 @@ class Trade(MarketData, iDictator):
             interval_dict[key].append(i)
         result = []
         for i in interval_dict:
-            candle = Candle(data_type='trades', interval=interval, timestamp=i,
-                            max_price=max(j.price for j in interval_dict[i]),
-                            min_price=min(j.price for j in interval_dict[i]),
-                            open_price=interval_dict[i][0].price,
-                            close_price=interval_dict[i][-1].price,
-                            volume=sum(j.volume for j in interval_dict[i]))
+            candle = Candle(
+                data_type='trades',
+                interval=interval,
+                timestamp=i,
+                max_price=max(j.price for j in interval_dict[i]),
+                min_price=min(j.price for j in interval_dict[i]),
+                open_price=interval_dict[i][0].price,
+                close_price=interval_dict[i][-1].price,
+                volume=sum(j.volume for j in interval_dict[i])
+            )
             result.append(candle)
         return result
 
@@ -472,29 +509,33 @@ class MarketDepth(iDictator):
             raise TypeError(f'MarketDepth expected but {type(other)} fount')
 
     @classmethod
-    def from_quotes(cls, quotes: list, bid_yield: Decimal = None,
-                    ask_yield: Decimal = None):
+    def from_quotes(
+            cls,
+            quotes: list[Quote],
+            bid_yield: Decimal = None,
+            ask_yield: Decimal = None
+        ):
         """
         Method makes correct MarketDepth from unsorted list of quotes.
         Returned MarketDepth instance has timestamp of oldest quote in passed
         list of quotes.
         :param quotes: list of quotes. All timestamps of quotes must be either
-         aware ore naive. Mixing will cause TypeError.
+         aware or naive. Mixing will cause TypeError.
         :param bid_yield: bid yield (for bonds)
         :param ask_yield: ask yield (for bonds)
         :return: instance of MarketDepth
         """
         bids, asks = [], []
         if quotes[0].timestamp.tzinfo:
-            timestamp = datetime(1970, 1, 1, tzinfo=timezone.utc)
+            default_timestamp = datetime(1970, 1, 1, tzinfo=timezone.utc)
         else:
-            timestamp = datetime.fromtimestamp(0)
+            default_timestamp = datetime.fromtimestamp(0)
         for quote in quotes:
             if quote.side == 'bid':
                 bids.append(quote)
             else:
                 asks.append(quote)
-            timestamp = max(timestamp, quote.timestamp)
+            timestamp = max(default_timestamp, quote.timestamp)
         return cls(timestamp, bids, asks, bid_yield, ask_yield)
 
     @classmethod
@@ -536,18 +577,17 @@ class MarketDepth(iDictator):
         for side in ('bid', 'ask'):
             if data.get(side) is not None:
                 if isinstance(data[side], (float, int, Decimal)):
-                    price = Decimal(data[side])
                     quotes.append(
                         Quote(
                             timestamp=data['time'] if 'time' in data else data['frame_time'],
                             side=side,
-                            price=price
+                            price=data[side]
                         )
                     )
                 elif isinstance(data[side], dict):
                     yields[side] = data[side].get('yield')
                     try:
-                        quotes += [
+                        quotes.extend([
                             Quote(
                                 timestamp=data['time'] if 'time' in data else data['frame_time'],
                                 side=side,
@@ -555,7 +595,7 @@ class MarketDepth(iDictator):
                                 volume=p_data['size']
                             ) for p_data
                             in data[side]['pricedata']
-                        ]
+                        ])
                     except KeyError:
                         raise ValueError('Invalid dict for MarketDepth')
                 else:
@@ -716,8 +756,10 @@ class MarketDepth(iDictator):
                 elif left.price == right.price:
                     logging.debug(f'Two equal prices of one side: {left}, {right}')
                 else:
-                    logging.debug(f'Wrong order of quotes in market depth: '
-                        f'{left} is larger than {right}')
+                    logging.debug(
+                        f'Wrong order of quotes in market depth: '
+                        f'{left} is larger than {right}'
+                    )
                 return False
 
         return True
@@ -752,8 +794,10 @@ class Candle(MarketData, iDictator):
             if max_price < min_price:
                 raise ValueError('Max price must be larger than min price')
             if not (min_price <= open_price <= max_price and min_price <= close_price <= max_price):
-                raise ValueError('Close and open price must be larger than '
-                                 'min price and smaller than max one')
+                raise ValueError(
+                    'Close and open price must be larger than '
+                    'min price and smaller than max one'
+                )
 
         super(Candle, self).__init__(data_type, interval)
         self.timestamp = timestamp
@@ -821,11 +865,13 @@ class Candle(MarketData, iDictator):
 
     @property
     def dictator_dict(self):
-        result = {'frame_time': self.timestamp,
-                  'open_price': self.open_price,
-                  'close_price': self.close_price,
-                  'min_price': self.min_price,
-                  'max_price': self.max_price}
+        result = {
+            'frame_time': self.timestamp,
+            'open_price': self.open_price,
+            'close_price': self.close_price,
+            'min_price': self.min_price,
+            'max_price': self.max_price
+        }
         if self.volume is not None:
             result['volume'] = self.volume
         return result
@@ -834,11 +880,11 @@ class Candle(MarketData, iDictator):
     def from_dict(data_type, interval, data):
         try:
             timestamp = parser.parse(data['frame_time'])
-            open_price = Decimal(data['open_price'])
-            close_price = Decimal(data['close_price'])
-            min_price = Decimal(data['min_price'])
-            max_price = Decimal(data['max_price'])
-            volume = Decimal(data['volume']) if data.get('volume') else None
+            open_price = Decimal(str(data['open_price']))
+            close_price = Decimal(str(data['close_price']))
+            min_price = Decimal(str(data['min_price']))
+            max_price = Decimal(str(data['max_price']))
+            volume = Decimal(str(data['volume'])) if data.get('volume') else None
         except KeyError as e:
             raise ValueError(f'Invalid dict for Candle - reason {e}')
         except IndexError as e:
@@ -901,7 +947,8 @@ class Candle(MarketData, iDictator):
 
             candle = cls(
                 data_type='quotes' if value_attr == 'mid' else 'trades',
-                interval=interval, timestamp=i,
+                interval=interval,
+                timestamp=i,
                 max_price=max(values),
                 min_price=min(values),
                 open_price=values[0],
@@ -1038,10 +1085,18 @@ class OptionData(MarketData, iDictator):
 
 
 class OptionDataCandle(MarketData, iDictator):
-    def __init__(self, data_type: str, interval: str, position: str, timestamp: Union[datetime, str],
-                 open_price: Decimal, close_price: Decimal,
-                 max_price: Decimal, min_price: Decimal,
-                 validate: bool = True):
+    def __init__(
+            self,
+            data_type: str,
+            interval: str,
+            position: str,
+            timestamp: Union[datetime, str],
+            open_price: Decimal,
+            close_price: Decimal,
+            max_price: Decimal,
+            min_price: Decimal,
+            validate: bool = True
+        ):
         """
         Class that describes candle
         :param data_type: quotes or trades
@@ -1059,8 +1114,10 @@ class OptionDataCandle(MarketData, iDictator):
             if max_price < min_price:
                 raise ValueError('Max price must be larger than min price')
             if not (min_price <= open_price <= max_price and min_price <= close_price <= max_price):
-                raise ValueError('Close and open price must be larger than '
-                                 'min price and smaller than max one')
+                raise ValueError(
+                    'Close and open price must be larger than '
+                    'min price and smaller than max one'
+                )
 
         super(OptionDataCandle, self).__init__(data_type, interval, position)
         self.timestamp = timestamp
@@ -1547,19 +1604,17 @@ class TickDB3:
         for i in intervals:
             for p in positions:
                 market_data = MarketData(md_type, i, p)
-                tdb_data.append(
-                    [
-                        self.__get(
-                            symbol,
-                            market_data,
-                            limit,
-                            since,
-                            till,
-                            **kwargs
-                        ),
-                        market_data
-                    ]
-                )
+                tdb_data.append([
+                    self.__get(
+                        symbol,
+                        market_data,
+                        limit,
+                        since,
+                        till,
+                        **kwargs
+                    ),
+                    market_data
+                ])
         return tdb_data
 
     def get_tcandles(
