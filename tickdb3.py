@@ -10,11 +10,11 @@ from abc import ABCMeta, abstractmethod
 from copy import deepcopy
 from datetime import datetime, date, time, timezone, timedelta
 from dateutil import parser
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
 from itertools import islice
 from requests.adapters import HTTPAdapter
 from urllib3.util import Retry
-from typing import Dict, List, Optional, Set, Union
+from typing import Dict, List, Set, Union
 from urllib.parse import quote as urlencode
 import json
 import re
@@ -78,7 +78,7 @@ def json_decoder(obj: dict):
                                 timedelta(hours=hours, minutes=mins) if direction == '+' else -timedelta(hours=hours, minutes=mins)
                             ))
                     except ValueError:
-                        logging.error('Dattime conversion has failed')
+                        logging.error('Datetime conversion has failed')
                         pass
         obj[key] = value
     return obj

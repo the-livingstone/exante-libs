@@ -97,7 +97,6 @@ class SchemaNavigation:
     def schema_lookup(self, path: list, **kwargs) -> list:
         '''
         method that shows what kind of part is on the given path in schema
-        :param schema: schema to use
         :param path: keys of nested dicts (list indices are ignored)
         :param kwargs: are given to eliminate ambiguity in case of anyOf type {<fieldname>: <definition (or type)>}
         :return: properties of field [{<field_properties_set1>}, {<field_properties_set2>}, ...]
@@ -117,7 +116,7 @@ class SchemaNavigation:
             #   same path but with preselected 'anyOf' option (we write its content to kwargs)
             # · if fork terminates earlier than path, we reject it by removing from kwargs
             # · if fork offers an acceptable path we write it into helping dict
-            #   so when we face another fork we don't iteratate on failed but go strait to accceptable one 
+            #   so when we face another fork we don't iterate on failed but go strait to accceptable one 
             tree = tree.get('properties', {}).get(p, {})
 
             if tree.get('additionalProperties'):
@@ -183,7 +182,7 @@ class SchemaNavigation:
 
         path = target.split('/')
         # check if the first field of path is in the root of schema
-        if next((x for x in self.schema['properties'] if x == path[0]), None):
+        if path[0] in self.schema['properties']:
             # check if it is valid path
             if len(self.schema_lookup(path)) == 1:
                 return path

@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 '''
-https://jira.exante.eu/browse/TSDEV-44
 Library to standardise logging initialisation and calls
 '''
 
